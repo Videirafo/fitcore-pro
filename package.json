@@ -6,6 +6,8 @@
   "scripts": {
     "check:project": "bash infra/scripts/check-project.sh",
     "api:dev": "cd services/api && npm run dev",
-    "doctor": "cd services/orchestrator && npm run doctor"
+    "doctor": "cd services/orchestrator && npm run doctor",
+    "exercises:sync": "bash infra/scripts/exercises-dataset-sync.sh",
+    "exercises:normalize": "node tools/normalize-exercises.mjs"
   }
 }
