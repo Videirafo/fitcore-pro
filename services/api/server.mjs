@@ -4,7 +4,7 @@
  * FITCORE PRO - API propria inicial
  *
  * API HTTP sem dependencias externas para validar a arquitetura:
- * Tela propria FitCore -> API propria -> exercises.normalized.json + wger interno.
+ * Tela propria FitCore -> API propria -> catalogo normalizado + motor fitness interno.
  */
 
 import { createServer } from "node:http";
@@ -20,6 +20,158 @@ const wgerInternalUrl = process.env.FITCORE_WGER_INTERNAL_URL || "http://127.0.0
 let catalogCache = null;
 let catalogLoadedAt = null;
 
+const queryAliases = new Map([
+  ["agachamento", "squat"],
+  ["peito", "chest"],
+  ["costas", "back"],
+  ["halter", "dumbbell"],
+  ["halteres", "dumbbell"],
+  ["barra", "barbell"],
+  ["abdominal", "abs"],
+  ["abdomen", "abs"],
+  ["abdômen", "abs"],
+  ["biceps", "biceps"],
+  ["bíceps", "biceps"],
+  ["triceps", "triceps"],
+  ["tríceps", "triceps"],
+  ["perna", "legs"],
+  ["pernas", "legs"],
+  ["ombro", "shoulders"],
+  ["ombros", "shoulders"],
+  ["funcional", "body weight"],
+  ["crossfit", "burpee"],
+  ["cross training", "burpee"],
+  ["box", "burpee"],
+  ["burpee", "burpee"],
+  ["kettlebell", "kettlebell"],
+]);
+
+const labelMap = new Map([
+  ["back", "costas"],
+  ["chest", "peito"],
+  ["upper legs", "pernas"],
+  ["lower legs", "panturrilhas"],
+  ["upper arms", "braços"],
+  ["lower arms", "antebraços"],
+  ["shoulders", "ombros"],
+  ["waist", "abdômen"],
+  ["cardio", "cardio"],
+  ["dumbbell", "halter"],
+  ["barbell", "barra"],
+  ["cable", "cabo"],
+  ["body weight", "peso corporal"],
+  ["leverage machine", "máquina"],
+  ["assisted", "assistido"],
+  ["band", "elástico"],
+  ["kettlebell", "kettlebell"],
+  ["medicine ball", "bola medicinal"],
+  ["rope", "corda"],
+  ["wheel roller", "roda abdominal"],
+  ["pectorals", "peitoral"],
+  ["lats", "dorsais"],
+  ["quads", "quadríceps"],
+  ["glutes", "glúteos"],
+  ["hamstrings", "posterior de coxa"],
+  ["abs", "abdômen"],
+  ["calves", "panturrilhas"],
+  ["biceps", "bíceps"],
+  ["triceps", "tríceps"],
+  ["delts", "deltoides"],
+  ["forearms", "antebraços"],
+]);
+
+const exactExerciseNames = new Map([
+  ["barbell bench front squat", "Agachamento frontal com barra no banco"],
+  ["barbell bench squat", "Agachamento com barra no banco"],
+  ["barbell clean-grip front squat", "Agachamento frontal com pegada clean"],
+  ["barbell front chest squat", "Agachamento frontal com barra no peito"],
+  ["barbell front squat", "Agachamento frontal com barra"],
+  ["barbell full squat", "Agachamento completo com barra"],
+  ["assisted chest dip (kneeling)", "Mergulho para peito assistido ajoelhado"],
+  ["alternate lateral pulldown", "Puxada lateral alternada"],
+  ["assisted hanging knee raise with throw down", "Elevação de joelhos suspenso com auxílio"],
+]);
+
+const phraseTranslations = [
+  ["barbell", "com barra"],
+  ["dumbbell", "com halter"],
+  ["kettlebell", "com kettlebell"],
+  ["body weight", "com peso corporal"],
+  ["cable", "no cabo"],
+  ["leverage machine", "na máquina"],
+  ["assisted", "assistido"],
+  ["resistance band", "com elástico"],
+  ["band", "com elástico"],
+  ["bench", "no banco"],
+  ["front squat", "agachamento frontal"],
+  ["full squat", "agachamento completo"],
+  ["squat", "agachamento"],
+  ["lunge", "avanço"],
+  ["deadlift", "levantamento terra"],
+  ["bench press", "supino"],
+  ["press", "desenvolvimento"],
+  ["pulldown", "puxada"],
+  ["pull-up", "barra fixa"],
+  ["push-up", "flexão"],
+  ["dip", "mergulho"],
+  ["curl", "rosca"],
+  ["raise", "elevação"],
+  ["row", "remada"],
+  ["extension", "extensão"],
+  ["crunch", "abdominal"],
+  ["plank", "prancha"],
+  ["burpee", "burpee"],
+  ["clean", "clean"],
+  ["snatch", "snatch"],
+  ["thruster", "thruster"],
+  ["chest", "peito"],
+  ["front", "frontal"],
+  ["lateral", "lateral"],
+  ["reverse", "reverso"],
+  ["standing", "em pé"],
+  ["seated", "sentado"],
+  ["lying", "deitado"],
+  ["kneeling", "ajoelhado"],
+  ["hanging", "suspenso"],
+  ["alternate", "alternado"],
+];
+
+const crossTrainingTemplates = [
+  {
+    id: "box-iniciante-01",
+    nome: "Box iniciante - técnica e condicionamento",
+    foco: "aprender movimentos com segurança",
+    blocos: [
+      "Aquecimento: mobilidade de quadril, ombros e tornozelos por 8 minutos",
+      "Técnica: agachamento, remada, prancha e burpee adaptado",
+      "Circuito: 4 rounds controlados, sem buscar carga máxima",
+      "Finalização: alongamento leve e registro de percepção de esforço",
+    ],
+  },
+  {
+    id: "wod-forca-01",
+    nome: "WOD força - pernas e core",
+    foco: "força, estabilidade e resistência",
+    blocos: [
+      "Aquecimento: bike leve, mobilidade e ativação de glúteos",
+      "Força: agachamento com barra ou variação adaptada",
+      "WOD: combinação de agachamento, kettlebell swing e abdominal",
+      "Escala: reduzir carga, reps ou amplitude conforme o nível do aluno",
+    ],
+  },
+  {
+    id: "funcional-turma-01",
+    nome: "Funcional em turma - circuito completo",
+    foco: "frequência, aderência e evolução coletiva",
+    blocos: [
+      "Aquecimento: corrida estacionária e mobilidade geral",
+      "Estações: corda, peso corporal, kettlebell, prancha e deslocamentos",
+      "Controle: tempo por estação e intervalo de recuperação",
+      "Acompanhamento: presença, observações e ajuste por aluno",
+    ],
+  },
+];
+
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(statusCode, {
@@ -32,8 +184,8 @@ function sendJson(res, statusCode, payload) {
 
 function sendNotFound(res) {
   sendJson(res, 404, {
-    error: "not_found",
-    message: "Endpoint nao encontrado.",
+    erro: "nao_encontrado",
+    mensagem: "Endpoint nao encontrado.",
   });
 }
 
@@ -56,45 +208,79 @@ function loadCatalog() {
   return catalogCache;
 }
 
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeSearchTerm(value) {
+  const raw = normalizeText(value);
+  return queryAliases.get(raw) || raw;
+}
+
+function labelPt(value) {
+  const raw = String(value || "").trim();
+  return labelMap.get(raw.toLowerCase()) || raw || "não informado";
+}
+
+function toTitlePt(value) {
+  return String(value || "")
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function exerciseNamePt(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "Exercício sem nome";
+  if (exactExerciseNames.has(raw)) return exactExerciseNames.get(raw);
+
+  let translated = ` ${raw.replace(/[()]/g, " ")} `;
+
+  for (const [from, to] of phraseTranslations) {
+    translated = translated.replaceAll(` ${from} `, ` ${to} `);
+  }
+
+  return toTitlePt(translated);
+}
+
 function toPublicExercise(record, includeDetails = false) {
   const base = {
     source_id: record.source_id,
     slug: record.slug,
-    name: record.name,
-    category: record.category,
-    body_part: record.body_part,
-    equipment: record.equipment,
-    target: record.target,
-    primary_muscle: record.primary_muscle,
-    muscle_group: record.muscle_group,
-    secondary_muscles: record.secondary_muscles || [],
-    media_policy: record.media_policy,
+    nome: exerciseNamePt(record.name),
+    nome_original: record.name,
+    categoria: labelPt(record.category),
+    parte_do_corpo: labelPt(record.body_part),
+    equipamento: labelPt(record.equipment),
+    foco: labelPt(record.target),
+    musculo_principal: labelPt(record.primary_muscle),
+    grupo_muscular: labelPt(record.muscle_group),
+    musculos_auxiliares: (record.secondary_muscles || []).map(labelPt),
+    politica_midia: "uso_textual_autorizado",
+    disponivel_para_treino: true,
   };
 
   if (!includeDetails) return base;
 
   return {
     ...base,
-    instructions_en: record.instructions_en,
-    instructions_pt_br: record.instructions_pt_br,
-    instructions: record.instructions || {},
-    instruction_steps: record.instruction_steps || {},
-    safety_notes: record.safety_notes || [],
-    created_at: record.created_at,
-    normalized_at: record.normalized_at,
+    instrucoes_en: record.instructions_en,
+    instrucoes_pt_br: record.instructions_pt_br,
+    instrucoes: record.instructions || {},
+    etapas: record.instruction_steps || {},
+    observacoes_de_seguranca: record.safety_notes || [],
+    criado_em: record.created_at,
+    normalizado_em: record.normalized_at,
   };
-}
-
-function normalizeText(value) {
-  return String(value || "").trim().toLowerCase();
 }
 
 function listExercises(url) {
   const catalog = loadCatalog();
-  const search = normalizeText(url.searchParams.get("search"));
-  const bodyPart = normalizeText(url.searchParams.get("body_part"));
-  const equipment = normalizeText(url.searchParams.get("equipment"));
-  const target = normalizeText(url.searchParams.get("target"));
+  const search = normalizeSearchTerm(url.searchParams.get("search"));
+  const bodyPart = normalizeSearchTerm(url.searchParams.get("body_part"));
+  const equipment = normalizeSearchTerm(url.searchParams.get("equipment"));
+  const target = normalizeSearchTerm(url.searchParams.get("target"));
   const limit = Math.min(Math.max(Number.parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 200);
   const offset = Math.max(Number.parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
 
@@ -111,10 +297,10 @@ function listExercises(url) {
   return {
     items,
     total: filtered.length,
-    limit,
-    offset,
-    next_offset: offset + items.length < filtered.length ? offset + items.length : null,
-    media_policy: "textual_only",
+    limite: limit,
+    deslocamento: offset,
+    proximo_deslocamento: offset + items.length < filtered.length ? offset + items.length : null,
+    politica_midia: "uso_textual_autorizado",
   };
 }
 
@@ -132,14 +318,13 @@ const server = createServer((req, res) => {
       const catalogExists = existsSync(catalogPath);
       return sendJson(res, 200, {
         ok: true,
-        service: "fitcore-api",
-        api: "owned-api",
-        catalog_exists: catalogExists,
-        catalog_path: catalogPath,
-        catalog_loaded: Boolean(catalogCache),
-        catalog_loaded_at: catalogLoadedAt,
-        wger_internal_url: wgerInternalUrl,
-        media_policy: "textual_only",
+        servico: "fitcore-api",
+        api: "api-propria",
+        catalogo_existe: catalogExists,
+        catalogo_carregado: Boolean(catalogCache),
+        catalogo_carregado_em: catalogLoadedAt,
+        motor_fitness_interno: wgerInternalUrl,
+        politica_midia: "uso_textual_autorizado",
       });
     }
 
@@ -147,18 +332,25 @@ const server = createServer((req, res) => {
       return sendJson(res, 200, listExercises(url));
     }
 
+    if (url.pathname === "/api/cross-training/templates") {
+      return sendJson(res, 200, {
+        items: crossTrainingTemplates,
+        total: crossTrainingTemplates.length,
+      });
+    }
+
     const match = url.pathname.match(/^\/api\/exercises\/([^/]+)$/);
     if (match) {
       const item = getExerciseBySlug(decodeURIComponent(match[1]));
-      if (!item) return sendJson(res, 404, { error: "exercise_not_found" });
+      if (!item) return sendJson(res, 404, { erro: "exercicio_nao_encontrado" });
       return sendJson(res, 200, item);
     }
 
     return sendNotFound(res);
   } catch (error) {
     return sendJson(res, 500, {
-      error: "fitcore_api_error",
-      message: error instanceof Error ? error.message : String(error),
+      erro: "fitcore_api_error",
+      mensagem: error instanceof Error ? error.message : String(error),
     });
   }
 });
