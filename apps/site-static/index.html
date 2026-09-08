@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="FitCore Pro, sistema fitness do MarcaIA para academias, studios, personal trainers e alunos." />
+  <meta name="description" content="FitCore Pro, sistema fitness do MarcaIA para academias, studios, boxes, personal trainers e alunos." />
   <title>FitCore Pro | Sistema fitness do MarcaIA</title>
-  <link rel="stylesheet" href="/styles.css?v=fitcore-m5" />
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m6" />
 </head>
 <body>
   <header class="navbar">
@@ -21,7 +21,7 @@
       <a href="#solucoes">Soluções</a>
       <a href="#modalidades">Modalidades</a>
       <a href="#catalogo">Exercícios</a>
-      <a href="#rotinas">Treinos</a>
+      <a href="#cross-training">Box e funcional</a>
       <a href="#seguranca">Segurança</a>
       <a href="#precos">Preços</a>
     </nav>
@@ -35,17 +35,17 @@
   <main>
     <section class="hero" id="inicio">
       <div class="hero-copy">
-        <div class="kicker">Sistema para academias, studios e personal trainers</div>
+        <div class="kicker">Sistema para academias, studios, boxes e personal trainers</div>
         <h1>Controle alunos, treinos e evolução em um só lugar.</h1>
         <p>
-          O FitCore Pro ajuda sua operação fitness a organizar alunos, planos, treinos, avaliações, frequência e acompanhamento diário.
-          Tudo em uma experiência simples para gestor, professor e aluno.
+          Organize cadastros, planos, prescrição de treino, avaliações, frequência e acompanhamento diário.
+          O gestor ganha visão da operação, o professor ganha agilidade e o aluno acompanha a própria evolução.
         </p>
         <div class="hero-actions">
           <a class="cta large" href="#demonstracao">Começar teste grátis</a>
           <a class="ghost-button" href="#solucoes">Ver soluções</a>
         </div>
-        <p class="hero-note">Primeira versão em validação: catálogo de exercícios, estrutura de treinos e base para acompanhamento.</p>
+        <p class="hero-note">Versão inicial em validação com catálogo de exercícios, estrutura de treinos e base para acompanhamento.</p>
       </div>
 
       <div class="hero-product" aria-label="Prévia do painel FitCore">
@@ -115,10 +115,10 @@
           <strong>Acompanhamento contínuo</strong>
           <span>Registre check-ins, ajustes de treino, medidas e evolução individual de cada aluno.</span>
         </a>
-        <a class="modality-card box" href="#demonstracao">
-          <small>Comunicação</small>
-          <strong>Relacionamento e retenção</strong>
-          <span>Prepare lembretes, mensagens, cobranças e suporte para a rotina do negócio.</span>
+        <a class="modality-card box" href="#cross-training">
+          <small>Box e funcional</small>
+          <strong>Treinos por turma</strong>
+          <span>Organize WODs, circuitos, presença, escala de movimentos e evolução dos alunos.</span>
         </a>
       </div>
     </section>
@@ -129,7 +129,7 @@
         <h2>Preparado para diferentes formatos de operação fitness.</h2>
       </div>
 
-      <div class="modality-grid">
+      <div class="modality-grid modalities-five">
         <a class="modality-card academy" href="#catalogo">
           <small>FitCore</small>
           <strong>Academia</strong>
@@ -145,10 +145,15 @@
           <strong>Personal trainer</strong>
           <span>Prescrição individual, histórico e ajustes por aluno.</span>
         </a>
-        <a class="modality-card box" href="#rotinas">
+        <a class="modality-card box" href="#cross-training">
           <small>FitCore</small>
-          <strong>Box e funcional</strong>
-          <span>Turmas, treinos do dia, frequência e performance.</span>
+          <strong>Box funcional</strong>
+          <span>Turmas, treinos do dia, presença e performance.</span>
+        </a>
+        <a class="modality-card cross" href="#cross-training">
+          <small>FitCore</small>
+          <strong>Cross training</strong>
+          <span>Treinos intensos, circuitos, escalas por nível e acompanhamento de evolução.</span>
         </a>
       </div>
     </section>
@@ -170,6 +175,8 @@
           <button type="button" data-query="chest dumbbell">Peito com halter</button>
           <button type="button" data-query="back cable">Costas no cabo</button>
           <button type="button" data-query="abs body weight">Abdômen sem equipamento</button>
+          <button type="button" data-query="burpee">Burpee</button>
+          <button type="button" data-query="kettlebell">Kettlebell</button>
         </div>
         <div class="catalog-count" id="catalog-count">Carregando exercícios</div>
       </div>
@@ -203,6 +210,20 @@
       </div>
     </section>
 
+    <section id="cross-training" class="section cross-section">
+      <div class="section-head compact">
+        <span>Box, funcional e cross training</span>
+        <h2>Treinos do dia, circuitos e evolução por turma.</h2>
+        <p>Crie uma rotina para aulas coletivas com aquecimento, técnica, força, WOD ou circuito, escala por nível e registro de presença.</p>
+      </div>
+      <div class="cross-grid">
+        <article><strong>WOD / treino do dia</strong><span>Organize blocos de treino, tempo, rounds, reps e observações do coach.</span></article>
+        <article><strong>Escala por nível</strong><span>Adapte movimentos para iniciante, intermediário e avançado sem perder o padrão da aula.</span></article>
+        <article><strong>Turmas e presença</strong><span>Acompanhe frequência, horários, vagas, faltas e evolução dos alunos por grupo.</span></article>
+        <article><strong>Performance</strong><span>Registre cargas, tempos, PRs, evolução técnica e histórico de cada aluno.</span></article>
+      </div>
+    </section>
+
     <section id="seguranca" class="section security-section">
       <div class="section-head compact">
         <span>Privacidade e segurança</span>
@@ -232,7 +253,7 @@
         <article class="highlight">
           <small>Recomendado</small>
           <strong>Pro</strong>
-          <p>Para academias e studios com acompanhamento, equipe e automações.</p>
+          <p>Para academias, studios e boxes com acompanhamento, equipe e automações.</p>
         </article>
         <article>
           <small>MarcaIA</small>
@@ -262,6 +283,6 @@
     </nav>
   </footer>
 
-  <script src="/script.js?v=fitcore-m3"></script>
+  <script src="/script.js?v=fitcore-m6"></script>
 </body>
 </html>
