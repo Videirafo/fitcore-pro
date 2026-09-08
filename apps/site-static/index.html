@@ -3,78 +3,122 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!--
-    FitCore Pro - Site estático inicial
-    Este arquivo serve como protótipo simples.
-    O site profissional depois será feito em Next.js dentro de apps/site.
-  -->
-
-  <title>FitCore Pro</title>
+  <meta name="description" content="FitCore Pro, vertical fitness do ecossistema MarcaIA para academias, personal trainers e alunos." />
+  <title>FitCore Pro | MarcaIA Fitness</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <header class="header">
-    <strong>FitCore Pro</strong>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>FitCore Pro</strong>
+        <small>MarcaIA Fitness</small>
+      </span>
+    </a>
 
-    <nav>
-      <a href="#recursos">Recursos</a>
-      <a href="#series">Séries</a>
-      <a href="#mvp">MVP</a>
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="#plataforma">Plataforma</a>
+      <a href="#catalogo">Catálogo</a>
+      <a href="#gestao">Gestão</a>
+      <a href="/legal/open-source">Open source</a>
     </nav>
   </header>
 
-  <main class="hero">
-    <section>
-      <p class="eyebrow">Sistema fitness profissional</p>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Vertical fitness do MarcaIA</p>
+        <h1>Treinos, alunos, evolução e operação fitness em uma plataforma própria.</h1>
+        <p class="lead">
+          O FitCore Pro organiza rotinas, catálogo de exercícios, check-ins, evolução corporal e automações para academias, studios e personal trainers.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#catalogo">Ver base de exercícios</a>
+          <a class="button secondary" href="#gestao">Ver módulos</a>
+        </div>
+      </div>
 
-      <h1>Gestão de academias, alunos, treinos e evolução em uma plataforma organizada.</h1>
+      <aside class="hero-panel" aria-label="Resumo operacional">
+        <div class="metric">
+          <span>1.324</span>
+          <small>exercícios normalizados</small>
+        </div>
+        <div class="metric">
+          <span>10</span>
+          <small>idiomas na fonte textual</small>
+        </div>
+        <div class="metric">
+          <span>0</span>
+          <small>mídias de terceiros servidas</small>
+        </div>
+      </aside>
+    </section>
 
-      <p>
-        FitCore Pro nasce com base open source, organização profissional,
-        documentação interna, backend separado, frontend separado e espaço para app mobile.
-      </p>
+    <section id="plataforma" class="section">
+      <div class="section-title">
+        <p class="eyebrow">Arquitetura</p>
+        <h2>Interface própria na frente. Motor fitness isolado por trás.</h2>
+      </div>
 
-      <a class="button" href="#mvp">Ver estrutura do MVP</a>
+      <div class="flow">
+        <article>
+          <span>01</span>
+          <h3>Tela própria FitCore</h3>
+          <p>Experiência pública com marca FitCore/MarcaIA, sem expor a interface crua da engine.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h3>API própria</h3>
+          <p>Camada intermediária para catálogo, busca, tenants, relatórios, permissões e automações.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h3>Engine interna</h3>
+          <p>wger e base textual normalizada ficam como infraestrutura interna, não como produto visual final.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="catalogo" class="section split">
+      <div>
+        <p class="eyebrow">Catálogo</p>
+        <h2>Base textual pronta para busca e recomendação.</h2>
+        <p>
+          A primeira base do FitCore usa dados normalizados de exercícios: nome, parte do corpo, equipamento, alvo muscular, músculos secundários e instruções.
+        </p>
+      </div>
+      <div class="card-list">
+        <p><strong>Parte do corpo:</strong> peito, costas, braços, pernas, cintura, ombros.</p>
+        <p><strong>Equipamentos:</strong> peso corporal, halter, barra, cabo, máquinas e faixas.</p>
+        <p><strong>Política de mídia:</strong> textual_only até existir licença própria.</p>
+      </div>
+    </section>
+
+    <section id="gestao" class="section cards">
+      <article>
+        <h3>Alunos</h3>
+        <p>Perfis, rotinas, evolução, check-ins e histórico.</p>
+      </article>
+      <article>
+        <h3>Profissionais</h3>
+        <p>Gestão de personal trainers, prescrição e acompanhamento.</p>
+      </article>
+      <article>
+        <h3>Academias</h3>
+        <p>Operação, presença, relatórios e automações futuras.</p>
+      </article>
+      <article>
+        <h3>IA operacional</h3>
+        <p>Busca, explicação de séries, recomendações e suporte ao time.</p>
+      </article>
     </section>
   </main>
 
-  <section id="recursos" class="grid">
-    <article>
-      <h2>Treinos</h2>
-      <p>Organização de exercícios, séries, cargas e progressão.</p>
-    </article>
-
-    <article>
-      <h2>Check-ins</h2>
-      <p>Acompanhamento de frequência, presença e evolução.</p>
-    </article>
-
-    <article>
-      <h2>IA e Orquestrador</h2>
-      <p>Verificação de erros, alertas e automações futuras.</p>
-    </article>
-  </section>
-
-  <section id="series" class="content">
-    <h2>Ensinamento das séries</h2>
-    <p>
-      O projeto terá conteúdo educativo para explicar séries, repetições,
-      descanso, progressão de carga e treino seguro.
-    </p>
-  </section>
-
-  <section id="mvp" class="content">
-    <h2>Primeiro MVP</h2>
-
-    <ul>
-      <li>wger rodando como base fitness</li>
-      <li>API própria FitCore Pro</li>
-      <li>Painel administrativo</li>
-      <li>Conteúdo de séries da academia</li>
-      <li>Orquestrador interno para checks</li>
-    </ul>
-  </section>
+  <footer class="footer">
+    <span>FitCore Pro · MarcaIA Fitness</span>
+    <a href="/legal/open-source">Licenças e componentes open source</a>
+  </footer>
 
   <script src="./script.js"></script>
 </body>
