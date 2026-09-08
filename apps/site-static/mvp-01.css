@@ -1,16 +1,17 @@
 .mvp-page {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .mvp-shell {
-  max-width: 1160px;
+  width: min(1160px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 72px 22px 80px;
+  padding: clamp(30px, 6vw, 72px) 0 80px;
 }
 
 .mvp-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   gap: 24px;
   align-items: end;
   margin-bottom: 30px;
@@ -32,7 +33,7 @@
   max-width: 880px;
   margin: 0 0 18px;
   color: #ffffff;
-  font-size: clamp(42px, 6vw, 82px);
+  font-size: clamp(42px, 7vw, 82px);
   line-height: 0.94;
   letter-spacing: -0.07em;
 }
@@ -43,6 +44,7 @@
 .mvp-output p {
   max-width: 760px;
   color: rgba(255, 255, 255, 0.76);
+  line-height: 1.62;
 }
 
 .mvp-status,
@@ -76,7 +78,7 @@
 
 .mvp-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
   gap: 22px;
   align-items: start;
 }
@@ -84,7 +86,7 @@
 .mvp-form,
 .aside-card,
 .mvp-result-card {
-  padding: 28px;
+  padding: clamp(22px, 4vw, 28px);
 }
 
 .form-head h2,
@@ -92,7 +94,7 @@
 .mvp-result-card h2 {
   margin: 0 0 12px;
   color: #ffffff;
-  font-size: 32px;
+  font-size: clamp(28px, 4vw, 32px);
   line-height: 1;
   letter-spacing: -0.04em;
 }
@@ -282,18 +284,47 @@
   .workout-days {
     grid-template-columns: 1fr;
   }
+
+  .mvp-hero {
+    align-items: start;
+  }
 }
 
 @media (max-width: 680px) {
+  .mvp-page .navbar {
+    position: relative !important;
+  }
+
   .mvp-shell {
-    padding-top: 42px;
+    width: min(100% - 22px, 1160px);
+    padding-top: 28px;
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
+  .mvp-hero h1 {
+    font-size: clamp(34px, 12vw, 48px);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
   }
 
+  .mvp-hero p {
+    font-size: 15px;
+  }
+
+  .form-row,
   .result-head {
+    grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .mvp-status,
+  .mvp-form,
+  .aside-card,
+  .mvp-result-card,
+  .workout-day {
+    border-radius: 22px;
+  }
+
+  .result-head span {
+    width: max-content;
   }
 }
