@@ -39,6 +39,14 @@ if [ ! -f "$CERT_DIR/fullchain.pem" ] || [ ! -f "$CERT_DIR/privkey.pem" ]; then
   exit 1
 fi
 
+# A VPS pode ter ficado com umask 077 durante geração de secrets.
+# Isso faz arquivos do git ficarem 600/700 e causa 403 no Nginx.
+# Liberar somente leitura/travessia dos artefatos públicos da UI.
+chmod o+x /opt || true
+chmod o+x "$ROOT" "$ROOT/apps" "$SITE_DIR" || true
+find "$SITE_DIR" -type d -exec chmod 755 {} \;
+find "$SITE_DIR" -type f -exec chmod 644 {} \;
+
 BACKUP="$CONF.bak.own-ui.$(date +%Y%m%d-%H%M%S)"
 if [ -f "$CONF" ]; then
   cp "$CONF" "$BACKUP"
@@ -92,7 +100,7 @@ server {
     }
 
     location / {
-        try_files \$uri \$uri/ /index.html;
+        try_files \$uri /index.html;
     }
 }
 EOF
