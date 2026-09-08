@@ -164,12 +164,35 @@ function exerciseNamePt(value) {
   if (exactExerciseNames.has(raw)) return exactExerciseNames.get(raw);
 
   let translated = ` ${raw.replace(/[()]/g, " ")} `;
-
   for (const [from, to] of phraseTranslations) {
     translated = translated.replaceAll(` ${from} `, ` ${to} `);
   }
-
   return toTitlePt(translated);
+}
+
+function getExerciseName(item) {
+  return item.nome || exerciseNamePt(item.name || item.nome_original);
+}
+
+function getCategory(item) {
+  return item.categoria || label(item.category || item.body_part || item.parte_do_corpo || "catálogo");
+}
+
+function getTags(item) {
+  return [
+    item.parte_do_corpo || item.body_part,
+    item.equipamento || item.equipment,
+    item.foco || item.target,
+  ].filter(Boolean).map(label);
+}
+
+function getPrimaryMuscle(item) {
+  return item.musculo_principal || label(item.primary_muscle || item.target || item.foco);
+}
+
+function getSecondaryMuscles(item) {
+  const values = item.musculos_auxiliares || item.secondary_muscles || [];
+  return Array.isArray(values) && values.length ? values.slice(0, 3).map(label).join(", ") : "não informado";
 }
 
 function setLoading() {
@@ -203,22 +226,17 @@ function renderResults(payload, query) {
   }
 
   resultsEl.innerHTML = items.map((item) => {
-    const tags = [item.body_part, item.equipment, item.target]
-      .filter(Boolean)
-      .map((tag) => `<span class="tag">${escapeHtml(label(tag))}</span>`)
+    const tags = getTags(item)
+      .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
       .join("");
-
-    const muscles = Array.isArray(item.secondary_muscles) && item.secondary_muscles.length
-      ? item.secondary_muscles.slice(0, 3).map(label).join(", ")
-      : "não informado";
 
     return `
       <article class="result-card">
-        <small>Código ${escapeHtml(item.source_id)} · ${escapeHtml(label(item.category || "catálogo"))}</small>
-        <h3>${escapeHtml(exerciseNamePt(item.name))}</h3>
+        <small>Código ${escapeHtml(item.source_id)} · ${escapeHtml(getCategory(item))}</small>
+        <h3>${escapeHtml(getExerciseName(item))}</h3>
         <div class="tag-row">${tags}</div>
-        <p><strong>Foco principal:</strong> ${escapeHtml(label(item.primary_muscle || item.target))}</p>
-        <p><strong>Músculos auxiliares:</strong> ${escapeHtml(muscles)}</p>
+        <p><strong>Foco principal:</strong> ${escapeHtml(getPrimaryMuscle(item))}</p>
+        <p><strong>Músculos auxiliares:</strong> ${escapeHtml(getSecondaryMuscles(item))}</p>
         <span class="policy">Disponível para montar treino</span>
       </article>
     `;
