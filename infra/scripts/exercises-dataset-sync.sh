@@ -18,13 +18,25 @@ mkdir -p "$WORK_DIR"
 
 if [ -d "$UPSTREAM_DIR/.git" ]; then
   echo "Atualizando exercises-dataset em modo sparse, sem images/videos..."
-  git -C "$UPSTREAM_DIR" sparse-checkout init --cone >/dev/null 2>&1 || true
-  git -C "$UPSTREAM_DIR" sparse-checkout set data LICENSE NOTICE.md README.md
+  git -C "$UPSTREAM_DIR" sparse-checkout init --no-cone >/dev/null 2>&1 || true
+  cat > "$UPSTREAM_DIR/.git/info/sparse-checkout" <<'EOF'
+/data/
+/README.md
+/LICENSE
+/NOTICE.md
+EOF
   git -C "$UPSTREAM_DIR" pull --ff-only
 else
   echo "Clonando exercises-dataset em modo sparse, sem images/videos..."
   git clone --filter=blob:none --sparse "$REPO_URL" "$UPSTREAM_DIR"
-  git -C "$UPSTREAM_DIR" sparse-checkout set data LICENSE NOTICE.md README.md
+  git -C "$UPSTREAM_DIR" sparse-checkout init --no-cone >/dev/null 2>&1 || true
+  cat > "$UPSTREAM_DIR/.git/info/sparse-checkout" <<'EOF'
+/data/
+/README.md
+/LICENSE
+/NOTICE.md
+EOF
+  git -C "$UPSTREAM_DIR" checkout
 fi
 
 if [ ! -f "$UPSTREAM_DIR/data/exercises.json" ]; then
