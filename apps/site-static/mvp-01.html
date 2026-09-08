@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-01 do FitCore Pro para cadastro de aluno e criação inicial de treino." />
+  <title>MVP-01 Aluno + Treino | FitCore Pro</title>
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m6" />
+  <link rel="stylesheet" href="/fitcore-overrides.css?v=fitcore-m1" />
+  <link rel="stylesheet" href="/mvp-01.css?v=fitcore-m1" />
+</head>
+<body class="mvp-page">
+  <header class="navbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>FitCore Pro</strong>
+        <small>MarcaIA Fitness</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Navegação do MVP">
+      <a href="/">Início</a>
+      <a href="#cadastro">Aluno</a>
+      <a href="#treino">Treino</a>
+      <a href="/legal/privacy">LGPD</a>
+      <a href="/legal/security">Segurança</a>
+    </nav>
+  </header>
+
+  <main class="mvp-shell">
+    <section class="mvp-hero">
+      <div>
+        <span>MVP-01 · Aluno + Treino</span>
+        <h1>Crie um aluno de teste e gere o primeiro rascunho de treino.</h1>
+        <p>
+          Esta etapa valida o fluxo mínimo do FitCore: cadastrar aluno, definir objetivo, escolher nível,
+          selecionar foco e montar uma rotina inicial com exercícios do catálogo normalizado.
+        </p>
+      </div>
+      <aside id="mvp-status" class="mvp-status">
+        <strong>--</strong>
+        <span>carregando status do MVP</span>
+      </aside>
+    </section>
+
+    <section class="mvp-grid" id="cadastro">
+      <form id="mvp-form" class="mvp-form">
+        <div class="form-head">
+          <span>Cadastro mínimo</span>
+          <h2>Dados do aluno e objetivo</h2>
+          <p>Use apenas dados necessários para validação. Não cadastre informação sensível sem base legal e autorização adequada.</p>
+        </div>
+
+        <label>
+          Nome do aluno
+          <input name="aluno_nome" required minlength="2" maxlength="80" value="Aluno teste" placeholder="Ex: João Silva" />
+        </label>
+
+        <div class="form-row">
+          <label>
+            Modalidade
+            <select name="modalidade">
+              <option value="academia">Academia</option>
+              <option value="estudio">Estúdio</option>
+              <option value="personal">Personal trainer</option>
+              <option value="box">Box funcional</option>
+              <option value="funcional">Funcional / cross training</option>
+            </select>
+          </label>
+          <label>
+            Nível
+            <select name="nivel">
+              <option value="iniciante">Iniciante</option>
+              <option value="intermediário">Intermediário</option>
+              <option value="avançado">Avançado</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Objetivo
+            <select name="objetivo">
+              <option value="saude">Saúde e qualidade de vida</option>
+              <option value="hipertrofia">Hipertrofia</option>
+              <option value="emagrecimento">Emagrecimento</option>
+              <option value="condicionamento">Condicionamento</option>
+              <option value="forca">Força</option>
+            </select>
+          </label>
+          <label>
+            Dias por semana
+            <select name="dias_semana">
+              <option value="2">2 dias</option>
+              <option value="3" selected>3 dias</option>
+              <option value="4">4 dias</option>
+              <option value="5">5 dias</option>
+              <option value="6">6 dias</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Foco do treino
+          <select name="foco">
+            <option value="completo">Corpo todo</option>
+            <option value="pernas">Pernas e glúteos</option>
+            <option value="superiores">Superiores</option>
+            <option value="core">Abdômen e core</option>
+            <option value="funcional">Funcional / box</option>
+          </select>
+        </label>
+
+        <label>
+          Observações do professor
+          <textarea name="observacoes" maxlength="360" placeholder="Ex: evitar impacto, iniciar com carga leve, revisar técnica de agachamento."></textarea>
+        </label>
+
+        <button type="submit">Gerar rascunho de treino</button>
+      </form>
+
+      <aside class="mvp-aside">
+        <div class="aside-card">
+          <span>Escopo desta fase</span>
+          <h2>O que este MVP valida</h2>
+          <ul>
+            <li>Cadastro mínimo de aluno.</li>
+            <li>Objetivo, nível, modalidade e frequência.</li>
+            <li>Treino inicial com exercícios em português.</li>
+            <li>Base para check-in, evolução e permissões.</li>
+          </ul>
+        </div>
+        <div class="aside-card muted" id="mvp-recent">
+          <p>Carregando rascunhos recentes.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="mvp-output" id="treino">
+      <div class="section-head compact">
+        <span>Treino gerado</span>
+        <h2>Rascunho para revisão do professor</h2>
+        <p>O sistema monta a primeira versão. O professor revisa técnica, restrições, carga, volume e segurança antes de liberar para o aluno.</p>
+      </div>
+      <div id="mvp-result">
+        <article class="mvp-result-card empty">
+          <h2>Nenhum treino gerado ainda.</h2>
+          <p>Preencha o cadastro mínimo para criar o primeiro rascunho de aluno + treino.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="/mvp-01.js?v=fitcore-m1"></script>
+</body>
+</html>
