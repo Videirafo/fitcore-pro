@@ -22,8 +22,11 @@ infra/backups/*.sql
 infra/backups/*.dump
 infra/backups/*.zip
 
+storage/
+
 .DS_Store
 .vscode/settings.json
 
 # Upstream local clones
 upstream/wger-docker/
+upstream/exercises-dataset/
