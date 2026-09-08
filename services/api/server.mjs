@@ -249,7 +249,6 @@ function toPublicExercise(record, includeDetails = false) {
     source_id: record.source_id,
     slug: record.slug,
     nome: exerciseNamePt(record.name),
-    nome_original: record.name,
     categoria: labelPt(record.category),
     parte_do_corpo: labelPt(record.body_part),
     equipamento: labelPt(record.equipment),
@@ -265,9 +264,7 @@ function toPublicExercise(record, includeDetails = false) {
 
   return {
     ...base,
-    instrucoes_en: record.instructions_en,
-    instrucoes_pt_br: record.instructions_pt_br,
-    instrucoes: record.instructions || {},
+    instrucoes: record.instructions_pt_br || record.instructions || {},
     etapas: record.instruction_steps || {},
     observacoes_de_seguranca: record.safety_notes || [],
     criado_em: record.created_at,
