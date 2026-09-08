@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-02 do FitCore Pro para check-in de treino, status, histórico, papéis e auditoria LGPD." />
+  <title>MVP-02 Check-in do Treino | FitCore Pro</title>
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m6" />
+  <link rel="stylesheet" href="/fitcore-overrides.css?v=fitcore-m2" />
+  <link rel="stylesheet" href="/mvp-02.css?v=fitcore-m1" />
+</head>
+<body class="mvp02-page">
+  <header class="navbar mvp-navbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>FitCore Pro</strong>
+        <small>MarcaIA Fitness</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Navegação do MVP-02">
+      <a href="/">Início</a>
+      <a href="/mvp-01.html">Aluno + Treino</a>
+      <a href="#checkin">Check-in</a>
+      <a href="#historico">Histórico</a>
+      <a href="#lgpd">LGPD</a>
+    </nav>
+  </header>
+
+  <main class="mvp02-shell">
+    <section class="mvp02-hero">
+      <div>
+        <span>MVP-02 · Check-in do treino</span>
+        <h1>Acompanhe o treino do aluno do planejamento à conclusão.</h1>
+        <p>
+          Esta fase registra status do treino, esforço percebido, duração, observações simples,
+          papel de quem lançou o evento e trilha mínima de auditoria para LGPD.
+        </p>
+      </div>
+      <aside class="mvp02-status" id="mvp02-status">
+        <strong>--</strong>
+        <span>carregando check-ins</span>
+      </aside>
+    </section>
+
+    <section class="status-board" aria-label="Resumo dos check-ins">
+      <article>
+        <small>Planejados</small>
+        <strong id="status-planejado">0</strong>
+        <span>treinos aguardando execução</span>
+      </article>
+      <article>
+        <small>Em execução</small>
+        <strong id="status-execucao">0</strong>
+        <span>alunos treinando agora</span>
+      </article>
+      <article>
+        <small>Concluídos</small>
+        <strong id="status-concluido">0</strong>
+        <span>treinos finalizados</span>
+      </article>
+    </section>
+
+    <section class="mvp02-grid" id="checkin">
+      <form id="checkin-form" class="mvp02-card mvp02-form">
+        <div class="form-head">
+          <span>Novo check-in</span>
+          <h2>Registrar execução do treino</h2>
+          <p>Use dados mínimos nesta validação. Evite telefone, CPF, medidas, fotos ou informações médicas.</p>
+        </div>
+
+        <label>
+          Nome do aluno
+          <input name="aluno_nome" required minlength="2" maxlength="80" value="Aluno teste" placeholder="Ex: João Silva" />
+        </label>
+
+        <label>
+          ID do treino ou rascunho
+          <input name="treino_id" maxlength="120" placeholder="Opcional: cole o ID gerado no MVP-01" />
+        </label>
+
+        <div class="form-row">
+          <label>
+            Status
+            <select name="status">
+              <option value="planejado">Planejado</option>
+              <option value="em_execucao">Em execução</option>
+              <option value="concluido">Concluído</option>
+            </select>
+          </label>
+          <label>
+            Papel
+            <select name="papel">
+              <option value="professor">Professor</option>
+              <option value="gestor">Gestor</option>
+              <option value="aluno">Aluno</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Dia do treino
+            <input name="dia_treino" maxlength="40" value="Dia 1" />
+          </label>
+          <label>
+            Duração aproximada
+            <input name="duracao_minutos" type="number" min="5" max="240" value="45" />
+          </label>
+        </div>
+
+        <label>
+          Esforço percebido: <output id="rpe-output">5</output>/10
+          <input name="percepcao_esforco" id="rpe-input" type="range" min="1" max="10" value="5" />
+        </label>
+
+        <label>
+          Observações simples
+          <textarea name="observacoes" maxlength="500" placeholder="Ex: aluno executou bem, ajustar carga na próxima sessão."></textarea>
+        </label>
+
+        <button type="submit">Salvar check-in</button>
+      </form>
+
+      <aside class="mvp02-side">
+        <article class="mvp02-card">
+          <span>Fluxo validado</span>
+          <h2>Status do treino</h2>
+          <ul>
+            <li>Planejado: treino prescrito, ainda não iniciado.</li>
+            <li>Em execução: aluno iniciou a sessão.</li>
+            <li>Concluído: treino finalizado e registrado.</li>
+          </ul>
+        </article>
+        <article class="mvp02-card" id="lgpd">
+          <span>LGPD</span>
+          <h2>Auditoria mínima</h2>
+          <p>Cada check-in registra data, papel, status e ação. A fase atual não coleta documentos, fotos, medidas corporais, telefone, e-mail ou dado médico.</p>
+        </article>
+      </aside>
+    </section>
+
+    <section class="mvp02-output" id="resultado">
+      <div id="checkin-result" class="mvp02-card empty">
+        <h2>Nenhum check-in criado nesta tela.</h2>
+        <p>Preencha o formulário para validar o fluxo de acompanhamento do treino.</p>
+      </div>
+    </section>
+
+    <section class="mvp02-history" id="historico">
+      <div class="history-head">
+        <div>
+          <span>Histórico</span>
+          <h2>Últimos check-ins salvos</h2>
+        </div>
+        <button type="button" id="refresh-history">Atualizar</button>
+      </div>
+      <div id="checkin-history" class="history-list">
+        <p>Carregando histórico.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/mvp-02.js?v=fitcore-m1"></script>
+</body>
+</html>
