@@ -4,6 +4,7 @@
 # FITCORE PRO - SWITCH TO OWN UI
 # Faz https://fitcore.marcaia.app servir a UI propria do FitCore,
 # mantendo wger apenas como engine interna em 127.0.0.1:8088.
+# A API propria fica em 127.0.0.1:8091.
 # ============================================================
 
 set -euo pipefail
@@ -11,6 +12,7 @@ set -euo pipefail
 DOMAIN="fitcore.marcaia.app"
 ROOT="/opt/fitcore-pro"
 SITE_DIR="$ROOT/apps/site-static"
+UPSTREAM_API="http://127.0.0.1:8091"
 UPSTREAM_WGER="http://127.0.0.1:8088"
 CONF="/etc/nginx/sites-available/$DOMAIN"
 ENABLED="/etc/nginx/sites-enabled/$DOMAIN"
@@ -68,17 +70,25 @@ server {
 
     location = /health {
         default_type text/plain;
-        return 200 "fitcore-ui=ok\nengine=$UPSTREAM_WGER\nmedia_policy=textual_only\n";
+        return 200 "fitcore-ui=ok\napi=$UPSTREAM_API\nengine=$UPSTREAM_WGER\nmedia_policy=textual_only\n";
     }
 
     location = /legal/open-source {
         try_files /legal-open-source.html =404;
     }
 
-    location = /api/exercises/normalized.json {
-        alias $ROOT/storage/exercises-dataset/exercises.normalized.json;
-        default_type application/json;
-        add_header Cache-Control "no-store" always;
+    location /api/ {
+        proxy_pass $UPSTREAM_API/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_read_timeout 120;
+        proxy_connect_timeout 30;
+        proxy_send_timeout 120;
     }
 
     location / {
@@ -94,9 +104,10 @@ systemctl reload nginx
 
 echo ""
 echo "FitCore UI propria ativada em https://$DOMAIN"
+echo "API propria esperada em $UPSTREAM_API"
 echo "wger continua interno em $UPSTREAM_WGER"
 echo ""
 echo "Testes:"
 curl -I "https://$DOMAIN" || true
 curl -I "https://$DOMAIN/health" || true
-curl -I "https://$DOMAIN/api/exercises/normalized.json" || true
+curl -I "https://$DOMAIN/api/health" || true
