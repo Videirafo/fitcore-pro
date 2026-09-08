@@ -16,6 +16,36 @@ O wger continua sendo o motor fitness principal. O `exercises-dataset` entra com
 - instruções passo a passo;
 - normalização futura para busca, RAG e recomendação de séries.
 
+## Status validado em 2026-09-08
+
+Sincronização local validada na VPS:
+
+```txt
+/opt/fitcore-pro/upstream/exercises-dataset
+/opt/fitcore-pro/storage/exercises-dataset
+```
+
+Arquivos gerados:
+
+```txt
+LICENSE.upstream.txt
+NOTICE.upstream.md
+SOURCE.txt
+SOURCE_SHA.txt
+exercises.raw.json
+exercises.schema.json
+```
+
+Fonte registrada localmente:
+
+```txt
+source=hasaneyldrm/exercises-dataset
+url=https://github.com/hasaneyldrm/exercises-dataset.git
+sha=7455efae41b330c265e7cd4b78dfa848e7ce5ebd
+policy=textual_only
+media=not_downloaded_by_default_do_not_use_without_gym_visual_license
+```
+
 ## O que a fonte entrega
 
 O repositório contém:
