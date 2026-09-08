@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Práticas de segurança do FitCore Pro." />
+  <title>Segurança | FitCore Pro</title>
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m5" />
+</head>
+<body>
+  <header class="navbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>FitCore Pro</strong>
+        <small>MarcaIA Fitness</small>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Navegação legal">
+      <a href="/">Início</a>
+      <a href="/legal/privacy">Privacidade</a>
+      <a href="/legal/security">Segurança</a>
+      <a href="/legal/terms">Termos</a>
+      <a href="/legal/open-source">Open source</a>
+    </nav>
+  </header>
+
+  <main class="legal-shell">
+    <section class="legal-hero">
+      <span>Segurança</span>
+      <h1>Segurança desde a primeira versão operacional.</h1>
+      <p>
+        O FitCore Pro está em validação inicial. A regra é simples: não expor o motor interno, não servir mídia de terceiros sem licença, não publicar segredos e separar claramente interface, API e componentes internos.
+      </p>
+    </section>
+
+    <section class="legal-grid">
+      <article class="legal-card">
+        <h2>Acesso seguro</h2>
+        <p>O acesso público deve ocorrer por HTTPS no subdomínio oficial. Serviços internos, como o motor fitness e a API local, não devem ficar expostos diretamente para a internet.</p>
+      </article>
+      <article class="legal-card">
+        <h2>Segredos e chaves</h2>
+        <p>Chaves JWT, SECRET_KEY, senhas de banco, tokens e credenciais de integração devem ficar fora do GitHub e ser rotacionados caso apareçam em terminal, log ou conversa.</p>
+      </article>
+      <article class="legal-card">
+        <h2>Backups</h2>
+        <p>Backups precisam existir antes de mudanças estruturais. O restore deve ser testado antes de considerar a operação pronta para cliente real.</p>
+      </article>
+      <article class="legal-card">
+        <h2>Auditoria</h2>
+        <p>Operações sensíveis devem gerar trilha de auditoria: quem alterou, o que alterou, quando alterou e qual impacto teve para aluno, professor ou gestor.</p>
+      </article>
+    </section>
+
+    <section class="legal-card legal-wide">
+      <h2>Checklist mínimo antes de produção comercial</h2>
+      <ul class="legal-list">
+        <li>HTTPS ativo e redirecionamento HTTP para HTTPS.</li>
+        <li>Portas internas bloqueadas para acesso público.</li>
+        <li>Senhas padrão removidas.</li>
+        <li>Chaves e tokens fora do repositório.</li>
+        <li>Política de privacidade e termos publicados.</li>
+        <li>Backup e restore testados.</li>
+        <li>Logs técnicos sem dados sensíveis desnecessários.</li>
+        <li>Controle de acesso por perfil: gestor, professor, aluno e suporte.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
