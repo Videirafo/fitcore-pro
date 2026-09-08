@@ -1,0 +1,11 @@
+{
+  "name": "fitcore-pro",
+  "version": "0.1.0",
+  "private": false,
+  "description": "FitCore Pro - professional fitness SaaS foundation based on wger.",
+  "scripts": {
+    "check:project": "bash infra/scripts/check-project.sh",
+    "api:dev": "cd services/api && npm run dev",
+    "doctor": "cd services/orchestrator && npm run doctor"
+  }
+}
