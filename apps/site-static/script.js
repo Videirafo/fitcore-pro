@@ -3,8 +3,6 @@ const marker = {
   ecosystem: "MarcaIA",
   ui: "fitcore-owned-shell",
   api: "fitcore-owned-api",
-  engine: "internal-fitness-engine",
-  media_policy: "textual_only",
 };
 
 window.__FITCORE_PUBLIC_SHELL__ = marker;
@@ -16,7 +14,6 @@ const buttonEl = $("#search-button");
 const countEl = $("#catalog-count");
 const totalEl = $("#catalog-total");
 const apiStateEl = $("#api-state");
-const mediaPolicyEl = $("#media-policy");
 
 const queryAliases = new Map([
   ["agachamento", "squat"],
@@ -25,6 +22,7 @@ const queryAliases = new Map([
   ["halter", "dumbbell"],
   ["barra", "barbell"],
   ["abdominal", "abs"],
+  ["abdomen", "abs"],
   ["abdômen", "abs"],
   ["biceps", "biceps"],
   ["bíceps", "biceps"],
@@ -117,7 +115,7 @@ function renderResults(payload, query) {
         <small>Nenhum exercício encontrado</small>
         <h3>Refine a busca</h3>
         <p>Tente pesquisar por músculo, equipamento ou movimento. Exemplos: peito, costas, halter, abdominal.</p>
-        <span class="policy">Base textual segura</span>
+        <span class="policy">Disponível para prescrição</span>
       </article>
     `;
     return;
@@ -140,7 +138,7 @@ function renderResults(payload, query) {
         <div class="tag-row">${tags}</div>
         <p><strong>Foco principal:</strong> ${escapeHtml(label(item.primary_muscle || item.target))}</p>
         <p><strong>Músculos auxiliares:</strong> ${escapeHtml(muscles)}</p>
-        <span class="policy">Conteúdo textual validado</span>
+        <span class="policy">Disponível para montar treino</span>
       </article>
     `;
   }).join("");
@@ -150,10 +148,9 @@ async function loadHealth() {
   try {
     const res = await fetch("/api/health", { cache: "no-store" });
     const data = await res.json();
-    if (apiStateEl) apiStateEl.textContent = data.ok ? "Catálogo online" : "Verificar catálogo";
-    if (mediaPolicyEl) mediaPolicyEl.textContent = data.media_policy ? "seguro" : "validado";
+    if (apiStateEl) apiStateEl.textContent = data.ok ? "Sistema online" : "Verificar sistema";
   } catch (error) {
-    if (apiStateEl) apiStateEl.textContent = "Catálogo offline";
+    if (apiStateEl) apiStateEl.textContent = "Sistema indisponível";
     console.warn("FitCore health check failed", error);
   }
 }
