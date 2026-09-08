@@ -13,6 +13,27 @@ Na fase atual, a tela exibida em `fitcore.marcaia.app` ainda é a interface padr
 
 Isso é esperado enquanto o wger estiver exposto como UI principal.
 
+## Status validado em 2026-09-08
+
+A porta pública direta do wger foi bloqueada no Docker Compose.
+
+Estado validado na VPS:
+
+```txt
+[OK] docker-compose.yml ajustado para 127.0.0.1:8088:80
+[OK] wger reiniciado sem apagar volumes
+[OK] wger local responde HTTP 302 para /en/
+[OK] https://fitcore.marcaia.app responde HTTP/2 302 para /en/
+[OK] socket 8088 escuta apenas em 127.0.0.1
+[OK] 0.0.0.0:8088 não está mais exposto
+```
+
+Com isso, `144.91.99.6:8088` não deve ser usado como entrada pública. O caminho público canônico passa a ser:
+
+```txt
+https://fitcore.marcaia.app
+```
+
 ## Regra arquitetural
 
 Não transformar o wger em uma cópia falsa do FitCore por edição agressiva de HTML, `sub_filter` ou remoção cega de créditos.
