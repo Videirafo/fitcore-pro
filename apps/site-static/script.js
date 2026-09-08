@@ -1,6 +1,10 @@
-/*
-  FitCore Pro - JavaScript inicial
-  Reservado para interações simples do protótipo estático.
-*/
+const marker = {
+  product: "FitCore Pro",
+  ecosystem: "MarcaIA",
+  ui: "fitcore-owned-shell",
+  engine: "wger-internal",
+  media_policy: "textual_only",
+};
 
-console.log("FitCore Pro site-static carregado com sucesso.");
+window.__FITCORE_PUBLIC_SHELL__ = marker;
+console.info("FitCore public shell loaded", marker);
