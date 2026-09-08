@@ -8,13 +8,15 @@
  */
 
 import { createServer } from "node:http";
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { randomUUID } from "node:crypto";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
 const host = process.env.FITCORE_API_HOST || "127.0.0.1";
 const catalogPath = resolve(root, "storage/exercises-dataset/exercises.normalized.json");
+const mvpStorePath = resolve(root, "storage/mvp-01/aluno-treino.json");
 const wgerInternalUrl = process.env.FITCORE_WGER_INTERNAL_URL || "http://127.0.0.1:8088";
 
 let catalogCache = null;
@@ -172,6 +174,42 @@ const crossTrainingTemplates = [
   },
 ];
 
+const objetivoTemplates = {
+  hipertrofia: {
+    titulo: "Hipertrofia",
+    descricao: "foco em volume, técnica e progressão de carga",
+    buscas: ["chest dumbbell", "back cable", "squat", "shoulders dumbbell"],
+  },
+  emagrecimento: {
+    titulo: "Emagrecimento",
+    descricao: "foco em gasto calórico, constância e exercícios multiarticulares",
+    buscas: ["body weight", "cardio", "squat", "burpee"],
+  },
+  condicionamento: {
+    titulo: "Condicionamento",
+    descricao: "foco em resistência, mobilidade e capacidade cardiovascular",
+    buscas: ["burpee", "kettlebell", "body weight", "abs"],
+  },
+  forca: {
+    titulo: "Força",
+    descricao: "foco em movimentos base, controle de carga e descanso adequado",
+    buscas: ["barbell squat", "bench press", "deadlift", "row"],
+  },
+  saude: {
+    titulo: "Saúde e qualidade de vida",
+    descricao: "foco em segurança, regularidade e evolução gradual",
+    buscas: ["body weight", "abs", "back", "upper legs"],
+  },
+};
+
+const focoTemplates = {
+  completo: ["squat", "chest dumbbell", "back cable", "abs body weight"],
+  pernas: ["squat", "glutes", "leg", "calves"],
+  superiores: ["chest dumbbell", "back cable", "shoulders", "biceps"],
+  core: ["abs", "plank", "crunch", "body weight"],
+  funcional: ["burpee", "kettlebell", "body weight", "cardio"],
+};
+
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(statusCode, {
@@ -186,6 +224,13 @@ function sendNotFound(res) {
   sendJson(res, 404, {
     erro: "nao_encontrado",
     mensagem: "Endpoint nao encontrado.",
+  });
+}
+
+function sendMethodNotAllowed(res) {
+  sendJson(res, 405, {
+    erro: "metodo_nao_permitido",
+    mensagem: "Metodo HTTP nao permitido para este endpoint.",
   });
 }
 
@@ -307,7 +352,162 @@ function getExerciseBySlug(slug) {
   return record ? toPublicExercise(record, true) : null;
 }
 
-const server = createServer((req, res) => {
+function pickExercises(searchTerm, limit = 3) {
+  const catalog = loadCatalog();
+  const normalized = normalizeSearchTerm(searchTerm);
+  const filtered = catalog.filter((record) => normalizeText(record.search_text || record.name).includes(normalized));
+  return filtered.slice(0, limit).map((record) => toPublicExercise(record));
+}
+
+function sanitizeText(value, maxLength = 120) {
+  return String(value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function numberInRange(value, fallback, min, max) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+}
+
+function readRequestBody(req, limitBytes = 64 * 1024) {
+  return new Promise((resolveBody, rejectBody) => {
+    let body = "";
+    req.setEncoding("utf8");
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (Buffer.byteLength(body, "utf8") > limitBytes) {
+        rejectBody(new Error("Payload acima do limite permitido."));
+        req.destroy();
+      }
+    });
+    req.on("end", () => resolveBody(body));
+    req.on("error", rejectBody);
+  });
+}
+
+async function readJsonBody(req) {
+  const body = await readRequestBody(req);
+  if (!body.trim()) return {};
+  try {
+    return JSON.parse(body);
+  } catch {
+    const error = new Error("JSON invalido.");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+function readMvpRecords() {
+  if (!existsSync(mvpStorePath)) return [];
+  const raw = readFileSync(mvpStorePath, "utf-8");
+  const parsed = JSON.parse(raw || "[]");
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function writeMvpRecords(records) {
+  mkdirSync(dirname(mvpStorePath), { recursive: true, mode: 0o750 });
+  writeFileSync(mvpStorePath, `${JSON.stringify(records, null, 2)}\n`, { mode: 0o640 });
+}
+
+function buildWorkoutBlocks({ objetivo, foco, modalidade, diasSemana }) {
+  const objetivoTemplate = objetivoTemplates[objetivo] || objetivoTemplates.saude;
+  const focoQueries = focoTemplates[foco] || focoTemplates.completo;
+  const baseQueries = [...new Set([...focoQueries, ...objetivoTemplate.buscas])];
+  const totalDias = numberInRange(diasSemana, 3, 1, 6);
+
+  return Array.from({ length: totalDias }, (_, index) => {
+    const query = baseQueries[index % baseQueries.length];
+    const isBox = modalidade === "box" || modalidade === "funcional" || foco === "funcional";
+    const exercicios = pickExercises(query, 4);
+
+    return {
+      dia: `Dia ${index + 1}`,
+      foco: isBox && index === 0 ? "técnica, condicionamento e execução segura" : objetivoTemplate.descricao,
+      aquecimento: isBox
+        ? "8 a 10 minutos de mobilidade, ativação e preparação técnica."
+        : "5 a 8 minutos de mobilidade e aquecimento específico.",
+      exercicios,
+      orientacao: isBox
+        ? "Usar escala por nível, controlar intensidade e registrar presença da turma."
+        : "Executar com técnica, registrar carga/repetições e ajustar progressão semanalmente.",
+    };
+  });
+}
+
+function createStudentWorkout(input) {
+  const alunoNome = sanitizeText(input.aluno_nome || input.nome || "Aluno teste", 80);
+  const objetivo = sanitizeText(input.objetivo || "saude", 40);
+  const nivel = sanitizeText(input.nivel || "iniciante", 40);
+  const modalidade = sanitizeText(input.modalidade || "academia", 40);
+  const foco = sanitizeText(input.foco || "completo", 40);
+  const diasSemana = numberInRange(input.dias_semana, 3, 1, 6);
+  const observacoes = sanitizeText(input.observacoes || "", 360);
+  const createdAt = new Date().toISOString();
+
+  if (alunoNome.length < 2) {
+    const error = new Error("Informe o nome do aluno com pelo menos 2 caracteres.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const record = {
+    id: `mvp01-${randomUUID()}`,
+    status: "rascunho_validacao",
+    criado_em: createdAt,
+    atualizado_em: createdAt,
+    aluno: {
+      nome: alunoNome,
+      nivel,
+      observacoes,
+      aviso_lgpd: "Use somente dados necessários nesta fase. Não cadastre informações sensíveis sem base legal e autorização adequada.",
+    },
+    treino: {
+      objetivo,
+      objetivo_nome: objetivoTemplates[objetivo]?.titulo || toTitlePt(objetivo),
+      modalidade,
+      foco,
+      dias_semana: diasSemana,
+      blocos: buildWorkoutBlocks({ objetivo, foco, modalidade, diasSemana }),
+    },
+    proximos_passos: [
+      "Professor revisa exercícios e ajusta restrições do aluno.",
+      "Aluno executa o treino e registra check-in.",
+      "Gestor acompanha frequência, retenção e evolução.",
+    ],
+  };
+
+  const records = readMvpRecords();
+  records.unshift(record);
+  writeMvpRecords(records.slice(0, 200));
+  return record;
+}
+
+async function handleMvpStudentWorkout(req, res, url) {
+  if (req.method === "GET") {
+    const records = readMvpRecords();
+    const limit = Math.min(Math.max(Number.parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 50);
+    return sendJson(res, 200, {
+      items: records.slice(0, limit),
+      total: records.length,
+      armazenamento: "arquivo_local_mvp",
+      politica_lgpd: "validacao_minima_sem_dados_sensiveis_desnecessarios",
+    });
+  }
+
+  if (req.method === "POST") {
+    const input = await readJsonBody(req);
+    const record = createStudentWorkout(input);
+    return sendJson(res, 201, record);
+  }
+
+  return sendMethodNotAllowed(res);
+}
+
+const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
@@ -320,24 +520,61 @@ const server = createServer((req, res) => {
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
         catalogo_carregado_em: catalogLoadedAt,
+        mvp_01: {
+          aluno_treino: true,
+          registros: readMvpRecords().length,
+        },
         motor_fitness_interno: wgerInternalUrl,
         politica_midia: "uso_textual_autorizado",
       });
     }
 
     if (url.pathname === "/api/exercises") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
       return sendJson(res, 200, listExercises(url));
     }
 
     if (url.pathname === "/api/cross-training/templates") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
       return sendJson(res, 200, {
         items: crossTrainingTemplates,
         total: crossTrainingTemplates.length,
       });
     }
 
+    if (url.pathname === "/api/mvp-01/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "MVP-01 Aluno + Treino",
+        aluno_treino: true,
+        registros: readMvpRecords().length,
+        endpoints: [
+          "GET /api/mvp-01/status",
+          "GET /api/mvp-01/aluno-treino",
+          "POST /api/mvp-01/aluno-treino",
+          "GET /api/cross-training/templates",
+        ],
+        politica_lgpd: "coletar apenas dados mínimos para validação",
+      });
+    }
+
+    if (url.pathname === "/api/mvp-01/aluno-treino") {
+      return handleMvpStudentWorkout(req, res, url);
+    }
+
+    const mvpMatch = url.pathname.match(/^\/api\/mvp-01\/aluno-treino\/([^/]+)$/);
+    if (mvpMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const id = decodeURIComponent(mvpMatch[1]);
+      const item = readMvpRecords().find((record) => record.id === id);
+      if (!item) return sendJson(res, 404, { erro: "registro_nao_encontrado" });
+      return sendJson(res, 200, item);
+    }
+
     const match = url.pathname.match(/^\/api\/exercises\/([^/]+)$/);
     if (match) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
       const item = getExerciseBySlug(decodeURIComponent(match[1]));
       if (!item) return sendJson(res, 404, { erro: "exercicio_nao_encontrado" });
       return sendJson(res, 200, item);
@@ -345,7 +582,7 @@ const server = createServer((req, res) => {
 
     return sendNotFound(res);
   } catch (error) {
-    return sendJson(res, 500, {
+    return sendJson(res, error.statusCode || 500, {
       erro: "fitcore_api_error",
       mensagem: error instanceof Error ? error.message : String(error),
     });
