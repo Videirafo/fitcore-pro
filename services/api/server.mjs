@@ -15,9 +15,12 @@ import { randomUUID } from "node:crypto";
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
 const host = process.env.FITCORE_API_HOST || "127.0.0.1";
+
 const catalogPath = resolve(root, "storage/exercises-dataset/exercises.normalized.json");
 const mvp01StorePath = resolve(root, "storage/mvp-01/aluno-treino.json");
 const mvp02CheckinStorePath = resolve(root, "storage/mvp-02/checkins.json");
+const mvp03ReviewStorePath = resolve(root, "storage/mvp-03/professor-reviews.json");
+
 const wgerInternalUrl = process.env.FITCORE_WGER_INTERNAL_URL || "http://127.0.0.1:8088";
 
 let catalogCache = null;
@@ -154,7 +157,7 @@ const phraseTranslations = [
   ["kneeling", "ajoelhado"],
   ["hanging", "suspenso"],
   ["alternate", "alternado"],
-]);
+];
 
 const crossTrainingTemplates = [
   {
@@ -230,6 +233,7 @@ const focoTemplates = {
 
 const allowedCheckinStatus = new Set(["planejado", "em_execucao", "concluido"]);
 const allowedRoles = new Set(["gestor", "professor", "aluno"]);
+const allowedReviewStatus = new Set(["em_revisao", "ajustes_solicitados", "aprovado"]);
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload, null, 2);
@@ -450,6 +454,14 @@ function writeCheckins(records) {
   writeJsonArray(mvp02CheckinStorePath, records);
 }
 
+function readProfessorReviews() {
+  return readJsonArray(mvp03ReviewStorePath);
+}
+
+function writeProfessorReviews(records) {
+  writeJsonArray(mvp03ReviewStorePath, records);
+}
+
 function buildWorkoutBlocks({ objetivo, foco, modalidade, diasSemana }) {
   const objetivoTemplate = objetivoTemplates[objetivo] || objetivoTemplates.saude;
   const focoQueries = focoTemplates[foco] || focoTemplates.completo;
@@ -552,13 +564,22 @@ function checkinSummary(records) {
   return base;
 }
 
-function createAuditEvent({ tipo, papel, status, registroId }) {
+function reviewSummary(records) {
+  const base = { em_revisao: 0, ajustes_solicitados: 0, aprovado: 0 };
+  for (const record of records) {
+    if (base[record.status] !== undefined) base[record.status] += 1;
+  }
+  return base;
+}
+
+function createAuditEvent({ tipo, papel, status, registroId, detalhe = "" }) {
   return {
     id: `aud-${randomUUID()}`,
     tipo,
     papel,
     status,
     registro_id: registroId,
+    detalhe: sanitizeText(detalhe, 240),
     criado_em: new Date().toISOString(),
     lgpd: "evento_minimo_sem_documento_telefone_email_foto_medida_ou_dado_de_saude",
   };
@@ -704,12 +725,262 @@ async function handleMvp02Checkins(req, res, url) {
   return sendMethodNotAllowed(res);
 }
 
+function findWorkoutDraft(treinoId, alunoNome) {
+  const records = readMvpRecords();
+  if (treinoId) {
+    return records.find((record) => record.id === treinoId) || null;
+  }
+
+  const normalizedAluno = normalizeText(alunoNome);
+  if (normalizedAluno) {
+    const byStudent = records.find((record) => normalizeText(record.aluno?.nome).includes(normalizedAluno));
+    if (byStudent) return byStudent;
+  }
+
+  return records[0] || null;
+}
+
+function createProfessorReview(input) {
+  const papel = sanitizeText(input.papel || "professor", 40);
+  if (!allowedRoles.has(papel) || papel === "aluno") {
+    const error = new Error("A revisão do MVP-03 deve ser criada por professor ou gestor.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const treinoId = sanitizeText(input.treino_id || "", 140);
+  const alunoNome = sanitizeText(input.aluno_nome || "", 80);
+  const sourceWorkout = findWorkoutDraft(treinoId, alunoNome);
+
+  if (!sourceWorkout) {
+    const error = new Error("Nenhum rascunho de treino encontrado. Crie primeiro um aluno + treino no MVP-01.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const createdAt = new Date().toISOString();
+  const registroId = `mvp03-${randomUUID()}`;
+  const record = {
+    id: registroId,
+    treino_id: sourceWorkout.id,
+    status: "em_revisao",
+    aluno: {
+      nome: sourceWorkout.aluno?.nome || alunoNome || "Aluno teste",
+      nivel: sourceWorkout.aluno?.nivel || "não informado",
+    },
+    treino: {
+      objetivo: sourceWorkout.treino?.objetivo_nome || sourceWorkout.treino?.objetivo || "não informado",
+      modalidade: sourceWorkout.treino?.modalidade || "não informado",
+      foco: sourceWorkout.treino?.foco || "não informado",
+      dias_semana: sourceWorkout.treino?.dias_semana || 0,
+      blocos: JSON.parse(JSON.stringify(sourceWorkout.treino?.blocos || [])),
+    },
+    professor: {
+      nome: sanitizeText(input.professor_nome || "Professor responsável", 80),
+      papel,
+    },
+    revisao: {
+      observacoes: sanitizeText(input.observacoes || "Revisar exercícios, volume e restrições antes de liberar para o aluno.", 500),
+      ajustes: [],
+      aprovado_em: null,
+      aprovado_por: null,
+    },
+    criado_em: createdAt,
+    atualizado_em: createdAt,
+    auditoria_lgpd: [
+      createAuditEvent({ tipo: "revisao_criada", papel, status: "em_revisao", registroId, detalhe: `treino_id=${sourceWorkout.id}` }),
+    ],
+    politica_lgpd: "validacao_minima_sem_dados_sensiveis_desnecessarios",
+  };
+
+  const records = readProfessorReviews();
+  records.unshift(record);
+  writeProfessorReviews(records.slice(0, 500));
+  return record;
+}
+
+function replaceExerciseInReview(id, input) {
+  const records = readProfessorReviews();
+  const index = records.findIndex((record) => record.id === id);
+  if (index < 0) return null;
+
+  const current = records[index];
+  const diaIndex = numberInRange(input.dia_index ?? input.dia, 0, 0, Math.max((current.treino?.blocos || []).length - 1, 0));
+  const exercicioIndex = numberInRange(input.exercicio_index ?? input.posicao, 0, 0, 20);
+  const busca = sanitizeText(input.busca || input.search || "agachamento", 80);
+  const papel = sanitizeText(input.papel || "professor", 40);
+
+  if (!allowedRoles.has(papel) || papel === "aluno") {
+    const error = new Error("Somente professor ou gestor pode alterar exercício nesta fase.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const replacement = pickExercises(busca, 1)[0];
+  if (!replacement) {
+    const error = new Error("Nenhum exercício encontrado para a busca informada.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const blocos = JSON.parse(JSON.stringify(current.treino?.blocos || []));
+  if (!blocos[diaIndex]) {
+    const error = new Error("Dia do treino não encontrado.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const exercicios = Array.isArray(blocos[diaIndex].exercicios) ? blocos[diaIndex].exercicios : [];
+  const anterior = exercicios[exercicioIndex] || null;
+  exercicios[exercicioIndex] = replacement;
+  blocos[diaIndex].exercicios = exercicios;
+
+  const ajuste = {
+    id: `ajuste-${randomUUID()}`,
+    tipo: "substituicao_exercicio",
+    dia: blocos[diaIndex].dia || `Dia ${diaIndex + 1}`,
+    posicao: exercicioIndex + 1,
+    anterior: anterior ? anterior.nome : "posição vazia",
+    novo: replacement.nome,
+    busca,
+    criado_por: papel,
+    criado_em: new Date().toISOString(),
+  };
+
+  const updated = {
+    ...current,
+    status: "ajustes_solicitados",
+    atualizado_em: new Date().toISOString(),
+    treino: {
+      ...current.treino,
+      blocos,
+    },
+    revisao: {
+      ...current.revisao,
+      ajustes: [...(current.revisao?.ajustes || []), ajuste],
+    },
+    auditoria_lgpd: [
+      ...(current.auditoria_lgpd || []),
+      createAuditEvent({
+        tipo: "exercicio_alterado",
+        papel,
+        status: "ajustes_solicitados",
+        registroId: current.id,
+        detalhe: `${ajuste.anterior} -> ${ajuste.novo}`,
+      }),
+    ],
+  };
+
+  records[index] = updated;
+  writeProfessorReviews(records);
+  return updated;
+}
+
+function approveProfessorReview(id, input) {
+  const records = readProfessorReviews();
+  const index = records.findIndex((record) => record.id === id);
+  if (index < 0) return null;
+
+  const current = records[index];
+  const papel = sanitizeText(input.papel || "professor", 40);
+  if (!allowedRoles.has(papel) || papel === "aluno") {
+    const error = new Error("Somente professor ou gestor pode aprovar treino nesta fase.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const approvedAt = new Date().toISOString();
+  const updated = {
+    ...current,
+    status: "aprovado",
+    atualizado_em: approvedAt,
+    revisao: {
+      ...current.revisao,
+      aprovado_em: approvedAt,
+      aprovado_por: papel,
+      observacoes: sanitizeText(input.observacoes || current.revisao?.observacoes || "Treino aprovado para validação.", 500),
+    },
+    auditoria_lgpd: [
+      ...(current.auditoria_lgpd || []),
+      createAuditEvent({ tipo: "treino_aprovado", papel, status: "aprovado", registroId: current.id }),
+    ],
+  };
+
+  records[index] = updated;
+  writeProfessorReviews(records);
+  return updated;
+}
+
+function listProfessorReviews(url) {
+  const records = readProfessorReviews();
+  const limit = Math.min(Math.max(Number.parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 50);
+  const aluno = normalizeText(url.searchParams.get("aluno") || url.searchParams.get("aluno_nome") || "");
+  const status = sanitizeText(url.searchParams.get("status") || "", 40);
+
+  const filtered = records.filter((record) => {
+    if (status && record.status !== status) return false;
+    if (aluno && !normalizeText(record.aluno?.nome).includes(aluno)) return false;
+    return true;
+  });
+
+  return {
+    items: filtered.slice(0, limit),
+    total: filtered.length,
+    resumo: reviewSummary(records),
+    status_permitidos: [...allowedReviewStatus],
+    papeis: ["gestor", "professor"],
+    politica_lgpd: "auditoria_por_acao_sem_dados_sensiveis_desnecessarios",
+  };
+}
+
+async function handleMvp03Reviews(req, res, url) {
+  if (req.method === "GET") {
+    return sendJson(res, 200, listProfessorReviews(url));
+  }
+
+  if (req.method === "POST") {
+    const input = await readJsonBody(req);
+    return sendJson(res, 201, createProfessorReview(input));
+  }
+
+  return sendMethodNotAllowed(res);
+}
+
+function getProfessorContext() {
+  const workouts = readMvpRecords();
+  const reviews = readProfessorReviews();
+  const checkins = readCheckins();
+
+  return {
+    alunos: workouts.slice(0, 50).map((record) => ({
+      treino_id: record.id,
+      nome: record.aluno?.nome || "Aluno sem nome",
+      nivel: record.aluno?.nivel || "não informado",
+      objetivo: record.treino?.objetivo_nome || record.treino?.objetivo || "não informado",
+      modalidade: record.treino?.modalidade || "não informado",
+      status: record.status,
+      criado_em: record.criado_em,
+    })),
+    reviews: reviews.slice(0, 20),
+    checkins: checkins.slice(0, 20),
+    resumo: {
+      alunos: workouts.length,
+      revisoes: reviews.length,
+      checkins: checkins.length,
+      revisoes_por_status: reviewSummary(reviews),
+    },
+    politica_lgpd: "professor_visualiza_apenas_dados_minimos_do_mvp",
+  };
+}
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     if (url.pathname === "/api/health") {
       const catalogExists = existsSync(catalogPath);
+      const checkins = readCheckins();
+      const reviews = readProfessorReviews();
       return sendJson(res, 200, {
         ok: true,
         servico: "fitcore-api",
@@ -723,8 +994,13 @@ const server = createServer(async (req, res) => {
         },
         mvp_02: {
           checkin_treino: true,
-          registros: readCheckins().length,
-          resumo: checkinSummary(readCheckins()),
+          registros: checkins.length,
+          resumo: checkinSummary(checkins),
+        },
+        mvp_03: {
+          painel_professor: true,
+          registros: reviews.length,
+          resumo: reviewSummary(reviews),
         },
         motor_fitness_interno: wgerInternalUrl,
         politica_midia: "uso_textual_autorizado",
@@ -789,6 +1065,66 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/mvp-02/checkins") {
       return handleMvp02Checkins(req, res, url);
+    }
+
+    if (url.pathname === "/api/mvp-03/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const reviews = readProfessorReviews();
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "MVP-03 Painel do Professor",
+        painel_professor: true,
+        registros: reviews.length,
+        resumo: reviewSummary(reviews),
+        status_permitidos: [...allowedReviewStatus],
+        papeis: ["gestor", "professor"],
+        endpoints: [
+          "GET /api/mvp-03/status",
+          "GET /api/mvp-03/professor/contexto",
+          "GET /api/mvp-03/professor/reviews",
+          "POST /api/mvp-03/professor/reviews",
+          "GET /api/mvp-03/professor/reviews/:id",
+          "PATCH /api/mvp-03/professor/reviews/:id/exercises",
+          "PATCH /api/mvp-03/professor/reviews/:id/approve",
+        ],
+        politica_lgpd: "professor visualiza e altera somente dados mínimos do MVP",
+      });
+    }
+
+    if (url.pathname === "/api/mvp-03/professor/contexto") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, getProfessorContext());
+    }
+
+    if (url.pathname === "/api/mvp-03/professor/reviews") {
+      return handleMvp03Reviews(req, res, url);
+    }
+
+    const mvp03ExerciseMatch = url.pathname.match(/^\/api\/mvp-03\/professor\/reviews\/([^/]+)\/exercises$/);
+    if (mvp03ExerciseMatch) {
+      if (req.method !== "PATCH" && req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const item = replaceExerciseInReview(decodeURIComponent(mvp03ExerciseMatch[1]), input);
+      if (!item) return sendJson(res, 404, { erro: "revisao_nao_encontrada" });
+      return sendJson(res, 200, item);
+    }
+
+    const mvp03ApproveMatch = url.pathname.match(/^\/api\/mvp-03\/professor\/reviews\/([^/]+)\/approve$/);
+    if (mvp03ApproveMatch) {
+      if (req.method !== "PATCH" && req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const item = approveProfessorReview(decodeURIComponent(mvp03ApproveMatch[1]), input);
+      if (!item) return sendJson(res, 404, { erro: "revisao_nao_encontrada" });
+      return sendJson(res, 200, item);
+    }
+
+    const mvp03ReviewMatch = url.pathname.match(/^\/api\/mvp-03\/professor\/reviews\/([^/]+)$/);
+    if (mvp03ReviewMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const id = decodeURIComponent(mvp03ReviewMatch[1]);
+      const item = readProfessorReviews().find((record) => record.id === id);
+      if (!item) return sendJson(res, 404, { erro: "revisao_nao_encontrada" });
+      return sendJson(res, 200, item);
     }
 
     const checkinStatusMatch = url.pathname.match(/^\/api\/mvp-02\/checkins\/([^/]+)\/status$/);
