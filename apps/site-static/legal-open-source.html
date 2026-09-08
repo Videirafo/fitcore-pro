@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Licenças e componentes open source usados pelo FitCore Pro." />
   <title>Open source | FitCore Pro</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m5" />
 </head>
 <body>
-  <header class="topbar">
+  <header class="navbar">
     <a class="brand" href="/" aria-label="FitCore Pro">
       <span class="brand-mark">F</span>
       <span>
@@ -15,30 +16,42 @@
         <small>MarcaIA Fitness</small>
       </span>
     </a>
+    <nav class="nav" aria-label="Navegação legal">
+      <a href="/">Início</a>
+      <a href="/legal/privacy">Privacidade</a>
+      <a href="/legal/security">Segurança</a>
+      <a href="/legal/terms">Termos</a>
+      <a href="/legal/open-source">Open source</a>
+    </nav>
   </header>
 
-  <main class="legal-page">
-    <p class="eyebrow">Transparência técnica</p>
-    <h1>Licenças e componentes open source</h1>
+  <main class="legal-shell">
+    <section class="legal-hero">
+      <span>Licenças</span>
+      <h1>Componentes abertos usados com controle.</h1>
+      <p>
+        O FitCore Pro usa componentes próprios e componentes open source sob suas respectivas licenças. A referência legal fica aqui, sem expor ferramenta interna na experiência principal do cliente.
+      </p>
+    </section>
 
-    <p>
-      O FitCore Pro é uma vertical fitness do ecossistema MarcaIA. O produto usa componentes próprios e componentes open source sob suas respectivas licenças.
-    </p>
-
-    <h2>wger</h2>
-    <p>
-      O wger é usado como engine fitness interna nesta fase. A interface pública do usuário final deve ser própria do FitCore Pro, mas a referência legal ao componente deve permanecer preservada.
-    </p>
-
-    <h2>Exercises Dataset</h2>
-    <p>
-      A base <code>hasaneyldrm/exercises-dataset</code> é usada apenas como fonte textual de catálogo e instruções. Imagens e GIFs de terceiros não são servidos pelo FitCore nesta fase.
-    </p>
-
-    <h2>Política atual</h2>
-    <p>
-      <code>media_policy=textual_only</code>. Qualquer uso comercial de mídia externa deve passar por validação de licença antes de entrar no produto.
-    </p>
+    <section class="legal-grid">
+      <article class="legal-card">
+        <h2>wger</h2>
+        <p>O wger é usado como motor fitness interno nesta fase. A interface pública do usuário final é própria do FitCore Pro, mas a referência ao componente e à sua licença deve permanecer documentada.</p>
+      </article>
+      <article class="legal-card">
+        <h2>Exercises Dataset</h2>
+        <p>A base hasaneyldrm/exercises-dataset é usada apenas como fonte textual para catálogo e instruções. Imagens e GIFs de terceiros não são servidos pelo FitCore nesta fase.</p>
+      </article>
+      <article class="legal-card">
+        <h2>Mídia externa</h2>
+        <p>Qualquer imagem, vídeo, GIF ou asset de terceiro precisa de validação de licença antes de entrar no produto comercial.</p>
+      </article>
+      <article class="legal-card">
+        <h2>Regra interna</h2>
+        <p>Não copiar código, imagem, texto ou identidade visual de sistemas concorrentes. Usar referências apenas como estudo de mercado e direção de produto.</p>
+      </article>
+    </section>
   </main>
 </body>
 </html>
