@@ -85,6 +85,18 @@ server {
         try_files /legal-open-source.html =404;
     }
 
+    location = /legal/privacy {
+        try_files /legal-privacy.html =404;
+    }
+
+    location = /legal/security {
+        try_files /legal-security.html =404;
+    }
+
+    location = /legal/terms {
+        try_files /legal-terms.html =404;
+    }
+
     location /api/ {
         proxy_pass $UPSTREAM_API/api/;
         proxy_http_version 1.1;
@@ -119,3 +131,5 @@ echo "Testes:"
 curl -I "https://$DOMAIN" || true
 curl -I "https://$DOMAIN/health" || true
 curl -I "https://$DOMAIN/api/health" || true
+curl -I "https://$DOMAIN/legal/privacy" || true
+curl -I "https://$DOMAIN/legal/security" || true
