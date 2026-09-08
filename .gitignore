@@ -24,3 +24,6 @@ infra/backups/*.zip
 
 .DS_Store
 .vscode/settings.json
+
+# Upstream local clones
+upstream/wger-docker/
