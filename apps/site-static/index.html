@@ -5,165 +5,195 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="FitCore Pro, vertical fitness do MarcaIA para academias, studios, personal trainers e alunos." />
   <title>FitCore Pro | MarcaIA Fitness</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m1" />
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar" aria-label="Navegação FitCore">
-      <a class="brand" href="/" aria-label="FitCore Pro">
-        <span class="brand-mark">F</span>
-        <span>
-          <strong>FitCore Pro</strong>
-          <small>MarcaIA Fitness</small>
-        </span>
-      </a>
-
-      <nav class="side-nav">
-        <a href="#overview" class="is-active">Visão geral</a>
-        <a href="#catalogo">Catálogo</a>
-        <a href="#rotinas">Rotinas</a>
-        <a href="#operacao">Operação</a>
-      </nav>
-
-      <div class="sidebar-card">
-        <span class="status-dot"></span>
-        <strong>Ambiente ativo</strong>
-        <small>UI própria · API própria · engine interna</small>
-      </div>
-    </aside>
-
-    <main class="main">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Vertical fitness do MarcaIA</p>
-          <h1>Operação fitness com catálogo, rotinas e acompanhamento em uma frente própria.</h1>
-        </div>
-        <div class="top-actions">
-          <a class="button ghost" href="/legal/open-source">Licenças</a>
-          <a class="button primary" href="#catalogo">Explorar exercícios</a>
-        </div>
-      </header>
-
-      <section id="overview" class="hero-grid">
-        <article class="panel executive">
-          <div class="panel-label">Resumo do sistema</div>
-          <div class="score-row">
-            <div>
-              <strong id="catalog-total">1.324</strong>
-              <span>exercícios normalizados</span>
-            </div>
-            <div>
-              <strong>0</strong>
-              <span>mídias de terceiros servidas</span>
-            </div>
-          </div>
-          <div class="pipeline" aria-label="Arquitetura FitCore">
-            <span>Tela FitCore</span>
-            <i></i>
-            <span>API própria</span>
-            <i></i>
-            <span>Engine interna</span>
-          </div>
-        </article>
-
-        <article class="panel today-card">
-          <div class="panel-label">Hoje</div>
-          <h2>Base pronta para construir o produto real.</h2>
-          <ul class="check-list">
-            <li>Subdomínio seguro no MarcaIA</li>
-            <li>Porta direta bloqueada para público</li>
-            <li>Busca própria de exercícios ativa</li>
-            <li>Política textual_only aplicada</li>
-          </ul>
-        </article>
-      </section>
-
-      <section class="metrics" aria-label="Indicadores principais">
-        <article>
-          <span id="api-state">Verificando</span>
-          <strong>API</strong>
-          <small>127.0.0.1:8091</small>
-        </article>
-        <article>
-          <span>Interno</span>
-          <strong>Engine</strong>
-          <small>sem tela pública crua</small>
-        </article>
-        <article>
-          <span id="media-policy">textual_only</span>
-          <strong>Mídia</strong>
-          <small>sem imagens/GIFs de terceiros</small>
-        </article>
-        <article>
-          <span>MarcaIA</span>
-          <strong>Ecossistema</strong>
-          <small>fitness por subdomínio</small>
-        </article>
-      </section>
-
-      <section id="catalogo" class="workspace">
-        <div class="workspace-header">
-          <div>
-            <p class="eyebrow">Catálogo funcional</p>
-            <h2>Busque exercícios por nome, músculo, equipamento ou parte do corpo.</h2>
-          </div>
-          <div class="catalog-count" id="catalog-count">Carregando catálogo</div>
-        </div>
-
-        <div class="search-panel">
-          <label for="exercise-search">Buscar exercício</label>
-          <div class="search-box">
-            <input id="exercise-search" type="search" value="squat" placeholder="Ex: squat, chest, dumbbell, abs" autocomplete="off" />
-            <button id="search-button" type="button">Buscar</button>
-          </div>
-          <div class="quick-filters" aria-label="Filtros rápidos">
-            <button type="button" data-query="squat">Squat</button>
-            <button type="button" data-query="chest dumbbell">Peito + halter</button>
-            <button type="button" data-query="back cable">Costas + cabo</button>
-            <button type="button" data-query="abs body weight">Abs sem equipamento</button>
-          </div>
-        </div>
-
-        <div class="results-grid" id="exercise-results" aria-live="polite">
-          <article class="result-card skeleton"></article>
-          <article class="result-card skeleton"></article>
-          <article class="result-card skeleton"></article>
-        </div>
-      </section>
-
-      <section id="rotinas" class="module-grid">
-        <article class="module-card featured">
-          <span>Próximo bloco</span>
-          <h2>Criador de rotina</h2>
-          <p>Montar treinos com objetivo, frequência semanal, nível do aluno, restrições, descanso e progressão de carga.</p>
-        </article>
-        <article class="module-card">
-          <span>Aluno</span>
-          <h3>Check-in e evolução</h3>
-          <p>Registro de presença, medidas, fotos futuras autorizadas e histórico de performance.</p>
-        </article>
-        <article class="module-card">
-          <span>Professor</span>
-          <h3>Prescrição assistida</h3>
-          <p>Busca no catálogo, montagem de séries e acompanhamento por aluno.</p>
-        </article>
-      </section>
-
-      <section id="operacao" class="ops-panel">
-        <div>
-          <p class="eyebrow">Operação</p>
-          <h2>O FitCore não é uma tela clonada. É uma camada própria sobre uma engine auditável.</h2>
-        </div>
-        <div class="ops-list">
-          <div><strong>01</strong><span>UI pública própria para cliente final.</span></div>
-          <div><strong>02</strong><span>API própria para controle, filtros e integrações.</span></div>
-          <div><strong>03</strong><span>Engine fitness isolada para rotinas e dados de treino.</span></div>
-          <div><strong>04</strong><span>Créditos e licenças tratados na área legal.</span></div>
-        </div>
-      </section>
-    </main>
+  <div class="announce">
+    <span>FitCore Pro</span>
+    <strong>Vertical fitness do MarcaIA</strong>
+    <small>UI própria · API própria · engine interna</small>
   </div>
 
-  <script src="./script.js"></script>
+  <header class="navbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>FitCore Pro</strong>
+        <small>MarcaIA Fitness</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Navegação principal">
+      <a href="#modalidades">Modalidades</a>
+      <a href="#catalogo">Catálogo</a>
+      <a href="#rotinas">Rotinas</a>
+      <a href="#operacao">Operação</a>
+    </nav>
+
+    <div class="nav-actions">
+      <a class="login-link" href="/legal/open-source">Licenças</a>
+      <a class="cta" href="#catalogo">Explorar base</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <div class="hero-copy">
+        <div class="kicker">Academias · studios · personal trainers</div>
+        <h1>Gestão fitness com catálogo, rotinas, alunos e acompanhamento operacional.</h1>
+        <p>
+          Uma frente própria do MarcaIA para organizar treino, evolução e atendimento fitness.
+          O wger fica como motor interno; o cliente vê FitCore.
+        </p>
+        <div class="hero-actions">
+          <a class="cta large" href="#modalidades">Ver módulos</a>
+          <a class="ghost-button" href="#catalogo">Buscar exercícios</a>
+        </div>
+      </div>
+
+      <div class="hero-product" aria-label="Prévia operacional FitCore">
+        <div class="product-top">
+          <span>Operação de hoje</span>
+          <strong id="api-state">Verificando API</strong>
+        </div>
+        <div class="product-grid">
+          <article>
+            <small>Alunos ativos</small>
+            <strong>128</strong>
+            <span>+12 este mês</span>
+          </article>
+          <article>
+            <small>Rotinas</small>
+            <strong>42</strong>
+            <span>prescrições base</span>
+          </article>
+          <article>
+            <small>Catálogo</small>
+            <strong id="catalog-total">1.324</strong>
+            <span>exercícios normalizados</span>
+          </article>
+          <article>
+            <small>Mídia</small>
+            <strong id="media-policy">textual</strong>
+            <span>sem assets de terceiros</span>
+          </article>
+        </div>
+        <div class="schedule-card">
+          <div>
+            <strong>Fluxo seguro</strong>
+            <span>Tela própria → API própria → engine interna</span>
+          </div>
+          <em>ativo</em>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-strip" aria-label="Status técnico">
+      <div><strong>HTTPS</strong><span>fitcore.marcaia.app</span></div>
+      <div><strong>API</strong><span>127.0.0.1:8091</span></div>
+      <div><strong>Engine</strong><span>wger interno</span></div>
+      <div><strong>Dados</strong><span>textual_only</span></div>
+    </section>
+
+    <section id="modalidades" class="section">
+      <div class="section-head">
+        <span>Escolha a operação</span>
+        <h2>Módulos para vender como produto fitness, não como instalação técnica.</h2>
+      </div>
+
+      <div class="modality-grid">
+        <a class="modality-card academy" href="#catalogo">
+          <small>FitCore</small>
+          <strong>Academia</strong>
+          <span>Alunos, presença, rotinas e evolução</span>
+        </a>
+        <a class="modality-card studio" href="#rotinas">
+          <small>FitCore</small>
+          <strong>Estúdio</strong>
+          <span>Agenda, planos, check-ins e acompanhamento</span>
+        </a>
+        <a class="modality-card personal" href="#rotinas">
+          <small>FitCore</small>
+          <strong>Personal</strong>
+          <span>Prescrição assistida e histórico individual</span>
+        </a>
+        <a class="modality-card box" href="#operacao">
+          <small>FitCore</small>
+          <strong>Box / Funcional</strong>
+          <span>Turmas, treinos do dia e performance</span>
+        </a>
+      </div>
+    </section>
+
+    <section id="catalogo" class="section catalog-section">
+      <div class="section-head compact">
+        <span>Catálogo funcional</span>
+        <h2>Busca real de exercícios pela API própria.</h2>
+        <p>Pesquise por nome, músculo, equipamento ou parte do corpo. Os cards abaixo vêm de <code>exercises.normalized.json</code>.</p>
+      </div>
+
+      <div class="search-panel">
+        <div class="search-box">
+          <input id="exercise-search" type="search" value="squat" placeholder="Ex: squat, chest, dumbbell, abs" autocomplete="off" />
+          <button id="search-button" type="button">Buscar</button>
+        </div>
+        <div class="quick-filters" aria-label="Filtros rápidos">
+          <button type="button" data-query="squat">Squat</button>
+          <button type="button" data-query="chest dumbbell">Peito + halter</button>
+          <button type="button" data-query="back cable">Costas + cabo</button>
+          <button type="button" data-query="abs body weight">Abs sem equipamento</button>
+        </div>
+        <div class="catalog-count" id="catalog-count">Carregando catálogo</div>
+      </div>
+
+      <div class="results-grid" id="exercise-results" aria-live="polite">
+        <article class="result-card skeleton"></article>
+        <article class="result-card skeleton"></article>
+        <article class="result-card skeleton"></article>
+      </div>
+    </section>
+
+    <section id="rotinas" class="section workflow-section">
+      <div class="routine-board">
+        <article class="routine-main">
+          <span>Próxima feature</span>
+          <h2>Criador de rotina</h2>
+          <p>Montagem por objetivo, frequência semanal, nível, restrições, descanso, progressão de carga e observações do professor.</p>
+        </article>
+        <article>
+          <strong>Aluno</strong>
+          <p>Rotina, check-in, evolução e histórico.</p>
+        </article>
+        <article>
+          <strong>Professor</strong>
+          <p>Prescrição, ajustes e acompanhamento.</p>
+        </article>
+        <article>
+          <strong>Gestor</strong>
+          <p>Relatórios, retenção e operação.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="operacao" class="section ops-section">
+      <div class="ops-copy">
+        <span>Arquitetura</span>
+        <h2>Não é cópia de interface externa. É uma frente própria sobre componentes auditáveis.</h2>
+      </div>
+      <div class="ops-steps">
+        <div><strong>01</strong><span>Cliente acessa FitCore no subdomínio do MarcaIA.</span></div>
+        <div><strong>02</strong><span>UI própria controla catálogo, rotinas e painéis.</span></div>
+        <div><strong>03</strong><span>API própria centraliza busca, regras e integrações.</span></div>
+        <div><strong>04</strong><span>Engine interna e licenças ficam controladas no backend.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>FitCore Pro · MarcaIA Fitness</span>
+    <a href="/legal/open-source">Licenças e componentes open source</a>
+  </footer>
+
+  <script src="/script.js?v=fitcore-m1"></script>
 </body>
 </html>
