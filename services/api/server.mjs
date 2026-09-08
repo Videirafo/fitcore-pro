@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * FITCORE PRO - API propria inicial
+ * FITCORE PRO - API própria inicial
  *
- * API HTTP sem dependencias externas para validar a arquitetura:
- * Tela propria FitCore -> API propria -> catalogo normalizado + motor fitness interno.
+ * API HTTP sem dependências externas para validar a arquitetura:
+ * tela própria FitCore -> API própria -> catálogo normalizado + motor fitness interno.
  */
 
 import { createServer } from "node:http";
@@ -16,7 +16,8 @@ const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
 const host = process.env.FITCORE_API_HOST || "127.0.0.1";
 const catalogPath = resolve(root, "storage/exercises-dataset/exercises.normalized.json");
-const mvpStorePath = resolve(root, "storage/mvp-01/aluno-treino.json");
+const mvp01StorePath = resolve(root, "storage/mvp-01/aluno-treino.json");
+const mvp02CheckinStorePath = resolve(root, "storage/mvp-02/checkins.json");
 const wgerInternalUrl = process.env.FITCORE_WGER_INTERNAL_URL || "http://127.0.0.1:8088";
 
 let catalogCache = null;
@@ -71,7 +72,12 @@ const labelMap = new Map([
   ["wheel roller", "roda abdominal"],
   ["pectorals", "peitoral"],
   ["lats", "dorsais"],
+  ["latissimus dorsi", "dorsal largo"],
+  ["rhomboids", "romboides"],
+  ["rear deltoids", "deltoides posteriores"],
+  ["upper back", "parte superior das costas"],
   ["quads", "quadríceps"],
+  ["quadriceps", "quadríceps"],
   ["glutes", "glúteos"],
   ["hamstrings", "posterior de coxa"],
   ["abs", "abdômen"],
@@ -80,6 +86,8 @@ const labelMap = new Map([
   ["triceps", "tríceps"],
   ["delts", "deltoides"],
   ["forearms", "antebraços"],
+  ["core", "core"],
+  ["hip flexors", "flexores do quadril"],
 ]);
 
 const exactExerciseNames = new Map([
@@ -89,12 +97,25 @@ const exactExerciseNames = new Map([
   ["barbell front chest squat", "Agachamento frontal com barra no peito"],
   ["barbell front squat", "Agachamento frontal com barra"],
   ["barbell full squat", "Agachamento completo com barra"],
-  ["assisted chest dip (kneeling)", "Mergulho para peito assistido ajoelhado"],
+  ["dumbbell bench press", "Supino com halteres no banco"],
+  ["dumbbell decline bench press", "Supino declinado com halteres"],
+  ["dumbbell around pullover", "Pullover com halter"],
+  ["dumbbell decline fly", "Crucifixo declinado com halteres"],
   ["alternate lateral pulldown", "Puxada lateral alternada"],
+  ["cable bar lateral pulldown", "Puxada lateral no cabo com barra"],
+  ["cable cross-over lateral pulldown", "Puxada lateral cruzada no cabo"],
+  ["cable decline seated wide-grip row", "Remada sentada aberta no cabo"],
+  ["assisted chest dip (kneeling)", "Mergulho para peito assistido ajoelhado"],
   ["assisted hanging knee raise with throw down", "Elevação de joelhos suspenso com auxílio"],
 ]);
 
 const phraseTranslations = [
+  ["bench press", "supino"],
+  ["front squat", "agachamento frontal"],
+  ["full squat", "agachamento completo"],
+  ["wide-grip row", "remada aberta"],
+  ["lateral pulldown", "puxada lateral"],
+  ["decline fly", "crucifixo declinado"],
   ["barbell", "com barra"],
   ["dumbbell", "com halter"],
   ["kettlebell", "com kettlebell"],
@@ -105,12 +126,9 @@ const phraseTranslations = [
   ["resistance band", "com elástico"],
   ["band", "com elástico"],
   ["bench", "no banco"],
-  ["front squat", "agachamento frontal"],
-  ["full squat", "agachamento completo"],
   ["squat", "agachamento"],
   ["lunge", "avanço"],
   ["deadlift", "levantamento terra"],
-  ["bench press", "supino"],
   ["press", "desenvolvimento"],
   ["pulldown", "puxada"],
   ["pull-up", "barra fixa"],
@@ -136,7 +154,7 @@ const phraseTranslations = [
   ["kneeling", "ajoelhado"],
   ["hanging", "suspenso"],
   ["alternate", "alternado"],
-];
+]);
 
 const crossTrainingTemplates = [
   {
@@ -210,6 +228,9 @@ const focoTemplates = {
   funcional: ["burpee", "kettlebell", "body weight", "cardio"],
 };
 
+const allowedCheckinStatus = new Set(["planejado", "em_execucao", "concluido"]);
+const allowedRoles = new Set(["gestor", "professor", "aluno"]);
+
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(statusCode, {
@@ -223,14 +244,14 @@ function sendJson(res, statusCode, payload) {
 function sendNotFound(res) {
   sendJson(res, 404, {
     erro: "nao_encontrado",
-    mensagem: "Endpoint nao encontrado.",
+    mensagem: "Endpoint não encontrado.",
   });
 }
 
 function sendMethodNotAllowed(res) {
   sendJson(res, 405, {
     erro: "metodo_nao_permitido",
-    mensagem: "Metodo HTTP nao permitido para este endpoint.",
+    mensagem: "Método HTTP não permitido para este endpoint.",
   });
 }
 
@@ -238,14 +259,14 @@ function loadCatalog() {
   if (catalogCache) return catalogCache;
 
   if (!existsSync(catalogPath)) {
-    throw new Error(`Catalogo normalizado nao encontrado em ${catalogPath}. Rode: npm run exercises:sync && npm run exercises:normalize`);
+    throw new Error(`Catálogo normalizado não encontrado em ${catalogPath}. Rode: npm run exercises:sync && npm run exercises:normalize`);
   }
 
   const raw = readFileSync(catalogPath, "utf-8");
   const parsed = JSON.parse(raw);
 
   if (!Array.isArray(parsed)) {
-    throw new Error("Catalogo normalizado invalido: esperado array JSON.");
+    throw new Error("Catálogo normalizado inválido: esperado array JSON.");
   }
 
   catalogCache = parsed;
@@ -395,22 +416,38 @@ async function readJsonBody(req) {
   try {
     return JSON.parse(body);
   } catch {
-    const error = new Error("JSON invalido.");
+    const error = new Error("JSON inválido.");
     error.statusCode = 400;
     throw error;
   }
 }
 
-function readMvpRecords() {
-  if (!existsSync(mvpStorePath)) return [];
-  const raw = readFileSync(mvpStorePath, "utf-8");
+function readJsonArray(path) {
+  if (!existsSync(path)) return [];
+  const raw = readFileSync(path, "utf-8");
   const parsed = JSON.parse(raw || "[]");
   return Array.isArray(parsed) ? parsed : [];
 }
 
+function writeJsonArray(path, records, mode = 0o640) {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o750 });
+  writeFileSync(path, `${JSON.stringify(records, null, 2)}\n`, { mode });
+}
+
+function readMvpRecords() {
+  return readJsonArray(mvp01StorePath);
+}
+
 function writeMvpRecords(records) {
-  mkdirSync(dirname(mvpStorePath), { recursive: true, mode: 0o750 });
-  writeFileSync(mvpStorePath, `${JSON.stringify(records, null, 2)}\n`, { mode: 0o640 });
+  writeJsonArray(mvp01StorePath, records);
+}
+
+function readCheckins() {
+  return readJsonArray(mvp02CheckinStorePath);
+}
+
+function writeCheckins(records) {
+  writeJsonArray(mvp02CheckinStorePath, records);
 }
 
 function buildWorkoutBlocks({ objetivo, foco, modalidade, diasSemana }) {
@@ -507,6 +544,166 @@ async function handleMvpStudentWorkout(req, res, url) {
   return sendMethodNotAllowed(res);
 }
 
+function checkinSummary(records) {
+  const base = { planejado: 0, em_execucao: 0, concluido: 0 };
+  for (const record of records) {
+    if (base[record.status] !== undefined) base[record.status] += 1;
+  }
+  return base;
+}
+
+function createAuditEvent({ tipo, papel, status, registroId }) {
+  return {
+    id: `aud-${randomUUID()}`,
+    tipo,
+    papel,
+    status,
+    registro_id: registroId,
+    criado_em: new Date().toISOString(),
+    lgpd: "evento_minimo_sem_documento_telefone_email_foto_medida_ou_dado_de_saude",
+  };
+}
+
+function createWorkoutCheckin(input) {
+  const alunoNome = sanitizeText(input.aluno_nome || input.nome || "Aluno teste", 80);
+  const treinoId = sanitizeText(input.treino_id || input.workout_id || "treino-manual", 120);
+  const diaTreino = sanitizeText(input.dia_treino || input.dia || "Dia 1", 40);
+  const status = sanitizeText(input.status || "planejado", 40);
+  const papel = sanitizeText(input.papel || "professor", 40);
+  const percepcaoEsforco = numberInRange(input.percepcao_esforco, 5, 1, 10);
+  const duracaoMinutos = numberInRange(input.duracao_minutos, 45, 5, 240);
+  const observacoes = sanitizeText(input.observacoes || "", 500);
+  const createdAt = new Date().toISOString();
+
+  if (alunoNome.length < 2) {
+    const error = new Error("Informe o nome do aluno com pelo menos 2 caracteres.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!allowedCheckinStatus.has(status)) {
+    const error = new Error("Status inválido. Use planejado, em_execucao ou concluido.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!allowedRoles.has(papel)) {
+    const error = new Error("Papel inválido. Use gestor, professor ou aluno.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const sourceWorkout = readMvpRecords().find((record) => record.id === treinoId);
+  const registroId = `mvp02-${randomUUID()}`;
+  const record = {
+    id: registroId,
+    treino_id: treinoId,
+    aluno: {
+      nome: sourceWorkout?.aluno?.nome || alunoNome,
+      nivel: sourceWorkout?.aluno?.nivel || sanitizeText(input.nivel || "não informado", 40),
+    },
+    treino: {
+      objetivo: sourceWorkout?.treino?.objetivo_nome || sanitizeText(input.objetivo || "não informado", 80),
+      modalidade: sourceWorkout?.treino?.modalidade || sanitizeText(input.modalidade || "não informado", 80),
+      dia: diaTreino,
+    },
+    status,
+    percepcao_esforco: percepcaoEsforco,
+    duracao_minutos: duracaoMinutos,
+    observacoes,
+    criado_por: papel,
+    criado_em: createdAt,
+    atualizado_em: createdAt,
+    auditoria_lgpd: [
+      createAuditEvent({ tipo: "checkin_criado", papel, status, registroId }),
+    ],
+    proximas_acoes: [
+      "Professor confere execução e ajusta o próximo treino.",
+      "Aluno registra conclusão, esforço percebido e observações simples.",
+      "Gestor acompanha frequência e aderência sem expor dados sensíveis.",
+    ],
+  };
+
+  const records = readCheckins();
+  records.unshift(record);
+  writeCheckins(records.slice(0, 500));
+  return record;
+}
+
+function updateWorkoutCheckin(id, input) {
+  const records = readCheckins();
+  const index = records.findIndex((record) => record.id === id);
+  if (index < 0) return null;
+
+  const current = records[index];
+  const status = sanitizeText(input.status || current.status, 40);
+  const papel = sanitizeText(input.papel || "professor", 40);
+
+  if (!allowedCheckinStatus.has(status)) {
+    const error = new Error("Status inválido. Use planejado, em_execucao ou concluido.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!allowedRoles.has(papel)) {
+    const error = new Error("Papel inválido. Use gestor, professor ou aluno.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const updated = {
+    ...current,
+    status,
+    percepcao_esforco: input.percepcao_esforco ? numberInRange(input.percepcao_esforco, current.percepcao_esforco, 1, 10) : current.percepcao_esforco,
+    duracao_minutos: input.duracao_minutos ? numberInRange(input.duracao_minutos, current.duracao_minutos, 5, 240) : current.duracao_minutos,
+    observacoes: input.observacoes !== undefined ? sanitizeText(input.observacoes, 500) : current.observacoes,
+    atualizado_em: new Date().toISOString(),
+    auditoria_lgpd: [
+      ...(current.auditoria_lgpd || []),
+      createAuditEvent({ tipo: "checkin_status_atualizado", papel, status, registroId: current.id }),
+    ],
+  };
+
+  records[index] = updated;
+  writeCheckins(records);
+  return updated;
+}
+
+function listCheckins(url) {
+  const records = readCheckins();
+  const limit = Math.min(Math.max(Number.parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 50);
+  const status = sanitizeText(url.searchParams.get("status") || "", 40);
+  const aluno = normalizeText(url.searchParams.get("aluno") || url.searchParams.get("aluno_nome") || "");
+
+  const filtered = records.filter((record) => {
+    if (status && record.status !== status) return false;
+    if (aluno && !normalizeText(record.aluno?.nome).includes(aluno)) return false;
+    return true;
+  });
+
+  return {
+    items: filtered.slice(0, limit),
+    total: filtered.length,
+    resumo: checkinSummary(records),
+    papeis: ["gestor", "professor", "aluno"],
+    status_permitidos: [...allowedCheckinStatus],
+    politica_lgpd: "auditoria_minima_sem_dados_sensiveis_desnecessarios",
+  };
+}
+
+async function handleMvp02Checkins(req, res, url) {
+  if (req.method === "GET") {
+    return sendJson(res, 200, listCheckins(url));
+  }
+
+  if (req.method === "POST") {
+    const input = await readJsonBody(req);
+    return sendJson(res, 201, createWorkoutCheckin(input));
+  }
+
+  return sendMethodNotAllowed(res);
+}
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
@@ -523,6 +720,11 @@ const server = createServer(async (req, res) => {
         mvp_01: {
           aluno_treino: true,
           registros: readMvpRecords().length,
+        },
+        mvp_02: {
+          checkin_treino: true,
+          registros: readCheckins().length,
+          resumo: checkinSummary(readCheckins()),
         },
         motor_fitness_interno: wgerInternalUrl,
         politica_midia: "uso_textual_autorizado",
@@ -561,6 +763,50 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/mvp-01/aluno-treino") {
       return handleMvpStudentWorkout(req, res, url);
+    }
+
+    if (url.pathname === "/api/mvp-02/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const checkins = readCheckins();
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "MVP-02 Check-in do Treino",
+        checkin_treino: true,
+        registros: checkins.length,
+        resumo: checkinSummary(checkins),
+        status_permitidos: [...allowedCheckinStatus],
+        papeis: ["gestor", "professor", "aluno"],
+        endpoints: [
+          "GET /api/mvp-02/status",
+          "GET /api/mvp-02/checkins",
+          "POST /api/mvp-02/checkins",
+          "GET /api/mvp-02/checkins/:id",
+          "PATCH /api/mvp-02/checkins/:id/status",
+        ],
+        politica_lgpd: "auditoria mínima, sem documento, telefone, e-mail, foto, medidas ou dados médicos nesta fase",
+      });
+    }
+
+    if (url.pathname === "/api/mvp-02/checkins") {
+      return handleMvp02Checkins(req, res, url);
+    }
+
+    const checkinStatusMatch = url.pathname.match(/^\/api\/mvp-02\/checkins\/([^/]+)\/status$/);
+    if (checkinStatusMatch) {
+      if (req.method !== "PATCH" && req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const item = updateWorkoutCheckin(decodeURIComponent(checkinStatusMatch[1]), input);
+      if (!item) return sendJson(res, 404, { erro: "checkin_nao_encontrado" });
+      return sendJson(res, 200, item);
+    }
+
+    const checkinMatch = url.pathname.match(/^\/api\/mvp-02\/checkins\/([^/]+)$/);
+    if (checkinMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const id = decodeURIComponent(checkinMatch[1]);
+      const item = readCheckins().find((record) => record.id === id);
+      if (!item) return sendJson(res, 404, { erro: "checkin_nao_encontrado" });
+      return sendJson(res, 200, item);
     }
 
     const mvpMatch = url.pathname.match(/^\/api\/mvp-01\/aluno-treino\/([^/]+)$/);
