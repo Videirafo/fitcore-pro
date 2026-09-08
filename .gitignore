@@ -1,0 +1,26 @@
+# ============================================================
+# FITCORE PRO - GITIGNORE
+# Arquivos que não devem entrar no GitHub.
+# ============================================================
+
+.env
+.env.local
+.env.production
+.env.development
+
+node_modules/
+vendor/
+
+.next/
+dist/
+build/
+coverage/
+
+*.log
+
+infra/backups/*.sql
+infra/backups/*.dump
+infra/backups/*.zip
+
+.DS_Store
+.vscode/settings.json
