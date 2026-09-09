@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-04 do FitCore Pro: painel do aluno para visualizar treino aprovado, iniciar execução, marcar exercícios e concluir treino." />
+  <title>MVP-04 Aluno | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-04.css?v=fitcore-mvp04-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span>F</span>
+      <strong>FitCore Pro<small>MarcaIA Fitness</small></strong>
+    </a>
+    <nav>
+      <a href="/">Início</a>
+      <a href="/mvp-01.html">Aluno + Treino</a>
+      <a href="/mvp-02.html">Check-in</a>
+      <a href="/mvp-03.html">Professor</a>
+      <a href="/mvp-04.html" aria-current="page">Aluno</a>
+      <a href="/legal/privacy">LGPD</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">MVP-04 · Painel do aluno</p>
+        <h1>O aluno acompanha o treino aprovado e registra a própria execução.</h1>
+        <p class="lead">
+          Esta fase valida o fluxo de uso pelo aluno: visualizar treino liberado pelo professor,
+          iniciar execução, marcar exercícios concluídos e finalizar o treino com histórico pessoal.
+        </p>
+      </div>
+      <aside class="hero-card">
+        <span id="mvp04-status">carregando</span>
+        <strong id="summary-approved">--</strong>
+        <small>treino(s) aprovado(s) para o aluno</small>
+      </aside>
+    </section>
+
+    <section class="summary-grid" aria-label="Resumo do aluno">
+      <article>
+        <span>Disponíveis</span>
+        <strong id="summary-available">0</strong>
+        <small>treinos liberados</small>
+      </article>
+      <article>
+        <span>Em andamento</span>
+        <strong id="summary-running">0</strong>
+        <small>execuções abertas</small>
+      </article>
+      <article>
+        <span>Concluídos</span>
+        <strong id="summary-done">0</strong>
+        <small>histórico do aluno</small>
+      </article>
+    </section>
+
+    <section class="layout">
+      <form id="student-panel-form" class="panel-card">
+        <p class="eyebrow">Selecionar treino</p>
+        <h2>Treino aprovado</h2>
+        <p>Somente treinos aprovados pelo professor aparecem para execução do aluno.</p>
+
+        <label>
+          Aluno / treino
+          <select id="approved-review-select" required>
+            <option value="">Carregando treinos aprovados...</option>
+          </select>
+        </label>
+
+        <div class="form-grid">
+          <label>
+            Nome visível do aluno
+            <input id="student-name" placeholder="Aluno teste" maxlength="80" />
+          </label>
+          <label>
+            Percepção de esforço
+            <select id="effort-score">
+              <option value="3">3/10 · leve</option>
+              <option value="5" selected>5/10 · moderado</option>
+              <option value="7">7/10 · intenso</option>
+              <option value="9">9/10 · muito intenso</option>
+            </select>
+          </label>
+        </div>
+
+        <label>
+          Observações do aluno
+          <textarea id="student-notes" rows="4" maxlength="360" placeholder="Exemplo: senti boa execução, carga leve, dificuldade no último bloco."></textarea>
+        </label>
+
+        <button type="submit">Abrir painel do aluno</button>
+      </form>
+
+      <aside class="panel-card privacy-card">
+        <p class="eyebrow">Privacidade por papel</p>
+        <h2>Aluno vê apenas o que foi liberado</h2>
+        <ul>
+          <li>O aluno visualiza somente o treino aprovado.</li>
+          <li>A execução registra status, duração, esforço e observações simples.</li>
+          <li>Dados sensíveis não entram nesta fase do MVP.</li>
+          <li>Cada ação gera histórico mínimo para auditoria LGPD.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section id="student-workout" class="panel-card workout-shell" aria-live="polite">
+      <h2>Nenhum treino aberto.</h2>
+      <p>Selecione um treino aprovado para o aluno iniciar a execução.</p>
+    </section>
+
+    <section class="panel-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Histórico pessoal</p>
+          <h2>Últimas execuções do aluno</h2>
+        </div>
+        <button id="refresh-history" type="button">Atualizar</button>
+      </div>
+      <div id="student-history" class="history-list">Carregando histórico...</div>
+    </section>
+  </main>
+
+  <script src="/mvp-04.js?v=fitcore-mvp04-1"></script>
+</body>
+</html>
