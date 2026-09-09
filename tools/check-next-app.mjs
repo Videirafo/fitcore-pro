@@ -8,16 +8,18 @@ const required = [
   "apps/site/tsconfig.json",
   "apps/site/app/layout.tsx",
   "apps/site/app/page.tsx",
-  "apps/site/app/mvp-22/page.tsx",
-  "apps/site/app/mvp-23/page.tsx",
-  "apps/site/app/mvp-24/page.tsx",
-  "apps/site/app/mvp-25/page.tsx",
-  "apps/site/app/mvp-26/page.tsx",
+  "apps/site/app/login/page.tsx",
+  "apps/site/app/onboarding/page.tsx",
+  "apps/site/app/equipe/page.tsx",
+  "apps/site/app/alunos/page.tsx",
+  "apps/site/app/treinos/page.tsx",
+  "apps/site/app/execucao/page.tsx",
+  "apps/site/app/evolucao/page.tsx",
   "apps/site/app/globals.css",
-  "apps/site/components/FitCoreShell.tsx",
+  "apps/site/components/FitCoreAppShell.tsx",
+  "apps/site/components/FitCoreRouteClient.tsx",
   "apps/site/lib/fitcore-api.ts",
 ];
-
 let failed = false;
 for (const file of required) {
   if (!existsSync(resolve(root, file))) {
@@ -35,34 +37,19 @@ if (!layout.includes('import "./globals.css"')) {
   console.error("ERRO: layout Next não importa globals.css.");
   failed = true;
 }
-const page22 = readFileSync(resolve(root, "apps/site/app/mvp-22/page.tsx"), "utf8");
-if (!page22.includes("/mvp-22.html") || !page22.includes("Gestão real de usuários")) {
-  console.error("ERRO: página Next MVP-22 não aponta para a tela operacional.");
-  failed = true;
+const shell = readFileSync(resolve(root, "apps/site/components/FitCoreAppShell.tsx"), "utf8");
+for (const route of ["/login", "/onboarding", "/equipe", "/alunos", "/treinos", "/execucao", "/evolucao"]) {
+  if (!shell.includes(route)) {
+    console.error(`ERRO: shell Next sem rota limpa ${route}.`);
+    failed = true;
+  }
 }
-const page23 = readFileSync(resolve(root, "apps/site/app/mvp-23/page.tsx"), "utf8");
-if (!page23.includes("/mvp-23.html") || !page23.includes("Cadastro operacional de aluno")) {
-  console.error("ERRO: página Next MVP-23 não aponta para a tela operacional.");
-  failed = true;
-}
-const page24 = readFileSync(resolve(root, "apps/site/app/mvp-24/page.tsx"), "utf8");
-if (!page24.includes("/mvp-24.html") || !page24.includes("Prescrição real de treino")) {
-  console.error("ERRO: página Next MVP-24 não aponta para a tela operacional.");
-  failed = true;
-}
-if (failed) process.exit(1);
-console.log("OK: contrato Next validado em apps/site.");
-
-const page25 = readFileSync(resolve(root, "apps/site/app/mvp-25/page.tsx"), "utf8");
-if (!page25.includes("/mvp-25.html") || !page25.includes("Execução real do treino")) {
-  console.error("ERRO: página Next MVP-25 não aponta para a tela operacional.");
-  failed = true;
+const client = readFileSync(resolve(root, "apps/site/components/FitCoreRouteClient.tsx"), "utf8");
+for (const endpoint of ["/api/mvp-19/login", "/api/mvp-21/onboarding", "/api/mvp-22/users", "/api/mvp-23/students", "/api/mvp-24/prescriptions", "/api/mvp-25/executions", "/api/mvp-26/evolution"]) {
+  if (!client.includes(endpoint)) {
+    console.error(`ERRO: client Next sem endpoint ${endpoint}.`);
+    failed = true;
+  }
 }
 if (failed) process.exit(1);
-
-const page26 = readFileSync(resolve(root, "apps/site/app/mvp-26/page.tsx"), "utf8");
-if (!page26.includes("/mvp-26.html") || !page26.includes("Histórico e evolução")) {
-  console.error("ERRO: página Next MVP-26 não aponta para a tela operacional.");
-  failed = true;
-}
-if (failed) process.exit(1);
+console.log("OK: contrato Next validado em apps/site com rotas limpas.");

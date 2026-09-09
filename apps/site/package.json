@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -H 127.0.0.1 -p 3001",
     "lint:contract": "node ../../tools/check-next-app.mjs"
   },
   "dependencies": {
@@ -15,7 +15,6 @@
     "next": "16.2.12",
     "react": "latest",
     "react-dom": "latest",
-    "typescript": "latest"
-  },
-  "devDependencies": {}
+    "typescript": "6.0.3"
+  }
 }

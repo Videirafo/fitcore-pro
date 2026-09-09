@@ -57,6 +57,8 @@
     "mvp25:rollback": "bash infra/scripts/rollback-mvp-25-workout-execution.sh",
     "mvp26:apply": "bash infra/scripts/apply-mvp-26-student-evolution.sh",
     "mvp26:verify": "bash infra/scripts/verify-mvp-26-student-evolution.sh",
-    "mvp26:rollback": "bash infra/scripts/rollback-mvp-26-student-evolution.sh"
+    "mvp26:rollback": "bash infra/scripts/rollback-mvp-26-student-evolution.sh",
+    "mvp27:deploy": "bash infra/scripts/switch-fitcore-to-next-shell.sh",
+    "mvp27:verify": "bash infra/scripts/verify-mvp-27-next-shell.sh"
   }
 }
