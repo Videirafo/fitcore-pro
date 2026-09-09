@@ -1,6 +1,5 @@
-import { FitCoreAppShell } from "../components/FitCoreAppShell";
-import { FitCoreRouteClient } from "../components/FitCoreRouteClient";
+import { FitCorePublicLanding } from "../components/FitCorePublicLanding";
 
 export default function HomePage() {
-  return <FitCoreAppShell section="Visão geral"><FitCoreRouteClient mode="home" /></FitCoreAppShell>;
+  return <FitCorePublicLanding />;
 }

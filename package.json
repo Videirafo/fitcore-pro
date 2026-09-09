@@ -75,6 +75,8 @@
     "mvp33:check": "node tools/check-mvp-33-exact-premium-console.mjs",
     "mvp33:verify": "bash infra/scripts/verify-mvp-33-exact-premium-console.sh",
     "mvp34:check": "node tools/check-mvp-34-layout-stabilization.mjs",
-    "mvp34:verify": "bash infra/scripts/verify-mvp-34-layout-stabilization.sh"
+    "mvp34:verify": "bash infra/scripts/verify-mvp-34-layout-stabilization.sh",
+    "mvp35:check": "node tools/check-mvp-35-public-landing-shell.mjs",
+    "mvp35:verify": "bash infra/scripts/verify-mvp-35-public-landing-shell.sh"
   }
 }
