@@ -321,11 +321,94 @@
   min-height: 220px;
 }
 
+.exercise-row-learning {
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 280px);
+  align-items: start;
+}
+
+.exercise-review-body {
+  display: grid;
+  gap: 12px;
+}
+
+.exercise-title-block {
+  display: grid;
+  gap: 5px;
+}
+
+.exercise-learning {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.exercise-gif {
+  min-height: 118px;
+  border: 1px solid rgba(142, 255, 61, .24);
+  border-radius: 14px;
+  background: rgba(6, 0, 12, .42);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.exercise-gif img {
+  width: 100%;
+  height: 100%;
+  min-height: 118px;
+  object-fit: cover;
+  display: block;
+}
+
+.exercise-gif span {
+  display: none;
+  color: #8eff3d;
+  font-weight: 950;
+  font-size: 12px;
+  text-align: center;
+  padding: 10px;
+}
+
+.exercise-gif.media-missing span {
+  display: block;
+}
+
+.exercise-purpose-card {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(11, 0, 19, .32);
+  border: 1px solid rgba(255, 255, 255, .11);
+}
+
+.exercise-purpose-card b {
+  display: block;
+  margin-bottom: 6px;
+  color: #8eff3d;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.exercise-purpose-card p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.46;
+}
+
+.exercise-purpose-card small {
+  color: rgba(255, 255, 255, .65);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 @media (max-width: 980px) {
   .mvp03-hero,
   .mvp03-grid,
   .teacher-board,
-  .exercise-row {
+  .exercise-row,
+  .exercise-row-learning {
     grid-template-columns: 1fr;
   }
 
@@ -357,7 +440,8 @@
   .form-row,
   .result-head,
   .history-head,
-  .exercise-tools {
+  .exercise-tools,
+  .exercise-learning {
     grid-template-columns: 1fr;
     display: grid;
   }
