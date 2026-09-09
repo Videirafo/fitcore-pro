@@ -15,6 +15,7 @@
     "mvp10:apply": "bash infra/scripts/apply-mvp-10-postgres-store.sh",
     "mvp10:verify": "bash infra/scripts/verify-mvp-10-postgres-store.sh",
     "mvp12:smoke": "bash infra/scripts/smoke-mvp-12-postgres-write-read.sh",
-    "mvp12:verify": "bash infra/scripts/verify-mvp-12-smoke.sh"
+    "mvp12:verify": "bash infra/scripts/verify-mvp-12-smoke.sh",
+    "mvp13:verify": "bash infra/scripts/verify-mvp-13-operational-dashboard.sh"
   }
 }
