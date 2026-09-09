@@ -1,6 +1,6 @@
 import { FitCoreAppShell } from "../../components/FitCoreAppShell";
 import { FitCoreRouteClient } from "../../components/FitCoreRouteClient";
 
-export default function TeamPage() {
+export default function Page() {
   return <FitCoreAppShell section="Equipe"><FitCoreRouteClient mode="team" /></FitCoreAppShell>;
 }
