@@ -53,7 +53,7 @@ function tenantScope(context) {
 }
 
 function tenantCte(tenantSlug) {
-  return `tenant AS (SELECT id FROM fitcore_tenants WHERE slug = ${sqlText(tenantSlug)} LIMIT 1), scope AS (SELECT set_config('app.tenant_id', (SELECT id::text FROM tenant), true))`;
+  return `tenant AS (SELECT id, slug FROM fitcore_tenants WHERE slug = ${sqlText(tenantSlug)} LIMIT 1), scope AS (SELECT set_config('app.tenant_id', (SELECT id::text FROM tenant), true))`;
 }
 
 function hashSecret(secret) {
@@ -224,6 +224,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
       SELECT jsonb_build_object(
         'id', u.id,
         'tenant_id', u.tenant_id,
+        'tenant_slug', tenant.slug,
         'nome', u.nome,
         'papel', u.papel,
         'login_identifier', u.login_identifier,
@@ -254,7 +255,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     }
     runSql(env, `WITH ${tenantCte(lookupTenantSlug)} UPDATE fitcore_users SET last_login_at = now(), atualizado_em = now() FROM tenant, scope WHERE fitcore_users.id = ${sqlText(user.id)}::uuid AND fitcore_users.tenant_id = tenant.id RETURNING fitcore_users.id;`);
     recordSystemAudit(user, "credential_login_ok", `identifier=${loginIdentifier}`, "ok");
-    const created = sessionManager.createSessionForUserRecord(user, { source: "mvp19_credential" });
+    const created = sessionManager.createSessionForUserRecord({ ...user, tenant_slug: user.tenant_slug || lookupTenantSlug }, { source: "mvp19_credential", tenant_slug: user.tenant_slug || lookupTenantSlug });
     return { ok: true, mvp: "MVP-19 Credential Login", login: true, credential_login: true, session: created.session, cookie: created.cookie, user: safeUser(user) };
   }
 

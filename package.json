@@ -35,6 +35,13 @@
     "mvp20:rollback": "bash infra/scripts/rollback-mvp-20-auth-hardening.sh",
     "mvp21:apply": "bash infra/scripts/apply-mvp-21-tenant-onboarding.sh",
     "mvp21:verify": "bash infra/scripts/verify-mvp-21-tenant-onboarding.sh",
-    "mvp21:rollback": "bash infra/scripts/rollback-mvp-21-tenant-onboarding.sh"
+    "mvp21:rollback": "bash infra/scripts/rollback-mvp-21-tenant-onboarding.sh",
+    "mvp22:apply": "bash infra/scripts/apply-mvp-22-tenant-user-management.sh",
+    "mvp22:verify": "bash infra/scripts/verify-mvp-22-tenant-user-management.sh",
+    "mvp22:rollback": "bash infra/scripts/rollback-mvp-22-tenant-user-management.sh",
+    "front:check": "node tools/check-front-assets.mjs",
+    "site:next:check": "node tools/check-next-app.mjs",
+    "site:next:dev": "npm --prefix apps/site run dev",
+    "site:next:build": "npm --prefix apps/site run build"
   }
 }

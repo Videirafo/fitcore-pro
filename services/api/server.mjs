@@ -19,6 +19,7 @@ import { createInviteUserManager } from "./security/invite-users.mjs";
 import { createCredentialAuthManager } from "./security/credential-auth.mjs";
 import { createAuthHardeningManager } from "./security/auth-hardening.mjs";
 import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs";
+import { createTenantUserManagement } from "./security/tenant-user-management.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -47,6 +48,7 @@ const inviteUserManager = createInviteUserManager(process.env, sessionManager);
 const credentialAuthManager = createCredentialAuthManager(process.env, sessionManager);
 const authHardeningManager = createAuthHardeningManager(process.env, sessionManager);
 const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessionManager);
+const tenantUserManagement = createTenantUserManagement(process.env, sessionManager);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1073,6 +1075,13 @@ const server = createServer(async (req, res) => {
           rate_limit: "ip_hash+user_agent_hash+acao",
           logs: "fitcore_security_events",
         },
+        mvp_22: {
+          tenant_user_management: tenantUserManagement.enabled,
+          tenant_slug: accessContext.tenant_slug,
+          actor_role: accessContext.actor_role,
+          cross_tenant_block: true,
+          next_ready_frontend: true,
+        },
         mvp_21: {
           tenant_onboarding: tenantOnboardingManager.enabled,
           demo_is_no_longer_only_flow: true,
@@ -1305,6 +1314,55 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-21/tenant") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = tenantOnboardingManager.currentTenant(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-22/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, tenantUserManagement.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-22/users") {
+      if (req.method === "GET") {
+        const result = tenantUserManagement.listUsers(accessContext, url);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = tenantUserManagement.createUser(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    if (url.pathname === "/api/mvp-22/users/invite") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = tenantUserManagement.createInvite(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/mvp-22/invites/inspect") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = tenantUserManagement.inspectInvite({ token: url.searchParams.get("token"), tenant_slug: url.searchParams.get("tenant_slug") || url.searchParams.get("tenant") });
+      return sendJson(res, result.ok ? 200 : (result.statusCode || 400), result);
+    }
+
+    if (url.pathname === "/api/mvp-22/invites/accept") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = tenantUserManagement.acceptInvite(input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, accepted: true, invite: result.invite, user: result.user, session: result.session }, { "set-cookie": result.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-22/cross-tenant-check") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = tenantUserManagement.crossTenantCheck(accessContext, url);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }
