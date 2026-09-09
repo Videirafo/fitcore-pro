@@ -9,6 +9,7 @@ const files = [
   "apps/site-static/mvp-22.html",
   "apps/site-static/mvp-23.html",
   "apps/site-static/mvp-24.html",
+  "apps/site-static/mvp-25.html",
 ];
 
 let failed = false;

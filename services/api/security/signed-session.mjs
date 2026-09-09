@@ -290,12 +290,17 @@ export function createSignedSessionManager(env = process.env) {
       || pathname === "/api/mvp-17/navigation/audit"
       || pathname === "/api/mvp-22/users"
       || pathname === "/api/mvp-22/users/invite"
-      || pathname === "/api/mvp-22/cross-tenant-check";
+      || pathname === "/api/mvp-22/cross-tenant-check"
+      || (pathname.startsWith("/api/mvp-25") && pathname !== "/api/mvp-25/status");
   }
 
   function allowedRolesFor(pathname, method) {
     if (pathname.startsWith("/api/mvp-22")) return ["gestor"];
     if (pathname === "/api/mvp-24/my-workouts") return ["aluno"];
+    if (pathname === "/api/mvp-25/my-executions") return ["aluno"];
+    if (pathname === "/api/mvp-25/executions/start") return ["aluno"];
+    if (pathname.startsWith("/api/mvp-25/executions/") && method !== "GET") return ["aluno"];
+    if (pathname.startsWith("/api/mvp-25/executions")) return ["gestor", "professor", "aluno"];
     if (pathname.startsWith("/api/mvp-24/prescriptions") && method !== "GET") return ["gestor", "professor"];
     if (pathname.startsWith("/api/mvp-24/prescriptions")) return ["gestor", "professor", "aluno"];
     if (pathname.startsWith("/api/mvp-23/students")) return ["gestor", "professor"];

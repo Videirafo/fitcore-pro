@@ -11,6 +11,7 @@ const required = [
   "apps/site/app/mvp-22/page.tsx",
   "apps/site/app/mvp-23/page.tsx",
   "apps/site/app/mvp-24/page.tsx",
+  "apps/site/app/mvp-25/page.tsx",
   "apps/site/app/globals.css",
   "apps/site/components/FitCoreShell.tsx",
   "apps/site/lib/fitcore-api.ts",
@@ -50,3 +51,10 @@ if (!page24.includes("/mvp-24.html") || !page24.includes("Prescrição real de t
 }
 if (failed) process.exit(1);
 console.log("OK: contrato Next validado em apps/site.");
+
+const page25 = readFileSync(resolve(root, "apps/site/app/mvp-25/page.tsx"), "utf8");
+if (!page25.includes("/mvp-25.html") || !page25.includes("Execução real do treino")) {
+  console.error("ERRO: página Next MVP-25 não aponta para a tela operacional.");
+  failed = true;
+}
+if (failed) process.exit(1);

@@ -22,6 +22,7 @@ import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs"
 import { createTenantUserManagement } from "./security/tenant-user-management.mjs";
 import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
+import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -53,6 +54,7 @@ const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessi
 const tenantUserManagement = createTenantUserManagement(process.env, sessionManager);
 const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
+const workoutExecutionManager = createWorkoutExecutionManager(process.env);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1462,6 +1464,59 @@ const server = createServer(async (req, res) => {
     if (mvp24PrescriptionMatch) {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = workoutPrescriptionManager.getPrescription(accessContext, decodeURIComponent(mvp24PrescriptionMatch[1]));
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-25/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, workoutExecutionManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-25/executions") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = workoutExecutionManager.listExecutions(accessContext, url);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-25/my-executions") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = workoutExecutionManager.listExecutions(accessContext, url, true);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-25/executions/start") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutExecutionManager.startExecution(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    const mvp25ExerciseDoneMatch = url.pathname.match(/^\/api\/mvp-25\/executions\/([^/]+)\/exercises\/([0-9]+)\/done$/);
+    if (mvp25ExerciseDoneMatch) {
+      if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutExecutionManager.markExerciseDone(accessContext, decodeURIComponent(mvp25ExerciseDoneMatch[1]), mvp25ExerciseDoneMatch[2], input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp25FinishMatch = url.pathname.match(/^\/api\/mvp-25\/executions\/([^/]+)\/finish$/);
+    if (mvp25FinishMatch) {
+      if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutExecutionManager.finishExecution(accessContext, decodeURIComponent(mvp25FinishMatch[1]), input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp25ExecutionMatch = url.pathname.match(/^\/api\/mvp-25\/executions\/([^/]+)$/);
+    if (mvp25ExecutionMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = workoutExecutionManager.getExecution(accessContext, decodeURIComponent(mvp25ExecutionMatch[1]));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }
