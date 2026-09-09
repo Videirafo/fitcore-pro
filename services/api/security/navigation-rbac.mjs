@@ -19,6 +19,7 @@ export const FITCORE_NAV_ITEMS = Object.freeze([
   { id: "auth", label: "Sessão", href: "/mvp-15.html", roles: ["gestor"], section: "admin" },
   { id: "login_ui", label: "Login UI", href: "/mvp-16.html", roles: ["gestor"], section: "admin" },
   { id: "navigation", label: "Navegação", href: "/mvp-17.html", roles: ["gestor"], section: "admin" },
+  { id: "users", label: "Usuários", href: "/mvp-18.html", roles: ["gestor"], section: "admin" },
   { id: "lgpd", label: "LGPD", href: "/legal/privacy", roles: ["gestor", "professor", "aluno"], section: "base" },
 ]);
 

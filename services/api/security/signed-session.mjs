@@ -135,6 +135,47 @@ export function createSignedSessionManager(env = process.env) {
     return `${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureCookie ? "; Secure" : ""}`;
   }
 
+  function createSessionForUserRecord(user = {}, meta = {}) {
+    if (!signedMode) throw new Error("Sessão assinada não está ativa. Ative FITCORE_AUTH_MODE=signed.");
+    const userId = clean(user.user_id || user.id || "", "", 80);
+    const tenantId = clean(user.tenant_id || "", "", 80);
+    const actorRole = normalizeRole(user.papel || user.actor_role || "aluno");
+    const actorName = clean(user.nome || user.actor_name || `Usuário ${actorRole}`, `Usuário ${actorRole}`, 120);
+    if (!userId || !tenantId) throw new Error("Usuário inválido para criar sessão assinada.");
+
+    const sid = randomUUID();
+    const iat = Math.floor(Date.now() / 1000);
+    const exp = iat + ttlSeconds;
+    const token = makeToken({ v: "mvp15", sid, iat, exp });
+    const tokenHash = sha256(token);
+
+    scalar(`
+      WITH scope AS (SELECT set_config('app.tenant_id', ${sqlText(tenantId)}, true))
+      INSERT INTO fitcore_signed_sessions (id, tenant_id, user_id, token_hash, user_agent_hash, ip_hash, expires_at, atualizado_em)
+      SELECT ${sqlText(sid)}::uuid, ${sqlText(tenantId)}::uuid, ${sqlText(userId)}::uuid, ${sqlText(tokenHash)}, ${sqlText(sha256(actorName))}, ${sqlText(clean(meta.source || "signed_session", "signed_session", 80))}, to_timestamp(${exp}), now()
+      FROM scope
+      ON CONFLICT (id) DO UPDATE SET token_hash = EXCLUDED.token_hash, revoked_at = NULL, expires_at = EXCLUDED.expires_at, atualizado_em = now()
+      RETURNING id;
+    `);
+
+    return {
+      token,
+      cookie: cookieHeader(token),
+      session: {
+        id: sid,
+        expires_at: new Date(exp * 1000).toISOString(),
+        tenant_slug: tenantSlug,
+        tenant_id: tenantId,
+        user_id: userId,
+        actor_name: actorName,
+        actor_role: actorRole,
+        role_from_db: true,
+        headers_trusted: false,
+        login_source: clean(meta.source || "signed_session", "signed_session", 80),
+      },
+    };
+  }
+
   function createSession({ role = "gestor", actor_name = "Usuário demo", user_name } = {}) {
     if (!signedMode) throw new Error("Sessão assinada não está ativa. Ative FITCORE_AUTH_MODE=signed.");
     const requestedRole = normalizeRole(role);
@@ -150,35 +191,7 @@ export function createSignedSessionManager(env = process.env) {
       SELECT jsonb_build_object('user_id', id, 'tenant_id', tenant_id, 'nome', nome, 'papel', papel)::text FROM upsert_user;
     `);
     const user = JSON.parse(userRaw || "{}");
-    const sid = randomUUID();
-    const iat = Math.floor(Date.now() / 1000);
-    const exp = iat + ttlSeconds;
-    const token = makeToken({ v: "mvp15", sid, iat, exp });
-    const tokenHash = sha256(token);
-
-    scalar(`
-      WITH ${tenantCte()}
-      INSERT INTO fitcore_signed_sessions (id, tenant_id, user_id, token_hash, user_agent_hash, ip_hash, expires_at, atualizado_em)
-      SELECT ${sqlText(sid)}::uuid, tenant.id, ${sqlText(user.user_id)}::uuid, ${sqlText(tokenHash)}, ${sqlText(sha256(displayName))}, ${sqlText("mvp15")}, to_timestamp(${exp}), now()
-      FROM tenant, scope WHERE tenant.id IS NOT NULL
-      ON CONFLICT (id) DO UPDATE SET token_hash = EXCLUDED.token_hash, revoked_at = NULL, expires_at = EXCLUDED.expires_at, atualizado_em = now()
-      RETURNING id;
-    `);
-
-    return {
-      token,
-      cookie: cookieHeader(token),
-      session: {
-        id: sid,
-        expires_at: new Date(exp * 1000).toISOString(),
-        tenant_slug: tenantSlug,
-        tenant_id: user.tenant_id,
-        user_id: user.user_id,
-        actor_name: user.nome,
-        actor_role: user.papel,
-        role_from_db: true,
-      },
-    };
+    return createSessionForUserRecord(user, { source: "mvp15_demo" });
   }
 
   function resolveAccessContext(req) {
@@ -320,5 +333,5 @@ export function createSignedSessionManager(env = process.env) {
     };
   }
 
-  return { authMode, signedMode, createSession, resolveAccessContext, logout, clearCookieHeader, authorizeRoute, publicHealth };
+  return { authMode, signedMode, createSession, createSessionForUserRecord, resolveAccessContext, logout, clearCookieHeader, authorizeRoute, publicHealth };
 }

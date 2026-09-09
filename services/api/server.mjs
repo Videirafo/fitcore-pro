@@ -15,6 +15,7 @@ import { createServerPersistenceAdapter, createServerPersistenceHealth } from ".
 import { createAccessContext, createAccessHealth } from "./security/access-context.mjs";
 import { createSignedSessionManager } from "./security/signed-session.mjs";
 import { createRoleNavigation, recordNavigationAudit } from "./security/navigation-rbac.mjs";
+import { createInviteUserManager } from "./security/invite-users.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -39,6 +40,7 @@ const persistenceAdapter = createServerPersistenceAdapter({
 });
 
 const sessionManager = createSignedSessionManager(process.env);
+const inviteUserManager = createInviteUserManager(process.env, sessionManager);
 
 let catalogCache = null;
 let catalogLoadedAt = null;
@@ -1048,6 +1050,13 @@ const server = createServer(async (req, res) => {
           headers_trusted: Boolean(accessContext.headers_trusted),
           audit: "navigation/menu_resolvido",
         },
+        mvp_18: {
+          user_invites: true,
+          actor_role: accessContext.actor_role,
+          session_signed: Boolean(accessContext.session_signed),
+          role_from_db: Boolean(accessContext.role_from_db),
+          demo_login_required_for_invited_users: false,
+        },
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
         catalogo_carregado_em: catalogLoadedAt,
@@ -1142,6 +1151,42 @@ const server = createServer(async (req, res) => {
         userAgent: req.headers["user-agent"] || "mvp17",
       });
       return sendJson(res, audit.ok ? 201 : 200, { ok: true, mvp: "MVP-17 Role Navigation RBAC", audit });
+    }
+
+
+    if (url.pathname === "/api/mvp-18/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, inviteUserManager.publicHealth(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-18/users") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = inviteUserManager.listUsers(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      const invites = inviteUserManager.listInvites(accessContext);
+      return sendJson(res, 200, { ok: true, mvp: "MVP-18 User Invites", tenant_slug: accessContext.tenant_slug, users: result.users, total_users: result.total, invites: invites.invites || [], total_invites: invites.total || 0 });
+    }
+
+    if (url.pathname === "/api/mvp-18/users/invite") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = inviteUserManager.createInvite(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/mvp-18/invites/inspect") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = inviteUserManager.inspectInvite(url.searchParams.get("token"));
+      return sendJson(res, result.ok ? 200 : (result.statusCode || 400), result);
+    }
+
+    if (url.pathname === "/api/mvp-18/invites/accept") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = inviteUserManager.acceptInvite(input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, accepted: true, invite: result.invite, user: result.user, session: result.session }, { "set-cookie": result.cookie });
     }
 
     if (url.pathname === "/api/exercises") {

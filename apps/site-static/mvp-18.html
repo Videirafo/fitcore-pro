@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-18 do FitCore Pro: usuários reais e convites por token." />
+  <title>MVP-18 Usuários e Convites | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-17-nav-rbac.css?v=fitcore-mvp17-1" />
+  <link rel="stylesheet" href="/mvp-18.css?v=fitcore-mvp18-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav><a href="/mvp-17.html">Navegação</a><a href="/mvp-18.html">Usuários</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-18 · usuários reais</p>
+        <h1>Convite por token para professor e aluno.</h1>
+        <p>O gestor cria usuário por convite. Professor e aluno entram pelo link, recebem papel vindo do banco e não dependem de botão demo.</p>
+      </div>
+      <aside class="card" id="session"><strong>Verificando sessão</strong><span>Aguardando API.</span></aside>
+    </section>
+
+    <section id="token-panel" class="panel" hidden>
+      <p class="kicker">Aceitar convite</p>
+      <h2>Entrar com token recebido</h2>
+      <div id="token-output" class="output">Carregando convite.</div>
+      <button id="accept-invite" type="button">Aceitar convite e criar sessão</button>
+    </section>
+
+    <section id="manager-panel" class="grid">
+      <form id="invite-form" hidden>
+        <p class="kicker">Gestor</p>
+        <h2>Criar convite</h2>
+        <label>Nome do usuário <input name="nome" maxlength="120" value="Professor convidado" /></label>
+        <label>Papel <select name="papel"><option value="professor">Professor</option><option value="aluno">Aluno</option></select></label>
+        <label>Validade <select name="ttl_horas"><option value="24">24 horas</option><option value="72" selected>72 horas</option><option value="168">7 dias</option></select></label>
+        <button type="submit">Gerar link de convite</button>
+        <div id="invite-output" class="output"></div>
+      </form>
+      <aside class="panel" id="users"><p>Carregando usuários e convites.</p></aside>
+    </section>
+  </main>
+
+  <script src="/mvp-17-nav-rbac.js?v=fitcore-mvp17-1"></script>
+  <script src="/mvp-18.js?v=fitcore-mvp18-1"></script>
+</body>
+</html>
