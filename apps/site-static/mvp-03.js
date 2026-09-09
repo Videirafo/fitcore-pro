@@ -12,6 +12,41 @@ const refreshEl = $("#refresh-history");
 
 let currentReviewId = null;
 
+const replacementAliases = new Map([
+  ["remada", "row"],
+  ["remadas", "row"],
+  ["costas", "back"],
+  ["dorsal", "back"],
+  ["dorsais", "back"],
+  ["puxada", "pulldown"],
+  ["puxada costas", "pulldown back"],
+  ["peito", "chest"],
+  ["supino", "bench press"],
+  ["crucifixo", "fly"],
+  ["agachamento", "squat"],
+  ["perna", "legs"],
+  ["pernas", "legs"],
+  ["gluteo", "glutes"],
+  ["glúteo", "glutes"],
+  ["gluteos", "glutes"],
+  ["glúteos", "glutes"],
+  ["ombro", "shoulders"],
+  ["ombros", "shoulders"],
+  ["abdominal", "abs"],
+  ["abdomen", "abs"],
+  ["abdômen", "abs"],
+  ["halter", "dumbbell"],
+  ["halteres", "dumbbell"],
+  ["barra", "barbell"],
+  ["cabo", "cable"],
+  ["maquina", "machine"],
+  ["máquina", "machine"],
+  ["peso corporal", "body weight"],
+  ["funcional", "body weight"],
+  ["burpee", "burpee"],
+  ["kettlebell", "kettlebell"],
+]);
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -19,6 +54,41 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function normalizeLoose(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function normalizeReplacementSearch(value) {
+  const raw = String(value || "").trim();
+  const loose = normalizeLoose(raw);
+
+  if (!loose) return "squat";
+  if (replacementAliases.has(raw.toLowerCase())) return replacementAliases.get(raw.toLowerCase());
+  if (replacementAliases.has(loose)) return replacementAliases.get(loose);
+
+  const parts = loose.split(" ").map((part) => replacementAliases.get(part) || part);
+  return parts.join(" ");
+}
+
+function showInlineMessage(title, message) {
+  if (!resultEl) return;
+  const previous = resultEl.querySelector(".inline-message");
+  previous?.remove();
+
+  const box = document.createElement("div");
+  box.className = "inline-message";
+  box.innerHTML = `
+    <strong>${escapeHtml(title)}</strong>
+    <span>${escapeHtml(message)}</span>
+  `;
+  resultEl.prepend(box);
 }
 
 function statusLabel(status) {
@@ -105,7 +175,7 @@ function renderReview(record) {
                   <span>${escapeHtml(exercicio.parte_do_corpo)} · ${escapeHtml(exercicio.equipamento)} · foco: ${escapeHtml(exercicio.foco)}</span>
                 </div>
                 <div class="exercise-tools">
-                  <input data-search="${diaIndex}-${exercicioIndex}" placeholder="Ex: remada, peito, agachamento" />
+                  <input data-search="${diaIndex}-${exercicioIndex}" placeholder="Ex: remada, puxada, peito, agachamento" />
                   <button type="button" data-replace="${diaIndex}-${exercicioIndex}">Trocar</button>
                 </div>
               </div>
@@ -132,7 +202,8 @@ function renderReview(record) {
     button.addEventListener("click", async () => {
       const [diaIndex, exercicioIndex] = button.getAttribute("data-replace").split("-").map(Number);
       const input = resultEl.querySelector(`[data-search="${diaIndex}-${exercicioIndex}"]`);
-      const busca = input?.value?.trim() || "agachamento";
+      const buscaDigitada = input?.value?.trim() || "agachamento";
+      const busca = normalizeReplacementSearch(buscaDigitada);
       button.disabled = true;
       button.textContent = "Trocando...";
       try {
@@ -141,9 +212,13 @@ function renderReview(record) {
           body: JSON.stringify({ dia_index: diaIndex, exercicio_index: exercicioIndex, busca, papel: "professor" }),
         });
         renderReview(updated);
+        showInlineMessage("Exercício alterado", `Busca usada: ${buscaDigitada} → ${busca}.`);
         loadHistory();
       } catch (error) {
-        alert(error.message);
+        showInlineMessage(
+          "Não foi possível trocar o exercício",
+          "Tente termos como remada, puxada, costas, peito, supino, agachamento, halter, barra, cabo ou abdominal."
+        );
         button.disabled = false;
         button.textContent = "Trocar";
       }
@@ -160,7 +235,7 @@ function renderReview(record) {
       loadContext();
       loadHistory();
     } catch (error) {
-      alert(error.message);
+      showInlineMessage("Não foi possível aprovar o treino", error.message);
     }
   });
 }
