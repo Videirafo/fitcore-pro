@@ -8,14 +8,14 @@
   <link rel="stylesheet" href="/styles.css?v=fitcore-m6" />
   <link rel="stylesheet" href="/fitcore-overrides.css?v=fitcore-m2" />
   <link rel="stylesheet" href="/mvp-02.css?v=fitcore-m1" />
+  <link rel="stylesheet" href="/mvp-16-auth-ui.css?v=fitcore-mvp16-1" />
 </head>
-<body class="mvp02-page">
+<body data-fitcore-auth-required="true" data-fitcore-roles="gestor,professor,aluno" data-fitcore-auth-title="Login obrigatório para registrar check-in" class="mvp02-page">
   <header class="navbar mvp-navbar">
     <a class="brand" href="/" aria-label="FitCore Pro">
       <span class="brand-mark">F</span>
       <span>
         <strong>FitCore Pro</strong>
-        <small>MarcaIA Fitness</small>
       </span>
     </a>
 
@@ -162,6 +162,7 @@
     </section>
   </main>
 
+  <script src="/mvp-16-auth-ui.js?v=fitcore-mvp16-1"></script>
   <script src="/mvp-02.js?v=fitcore-m1"></script>
 </body>
 </html>

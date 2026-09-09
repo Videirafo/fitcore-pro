@@ -6,8 +6,9 @@
   <meta name="description" content="MVP-13 do FitCore Pro: painel operacional lendo dados reais do PostgresStore." />
   <title>MVP-13 Painel Operacional | FitCore Pro</title>
   <link rel="stylesheet" href="/mvp-13.css?v=fitcore-mvp13-1" />
+  <link rel="stylesheet" href="/mvp-16-auth-ui.css?v=fitcore-mvp16-1" />
 </head>
-<body>
+<body data-fitcore-auth-required="true" data-fitcore-roles="gestor,professor" data-fitcore-auth-title="Login obrigatório para ver operação">
   <header class="topbar">
     <a class="brand" href="/">
       <span>F</span>
@@ -91,6 +92,7 @@
     </section>
   </main>
 
+  <script src="/mvp-16-auth-ui.js?v=fitcore-mvp16-1"></script>
   <script src="/mvp-13.js?v=fitcore-mvp13-1"></script>
 </body>
 </html>

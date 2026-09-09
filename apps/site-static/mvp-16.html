@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-16 do FitCore Pro: login integrado nas telas operacionais." />
+  <title>MVP-16 Login Integrado | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-16.css?v=fitcore-mvp16-1" />
+  <link rel="stylesheet" href="/mvp-16-auth-ui.css?v=fitcore-mvp16-1" />
+</head>
+<body data-fitcore-auth-required="true" data-fitcore-roles="gestor,professor" data-fitcore-auth-title="Login integrado obrigatório">
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav>
+      <a href="/mvp-15.html">Sessão</a>
+      <a class="active" href="/mvp-16.html">Login UI</a>
+      <a href="/mvp-01.html">Aluno</a>
+      <a href="/mvp-03.html">Professor</a>
+      <a href="/mvp-13.html">Operação</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-16 · Login UI integrado</p>
+        <h1>As telas operacionais passam a detectar sessão e exigir login.</h1>
+        <p>O MVP-16 conecta os MVPs 01, 02, 03 e 13 ao login real do MVP-15. As chamadas usam cookie assinado, e o papel final vem do PostgreSQL.</p>
+      </div>
+      <aside class="status-card"><span>Estado</span><strong id="session-status">Verificando</strong><small id="session-detail">aguardando sessão</small></aside>
+    </section>
+
+    <section class="grid">
+      <article><span>Protegidas</span><strong>4 telas</strong><small>MVP-01, MVP-02, MVP-03, MVP-13</small></article>
+      <article><span>Fonte final</span><strong>Banco</strong><small>fitcore_users + sessão assinada</small></article>
+      <article><span>Credencial</span><strong>Cookie</strong><small>HttpOnly assinado</small></article>
+    </section>
+
+    <section class="panel">
+      <p class="kicker">Checklist</p>
+      <h2>Integração aplicada</h2>
+      <ul>
+        <li>Barra de sessão compartilhada em telas operacionais.</li>
+        <li>Overlay de login quando a sessão não existe.</li>
+        <li>Fetch com <code>credentials: include</code>.</li>
+        <li>Logout centralizado.</li>
+        <li>Headers deixam de ser fonte final de confiança.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <p class="kicker">Diagnóstico</p>
+      <pre id="debug-output">Aguardando /api/mvp-15/session</pre>
+    </section>
+  </main>
+
+  <script src="/mvp-16-auth-ui.js?v=fitcore-mvp16-1"></script>
+  <script src="/mvp-16.js?v=fitcore-mvp16-1"></script>
+</body>
+</html>

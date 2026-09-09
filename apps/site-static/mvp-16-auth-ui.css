@@ -1,0 +1,76 @@
+/* FITCORE PRO — MVP-16 shared login UI */
+.fitcore-authbar {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(100% - 32px, 1120px);
+  margin: 12px auto 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  color: #fff;
+  background: rgba(11, 0, 24, 0.88);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+}
+.fitcore-authbar[data-visible="true"] { display: flex; }
+.fitcore-authbar strong,
+.fitcore-authbar span { display: block; }
+.fitcore-authbar strong { font-size: 14px; }
+.fitcore-authbar span { color: rgba(255,255,255,.72); font-size: 12px; }
+.fitcore-authbar .fitcore-auth-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.fitcore-authbar button,
+.fitcore-auth-panel button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: #072910;
+  background: #44ec5f;
+  font-weight: 900;
+  cursor: pointer;
+}
+.fitcore-authbar button.secondary,
+.fitcore-auth-panel button.secondary { color: #fff; background: rgba(255,255,255,.14); }
+.fitcore-auth-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 0, 17, 0.72);
+  backdrop-filter: blur(10px);
+}
+.fitcore-auth-lock[data-visible="true"] { display: flex; }
+.fitcore-auth-panel {
+  width: min(100%, 520px);
+  padding: 26px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(44, 0, 77, .96), rgba(17, 0, 31, .96));
+  box-shadow: 0 28px 80px rgba(0,0,0,.42);
+}
+.fitcore-auth-panel small {
+  color: #baff66;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.fitcore-auth-panel h2 { margin: 10px 0 12px; font-size: clamp(30px, 6vw, 46px); line-height: 1; letter-spacing: -.05em; }
+.fitcore-auth-panel p { color: rgba(255,255,255,.78); line-height: 1.55; }
+.fitcore-auth-role-grid { display: grid; gap: 10px; margin-top: 18px; }
+.fitcore-auth-state { margin-top: 12px; color: rgba(255,255,255,.7); font-size: 13px; }
+body.fitcore-auth-locked main,
+body.fitcore-auth-locked .mvp-shell,
+body.fitcore-auth-locked .mvp02-shell,
+body.fitcore-auth-locked .mvp03-shell { filter: blur(2px); pointer-events: none; user-select: none; }
+@media (max-width: 720px) {
+  .fitcore-authbar { align-items: flex-start; flex-direction: column; }
+  .fitcore-authbar .fitcore-auth-actions { justify-content: flex-start; }
+}
