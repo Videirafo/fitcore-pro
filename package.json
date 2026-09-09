@@ -29,6 +29,9 @@
     "mvp18:rollback": "bash infra/scripts/rollback-mvp-18-soft-login.sh",
     "mvp19:apply": "bash infra/scripts/apply-mvp-19-credential-login.sh",
     "mvp19:verify": "bash infra/scripts/verify-mvp-19-credential-login.sh",
-    "mvp19:rollback": "bash infra/scripts/rollback-mvp-19-credential-login.sh"
+    "mvp19:rollback": "bash infra/scripts/rollback-mvp-19-credential-login.sh",
+    "mvp20:apply": "bash infra/scripts/apply-mvp-20-auth-hardening.sh",
+    "mvp20:verify": "bash infra/scripts/verify-mvp-20-auth-hardening.sh",
+    "mvp20:rollback": "bash infra/scripts/rollback-mvp-20-auth-hardening.sh"
   }
 }

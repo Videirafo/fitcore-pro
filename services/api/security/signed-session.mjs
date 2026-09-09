@@ -69,6 +69,9 @@ export function createSignedSessionManager(env = process.env) {
   const secretFile = clean(env.FITCORE_SESSION_SECRET_FILE || "storage/secrets/fitcore-session-secret", "storage/secrets/fitcore-session-secret", 260);
   const psqlBin = clean(env.FITCORE_PSQL_BIN || "psql", "psql", 120);
   const secureCookie = clean(env.FITCORE_SESSION_COOKIE_SECURE || "true", "true", 10) !== "false";
+  const fitcoreEnv = clean(env.FITCORE_ENV || env.NODE_ENV || "development", "development", 40).toLowerCase();
+  const demoLoginDefault = fitcoreEnv === "production" ? "false" : "true";
+  const demoLoginEnabled = clean(env.FITCORE_DEMO_LOGIN_ENABLED || demoLoginDefault, demoLoginDefault, 12).toLowerCase() === "true";
 
   function sessionSecret() {
     const inline = clean(env.FITCORE_SESSION_SECRET || "", "", 300);
@@ -178,6 +181,12 @@ export function createSignedSessionManager(env = process.env) {
 
   function createSession({ role = "gestor", actor_name = "Usuário demo", user_name } = {}) {
     if (!signedMode) throw new Error("Sessão assinada não está ativa. Ative FITCORE_AUTH_MODE=signed.");
+    if (!demoLoginEnabled) {
+      const error = new Error("Login demo bloqueado neste ambiente. Use login por credencial real.");
+      error.statusCode = 403;
+      error.code = "demo_login_bloqueado";
+      throw error;
+    }
     const requestedRole = normalizeRole(role);
     const displayName = clean(user_name || actor_name || `Demo ${requestedRole}`, `Demo ${requestedRole}`, 120);
     const userRaw = scalar(`
@@ -242,6 +251,7 @@ export function createSignedSessionManager(env = process.env) {
         headers_trusted: false,
         enforcement: "strict_session",
         source: "signed_session_database",
+        login_source: session.login_source || "signed_session_database",
         capabilities: FITCORE_ROLE_MATRIX[role] || [],
         login_real: true,
         expires_at: session.expires_at,
@@ -313,6 +323,26 @@ export function createSignedSessionManager(env = process.env) {
     return { allowed: true };
   }
 
+  function cleanupExpiredSessions(context = {}) {
+    if (!signedMode) return { cleaned: 0, skipped: "signed_mode_disabled" };
+    if (!context?.tenant_id) return { cleaned: 0, skipped: "missing_tenant" };
+    try {
+      const cleaned = scalar(`
+        WITH scope AS (SELECT set_config('app.tenant_id', ${sqlText(context.tenant_id)}, true)), updated AS (
+          UPDATE fitcore_signed_sessions
+          SET revoked_at = COALESCE(revoked_at, now()), atualizado_em = now()
+          WHERE tenant_id = ${sqlText(context.tenant_id)}::uuid
+            AND expires_at < now()
+            AND revoked_at IS NULL
+          RETURNING id
+        ) SELECT count(*)::text FROM updated, scope;
+      `);
+      return { cleaned: Number(cleaned || 0) };
+    } catch (error) {
+      return { cleaned: 0, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   function publicHealth(req, accessContext) {
     return {
       ok: true,
@@ -321,11 +351,14 @@ export function createSignedSessionManager(env = process.env) {
       session_required_for_protected_routes: signedMode,
       cookie_name: cookieName,
       tenant_slug: tenantSlug,
+      fitcore_env: fitcoreEnv,
+      demo_login_enabled: demoLoginEnabled,
       current_session: accessContext?.session_signed ? {
         signed: true,
         tenant_slug: accessContext.tenant_slug,
         actor_role: accessContext.actor_role,
         actor_name: accessContext.actor_name,
+        login_source: accessContext.login_source || "signed_session_database",
         role_from_db: true,
         headers_trusted: false,
         expires_at: accessContext.expires_at,
@@ -336,5 +369,5 @@ export function createSignedSessionManager(env = process.env) {
     };
   }
 
-  return { authMode, signedMode, createSession, createSessionForUserRecord, resolveAccessContext, logout, clearCookieHeader, authorizeRoute, publicHealth };
+  return { authMode, signedMode, demoLoginEnabled, createSession, createSessionForUserRecord, resolveAccessContext, logout, clearCookieHeader, authorizeRoute, publicHealth, cleanupExpiredSessions };
 }

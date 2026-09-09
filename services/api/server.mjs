@@ -17,6 +17,7 @@ import { createSignedSessionManager } from "./security/signed-session.mjs";
 import { createRoleNavigation, recordNavigationAudit } from "./security/navigation-rbac.mjs";
 import { createInviteUserManager } from "./security/invite-users.mjs";
 import { createCredentialAuthManager } from "./security/credential-auth.mjs";
+import { createAuthHardeningManager } from "./security/auth-hardening.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -43,6 +44,7 @@ const persistenceAdapter = createServerPersistenceAdapter({
 const sessionManager = createSignedSessionManager(process.env);
 const inviteUserManager = createInviteUserManager(process.env, sessionManager);
 const credentialAuthManager = createCredentialAuthManager(process.env, sessionManager);
+const authHardeningManager = createAuthHardeningManager(process.env, sessionManager);
 
 let catalogCache = null;
 let catalogLoadedAt = null;
@@ -1001,6 +1003,8 @@ const server = createServer(async (req, res) => {
     const softAccessContext = createAccessContext(req, process.env);
     const signedAccessContext = sessionManager.resolveAccessContext(req);
     const accessContext = signedAccessContext || softAccessContext;
+    const hardeningDecision = authHardeningManager.checkRequest(req, url, accessContext);
+    if (!hardeningDecision.allowed) return sendJson(res, hardeningDecision.statusCode, hardeningDecision.response);
     const routeDecision = sessionManager.authorizeRoute(accessContext, url.pathname, req.method);
     if (!routeDecision.allowed) return sendJson(res, routeDecision.statusCode, routeDecision.response);
 
@@ -1058,6 +1062,12 @@ const server = createServer(async (req, res) => {
           demo_replacement_ready: true,
           recovery_and_revocation: true,
           audit: "auth/credential_events",
+        },
+        mvp_20: {
+          auth_hardening: authHardeningManager.enabled,
+          demo_login_enabled: authHardeningManager.demoLoginEnabled,
+          rate_limit: "ip_hash+user_agent_hash+acao",
+          logs: "fitcore_security_events",
         },
         mvp_18: {
           user_invites: true,
@@ -1248,6 +1258,25 @@ const server = createServer(async (req, res) => {
       const result = credentialAuthManager.completeRecovery(input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 201, { ok: true, mvp: result.mvp, recovery_completed: true, user: result.user, session: result.session }, { "set-cookie": result.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-20/security/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, authHardeningManager.publicHealth(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-20/security/logs") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = authHardeningManager.listSecurityLogs(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-20/security/cleanup-sessions") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const result = authHardeningManager.cleanupExpiredSessions(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
     }
 
     if (url.pathname === "/api/exercises") {

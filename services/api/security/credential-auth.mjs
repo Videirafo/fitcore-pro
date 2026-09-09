@@ -68,6 +68,36 @@ function hashSecret(secret) {
   return `scrypt:16384:8:1:${salt}:${hash}`;
 }
 
+function validateSecretPolicy(env, secret, loginIdentifier = "", kind = "password") {
+  const hardening = clean(env.FITCORE_AUTH_HARDENING_ENABLED || "false", "false", 12).toLowerCase() === "true";
+  if (!hardening) return true;
+  const value = String(secret || "");
+  const identifier = String(loginIdentifier || "").toLowerCase();
+  const normalized = value.toLowerCase();
+  const minLength = kind === "access_code" ? 6 : 8;
+  if (value.length < minLength) {
+    const error = new Error(kind === "access_code" ? "Código de acesso precisa ter pelo menos 6 caracteres." : "Senha precisa ter pelo menos 8 caracteres.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (identifier && normalized === identifier) {
+    const error = new Error("A credencial não pode ser igual ao identificador de login.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (["123456", "12345678", "password", "senha123", "fitcore", "fitcore123"].includes(normalized)) {
+    const error = new Error("Credencial muito fraca para o modo de produção.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (kind === "password" && (!/[A-Za-zÀ-ÿ]/.test(value) || !/[0-9]/.test(value))) {
+    const error = new Error("Senha em produção precisa combinar letras e números.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return true;
+}
+
 function verifySecret(stored, candidate) {
   const parts = String(stored || "").split(":");
   if (parts.length !== 6 || parts[0] !== "scrypt") return false;
@@ -170,6 +200,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     if (loginIdentifier.length < 4) {
       return { guard: { allowed: false, statusCode: 400, response: { erro: "identificador_invalido", mensagem: "Informe identificador com pelo menos 4 caracteres." } } };
     }
+    validateSecretPolicy(env, secret, loginIdentifier, kind);
     const credentialHash = hashSecret(secret);
     const raw = runSql(env, `
       WITH ${tenantScope(context)}, updated AS (
@@ -283,6 +314,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     const token = clean(input.token || input.recovery_token || "", "", 500);
     const secret = input.new_secret || input.senha || input.codigo_acesso || input.secret || "";
     const kind = clean(input.credential_kind || "password", "password", 40) === "access_code" ? "access_code" : "password";
+    validateSecretPolicy(env, secret, "", kind);
     const tokenHash = sha256(token);
     const credentialHash = hashSecret(secret);
     const raw = runSql(env, `
@@ -328,6 +360,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
       demo_replacement_ready: true,
       recovery_and_revocation: true,
       credential_storage: "scrypt_hash_salted_no_plaintext",
+      credential_policy: clean(env.FITCORE_AUTH_HARDENING_ENABLED || "false", "false", 12) === "true" ? "strict" : "basic",
       endpoints: [
         "GET /api/mvp-19/status",
         "GET /api/mvp-19/credentials/me",

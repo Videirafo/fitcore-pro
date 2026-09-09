@@ -42,6 +42,11 @@
     return data;
   }
 
+  async function hardeningStatus() {
+    try { return await requestJson(`/api/mvp-20/security/status?v=${Date.now()}`); }
+    catch { return null; }
+  }
+
   function ensureShell() {
     if (document.querySelector("#fitcore-authbar")) return;
     document.body.insertAdjacentHTML("afterbegin", `
@@ -66,11 +71,12 @@
       location.reload();
     });
     const rolesEl = document.querySelector("#fitcore-auth-roles");
-    rolesEl.innerHTML = config.roles.map((role) => `<button type="button" data-fitcore-login-role="${escapeHtml(role)}">Entrar como ${escapeHtml(roleLabel(role))}</button>`).join("");
+    rolesEl.innerHTML = `<a class="fitcore-auth-login-link" href="/mvp-19.html">Entrar com senha/código</a>` + config.roles.map((role) => `<button type="button" data-fitcore-login-role="${escapeHtml(role)}">Entrar como ${escapeHtml(roleLabel(role))}</button>`).join("");
     rolesEl.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-fitcore-login-role]");
       if (!button) return;
-      await login(button.dataset.fitcoreLoginRole);
+      try { await login(button.dataset.fitcoreLoginRole); }
+      catch (error) { document.querySelector("#fitcore-auth-state").textContent = error.message || "Não foi possível criar sessão demo."; }
     });
   }
 
@@ -126,11 +132,15 @@
   async function requireSession() {
     ensureShell();
     try {
+      const hardening = await hardeningStatus();
+      if (hardening && hardening.demo_login_enabled === false) {
+        document.querySelectorAll("[data-fitcore-login-role]").forEach((button) => { button.hidden = true; });
+      }
       const data = await current();
       const session = data.current_session;
       setBar(session, data.auth_mode);
       if (config.required && !session && data.auth_mode === "signed") {
-        lock("Sessão assinada obrigatória para esta tela.");
+        lock(hardening && hardening.demo_login_enabled === false ? "Use login por credencial real para acessar esta tela." : "Sessão assinada obrigatória para esta tela.");
         return null;
       }
       if (config.required && session && config.roles.length && !config.roles.includes(session.actor_role)) {

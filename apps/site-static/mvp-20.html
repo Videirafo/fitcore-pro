@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-20 do FitCore Pro: hardening de autenticação, rate limit, sessões e logs." />
+  <title>MVP-20 Segurança de Login | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-17-nav-rbac.css?v=fitcore-mvp17-1" />
+  <link rel="stylesheet" href="/mvp-20.css?v=fitcore-mvp20-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav><a href="/mvp-19.html">Login real</a><a href="/mvp-20.html">Segurança</a><a href="/mvp-13.html">Operação</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-20 · hardening</p>
+        <h1>Entrada real protegida para operação.</h1>
+        <p>Login demo bloqueado em produção, rate limit por hash técnico, sessões antigas revogáveis, política de senha/código e logs de segurança por tenant.</p>
+      </div>
+      <aside class="card" id="status-card"><strong>Verificando segurança</strong><span>Aguardando API.</span></aside>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Entrada</p>
+        <h2>Acessar sistema</h2>
+        <p>Use login por credencial. Botões demo não são a entrada padrão em produção.</p>
+        <a class="button" href="/mvp-19.html">Entrar com senha/código</a>
+        <a class="button secondary" href="/mvp-01.html">Criar aluno e treino</a>
+      </article>
+      <article class="panel">
+        <p class="kicker">Sessões</p>
+        <h2>Revogação e limpeza</h2>
+        <p>Gestor pode limpar sessões expiradas e revisar eventos de autenticação.</p>
+        <button id="cleanup" type="button">Limpar sessões expiradas</button>
+        <div id="cleanup-output" class="output"></div>
+      </article>
+    </section>
+
+    <section class="grid bottom">
+      <article class="panel">
+        <p class="kicker">Rate limit</p>
+        <h2>Política ativa</h2>
+        <pre id="policy-output">Carregando política...</pre>
+      </article>
+      <article class="panel">
+        <p class="kicker">Logs</p>
+        <h2>Eventos recentes do tenant</h2>
+        <div id="logs" class="list">Faça login como gestor para ver logs.</div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/mvp-17-nav-rbac.js?v=fitcore-mvp17-1"></script>
+  <script src="/mvp-20.js?v=fitcore-mvp20-1"></script>
+</body>
+</html>
