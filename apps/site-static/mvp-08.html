@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-08 do FitCore Pro: adapter de persistência para alternar entre JSON local e PostgreSQL com fallback seguro." />
+  <title>MVP-08 Persistência | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-08.css?v=fitcore-mvp08-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span>F</span>
+      <strong>FitCore Pro</strong>
+    </a>
+    <nav aria-label="Navegação MVP">
+      <a href="/">Início</a>
+      <a href="/mvp-01.html">Aluno + treino</a>
+      <a href="/mvp-03.html">Professor</a>
+      <a href="/mvp-04.html">Aluno</a>
+      <a href="/mvp-06.html">Mídia</a>
+      <a href="/mvp-07.html">Banco</a>
+      <a class="active" href="/mvp-08.html">Persistência</a>
+      <a href="/legal/privacy">LGPD</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-08 · Adapter de persistência</p>
+        <h1>A API ganha caminho controlado entre JSON local e PostgreSQL.</h1>
+        <p>
+          Esta fase prepara a transição real do FitCore para SaaS: os MVPs continuam funcionando com fallback seguro,
+          mas a arquitetura passa a ter um contrato claro para trocar o armazenamento sem quebrar a interface.
+        </p>
+      </div>
+      <aside class="hero-card">
+        <span>Modo atual</span>
+        <strong id="current-mode">verificando</strong>
+        <small id="current-reason">Aguardando leitura da API.</small>
+      </aside>
+    </section>
+
+    <section class="metrics" aria-label="Resumo MVP-08">
+      <article><span>Adapter</span><strong>1</strong><small>contrato único de persistência</small></article>
+      <article><span>Fallback</span><strong id="fallback-status">--</strong><small>JSON local preservado</small></article>
+      <article><span>Banco</span><strong id="database-status">--</strong><small>PostgreSQL quando configurado</small></article>
+      <article><span>LGPD</span><strong>ativo</strong><small>auditoria por ação sensível</small></article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel wide">
+        <p class="kicker">Contrato técnico</p>
+        <h2>API → PersistenceAdapter → Store correto</h2>
+        <div class="flow">
+          <div><strong>API pública</strong><span>mantém os endpoints atuais.</span></div>
+          <div><strong>PersistenceAdapter</strong><span>decide o modo de armazenamento.</span></div>
+          <div><strong>JsonFileStore</strong><span>fallback seguro enquanto o banco não estiver ativo.</span></div>
+          <div><strong>PostgresStore</strong><span>persistência real multi-tenant após migration validada.</span></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">Regra de segurança</p>
+        <h2>Sem quebra de fluxo</h2>
+        <ul>
+          <li>Sem `FITCORE_DATABASE_URL`: continua em JSON local.</li>
+          <li>Com `FITCORE_DATABASE_URL`: Postgres entra somente após verificação.</li>
+          <li>A UI não mostra tabela, credencial nem detalhe interno.</li>
+          <li>Cada ação sensível deve registrar auditoria mínima.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="workspace cards-grid">
+      <article class="panel card"><span>Alunos</span><strong>students</strong><p>Cadastro mínimo, tenant_id, status e origem do registro.</p></article>
+      <article class="panel card"><span>Treinos</span><strong>workouts</strong><p>Rascunho, revisão, aprovação, dias e exercícios prescritos.</p></article>
+      <article class="panel card"><span>Professor</span><strong>reviews</strong><p>Revisões, ajustes, aprovação e histórico por aluno.</p></article>
+      <article class="panel card"><span>Aluno</span><strong>executions</strong><p>Início do treino, marcação de exercício, conclusão e histórico pessoal.</p></article>
+      <article class="panel card"><span>LGPD</span><strong>audit_events</strong><p>Registro mínimo por ação, papel, status e recurso afetado.</p></article>
+      <article class="panel card"><span>SaaS</span><strong>tenant_id</strong><p>Separação inicial para evoluir em direção a multi-tenant real.</p></article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel wide">
+        <p class="kicker">Validação em produção</p>
+        <h2>Status operacional</h2>
+        <div id="runtime-status" class="runtime-grid">
+          <div><strong>API</strong><span>verificando...</span></div>
+          <div><strong>MVP-01</strong><span>verificando...</span></div>
+          <div><strong>MVP-02</strong><span>verificando...</span></div>
+          <div><strong>MVP-03</strong><span>verificando...</span></div>
+        </div>
+      </article>
+
+      <article class="panel command-panel">
+        <p class="kicker">Comando</p>
+        <h2>Verificar MVP-08</h2>
+        <p>Depois do pull na VPS, rode a verificação antes de considerar a etapa concluída.</p>
+        <pre>cd /opt/fitcore-pro
+chmod +x infra/scripts/verify-mvp-08-adapter.sh
+bash infra/scripts/verify-mvp-08-adapter.sh
+bash infra/scripts/switch-fitcore-to-own-ui.sh</pre>
+      </article>
+    </section>
+  </main>
+
+  <script src="/mvp-08.js?v=fitcore-mvp08-1"></script>
+</body>
+</html>
