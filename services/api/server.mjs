@@ -24,6 +24,7 @@ import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
 import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
+import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
 import { createGuidedSetupManager } from "./security/guided-setup.mjs";
 
 const root = resolve(process.cwd());
@@ -58,6 +59,7 @@ const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
 const workoutExecutionManager = createWorkoutExecutionManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
+const agentAssistantManager = createAgentAssistantManager(process.env);
 const guidedSetupManager = createGuidedSetupManager(process.env);
 let currentAccessContext = null;
 
@@ -1099,6 +1101,7 @@ const server = createServer(async (req, res) => {
           cross_tenant_block: true,
         },
         mvp_26: { student_evolution: studentEvolutionManager.enabled, history: true, average_effort: true, weekly_frequency: true, professor_dashboard: true },
+        mvp_32: { agent_assistant: agentAssistantManager.enabled, exercise_media_cards: true, premium_workspace: true, tenant_scoped: true },
         mvp_31: { guided_setup: guidedSetupManager.enabled, progress_saved_by_tenant: true, next_route: "/setup" },
         mvp_24: {
           workout_prescription: workoutPrescriptionManager.enabled,
@@ -1546,6 +1549,19 @@ const server = createServer(async (req, res) => {
       const result = guidedSetupManager.recordEvent(accessContext, input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/mvp-32/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, agentAssistantManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-32/agent") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = agentAssistantManager.ask(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
     }
 
     if (url.pathname === "/api/mvp-26/status") {

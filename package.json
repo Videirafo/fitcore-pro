@@ -68,6 +68,9 @@
     "mvp30:verify": "bash infra/scripts/verify-mvp-30-guided-operational-flow.sh",
     "mvp31:apply": "bash infra/scripts/apply-mvp-31-guided-setup.sh",
     "mvp31:check": "node tools/check-mvp-31-guided-setup.mjs",
-    "mvp31:verify": "bash infra/scripts/verify-mvp-31-guided-setup.sh"
+    "mvp31:verify": "bash infra/scripts/verify-mvp-31-guided-setup.sh",
+    "mvp32:apply": "bash infra/scripts/apply-mvp-32-premium-agent-workspace.sh",
+    "mvp32:check": "node tools/check-mvp-32-premium-agent-workspace.mjs",
+    "mvp32:verify": "bash infra/scripts/verify-mvp-32-premium-agent-workspace.sh"
   }
 }
