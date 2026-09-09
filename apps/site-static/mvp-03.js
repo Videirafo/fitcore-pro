@@ -100,6 +100,40 @@ function statusLabel(status) {
   return map[status] || status || "não informado";
 }
 
+function mediaForExercise(exercicio) {
+  if (typeof window.fitcoreExerciseMedia === "function") {
+    return window.fitcoreExerciseMedia(exercicio);
+  }
+
+  return {
+    objetivo: "execução técnica do movimento",
+    serve_para: "treinar o grupo muscular indicado, reforçar técnica e apoiar a progressão do aluno.",
+    como_executar: ["Executar com controle.", "Preservar postura e amplitude segura."],
+    cuidado: "Ajustar carga conforme nível e restrições do aluno.",
+  };
+}
+
+function exerciseLearningHtml(exercicio) {
+  const media = mediaForExercise(exercicio);
+  const gif = media?.gif || "";
+  const nome = exercicio?.nome || "Exercício";
+  const musculo = exercicio?.musculo_principal || exercicio?.foco || "não informado";
+
+  return `
+    <div class="exercise-learning">
+      <div class="exercise-gif ${gif ? "" : "media-missing"}">
+        ${gif ? `<img src="${escapeHtml(gif)}" alt="GIF demonstrando ${escapeHtml(nome)}" loading="lazy" onerror="this.closest('.exercise-gif').classList.add('media-missing'); this.remove();" />` : ""}
+        <span>GIF pendente</span>
+      </div>
+      <div class="exercise-purpose-card">
+        <b>Para que serve</b>
+        <p>${escapeHtml(media.serve_para)}</p>
+        <small>Principal: ${escapeHtml(musculo)}</small>
+      </div>
+    </div>
+  `;
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     cache: "no-store",
@@ -169,10 +203,13 @@ function renderReview(record) {
           <p>${escapeHtml(bloco.aquecimento || "")}</p>
           <div class="exercise-list">
             ${(bloco.exercicios || []).map((exercicio, exercicioIndex) => `
-              <div class="exercise-row">
-                <div>
-                  <strong>${escapeHtml(exercicio.nome)}</strong>
-                  <span>${escapeHtml(exercicio.parte_do_corpo)} · ${escapeHtml(exercicio.equipamento)} · foco: ${escapeHtml(exercicio.foco)}</span>
+              <div class="exercise-row exercise-row-learning">
+                <div class="exercise-review-body">
+                  <div class="exercise-title-block">
+                    <strong>${escapeHtml(exercicio.nome)}</strong>
+                    <span>${escapeHtml(exercicio.parte_do_corpo)} · ${escapeHtml(exercicio.equipamento)} · foco: ${escapeHtml(exercicio.foco)}</span>
+                  </div>
+                  ${exerciseLearningHtml(exercicio)}
                 </div>
                 <div class="exercise-tools">
                   <input data-search="${diaIndex}-${exercicioIndex}" placeholder="Ex: remada, puxada, peito, agachamento" />
