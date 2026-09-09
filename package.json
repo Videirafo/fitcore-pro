@@ -11,6 +11,8 @@
     "exercises:normalize": "node tools/normalize-exercises.mjs",
     "mvp08:verify": "bash infra/scripts/verify-mvp-08-adapter.sh",
     "mvp09:apply": "bash infra/scripts/apply-mvp-09-adapter.sh",
-    "mvp09:verify": "bash infra/scripts/verify-mvp-09-adapter.sh"
+    "mvp09:verify": "bash infra/scripts/verify-mvp-09-adapter.sh",
+    "mvp10:apply": "bash infra/scripts/apply-mvp-10-postgres-store.sh",
+    "mvp10:verify": "bash infra/scripts/verify-mvp-10-postgres-store.sh"
   }
 }
