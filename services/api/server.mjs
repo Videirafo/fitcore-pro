@@ -20,6 +20,8 @@ import { createCredentialAuthManager } from "./security/credential-auth.mjs";
 import { createAuthHardeningManager } from "./security/auth-hardening.mjs";
 import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs";
 import { createTenantUserManagement } from "./security/tenant-user-management.mjs";
+import { createStudentManagement } from "./security/student-management.mjs";
+import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -49,6 +51,8 @@ const credentialAuthManager = createCredentialAuthManager(process.env, sessionMa
 const authHardeningManager = createAuthHardeningManager(process.env, sessionManager);
 const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessionManager);
 const tenantUserManagement = createTenantUserManagement(process.env, sessionManager);
+const studentManagement = createStudentManagement(process.env);
+const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1082,6 +1086,19 @@ const server = createServer(async (req, res) => {
           cross_tenant_block: true,
           next_ready_frontend: true,
         },
+        mvp_23: {
+          student_management: studentManagement.enabled,
+          tenant_scoped: true,
+          student_entity_complete: true,
+          cross_tenant_block: true,
+        },
+        mvp_24: {
+          workout_prescription: workoutPrescriptionManager.enabled,
+          student_bound: true,
+          professor_review_required: true,
+          aluno_own_workouts_only: true,
+          tenant_scoped: true,
+        },
         mvp_21: {
           tenant_onboarding: tenantOnboardingManager.enabled,
           demo_is_no_longer_only_flow: true,
@@ -1363,6 +1380,88 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-22/cross-tenant-check") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = tenantUserManagement.crossTenantCheck(accessContext, url);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+
+    if (url.pathname === "/api/mvp-23/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, studentManagement.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-23/students") {
+      if (req.method === "GET") {
+        const result = studentManagement.listStudents(accessContext, url);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = studentManagement.createStudent(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    const mvp23StatusMatch = url.pathname.match(/^\/api\/mvp-23\/students\/([^/]+)\/status$/);
+    if (mvp23StatusMatch) {
+      if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = studentManagement.updateStudentStatus(accessContext, decodeURIComponent(mvp23StatusMatch[1]), input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp23StudentMatch = url.pathname.match(/^\/api\/mvp-23\/students\/([^/]+)$/);
+    if (mvp23StudentMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = studentManagement.getStudent(accessContext, decodeURIComponent(mvp23StudentMatch[1]));
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-24/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, workoutPrescriptionManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-24/prescriptions") {
+      if (req.method === "GET") {
+        const result = workoutPrescriptionManager.listPrescriptions(accessContext, url);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = workoutPrescriptionManager.createPrescription(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    if (url.pathname === "/api/mvp-24/my-workouts") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = workoutPrescriptionManager.listPrescriptions(accessContext, url, true);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp24ReviewMatch = url.pathname.match(/^\/api\/mvp-24\/prescriptions\/([^/]+)\/review$/);
+    if (mvp24ReviewMatch) {
+      if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutPrescriptionManager.reviewPrescription(accessContext, decodeURIComponent(mvp24ReviewMatch[1]), input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp24PrescriptionMatch = url.pathname.match(/^\/api\/mvp-24\/prescriptions\/([^/]+)$/);
+    if (mvp24PrescriptionMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = workoutPrescriptionManager.getPrescription(accessContext, decodeURIComponent(mvp24PrescriptionMatch[1]));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-24 do FitCore Pro: prescrição real de treino vinculada ao aluno." />
+  <title>MVP-24 Prescrição de Treino | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-17-nav-rbac.css?v=fitcore-mvp17-1" />
+  <link rel="stylesheet" href="/mvp-24.css?v=fitcore-mvp24-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav><a href="/mvp-21.html">Criar negócio</a><a href="/mvp-22.html">Equipe</a><a href="/mvp-23.html">Alunos</a><a href="/mvp-24.html">Prescrição</a><a href="/mvp-13.html">Operação</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-24 · prescrição real</p>
+        <h1>Treino nasce do aluno real e passa por revisão do professor.</h1>
+        <p>Gestor e professor prescrevem usando alunos reais do tenant. O aluno vê apenas o próprio treino. Status, revisão e auditoria ficam vinculados ao tenant.</p>
+      </div>
+      <aside class="card" id="session-card"><strong>Verificando sessão</strong><span>Aguardando API.</span></aside>
+    </section>
+
+    <section class="grid">
+      <form id="prescription-form" class="panel">
+        <p class="kicker">Nova prescrição</p>
+        <h2>Prescrever treino</h2>
+        <label>Aluno <select name="student_id" id="student-select" required><option value="">Carregando alunos...</option></select></label>
+        <label>Nome do treino <input name="nome_treino" required maxlength="120" value="Treino base semanal" /></label>
+        <label>Objetivo <input name="objetivo" maxlength="100" value="força e condicionamento" /></label>
+        <label>Modalidade <input name="modalidade" maxlength="80" value="academia" /></label>
+        <label>Foco <input name="foco" maxlength="100" value="corpo inteiro" /></label>
+        <label>Dias por semana <input name="dias_semana" type="number" min="1" max="7" value="3" /></label>
+        <label>Exercícios <textarea name="exercicios" rows="5">Agachamento técnico
+Supino com halteres
+Remada guiada
+Prancha</textarea></label>
+        <label>Orientações <textarea name="orientacoes" rows="3">Executar com controle, registrar esforço e avisar dor ou desconforto.</textarea></label>
+        <button type="submit">Criar prescrição</button>
+        <div id="create-output" class="output"></div>
+      </form>
+
+      <article class="panel">
+        <p class="kicker">Lista</p>
+        <h2>Treinos do tenant</h2>
+        <div class="filters"><input id="search" placeholder="buscar aluno ou objetivo" /><select id="status-filter"><option value="">Todos</option><option value="em_revisao">Em revisão</option><option value="aprovado">Aprovados</option><option value="ajustes_solicitados">Ajustes</option></select><button id="refresh" type="button">Atualizar</button></div>
+        <div id="prescriptions-output" class="list">Faça login.</div>
+      </article>
+    </section>
+
+    <section class="grid bottom">
+      <article class="panel"><p class="kicker">Detalhe</p><h2>Prescrição selecionada</h2><div id="detail-output" class="output">Selecione um treino.</div></article>
+      <article class="panel"><p class="kicker">Aluno</p><h2>Meu treino</h2><button id="load-my-workouts" type="button">Carregar meus treinos</button><div id="my-output" class="list">Disponível para papel aluno.</div></article>
+    </section>
+  </main>
+
+  <script src="/mvp-17-nav-rbac.js?v=fitcore-mvp17-1"></script>
+  <script src="/mvp-24.js?v=fitcore-mvp24-1"></script>
+</body>
+</html>

@@ -4,6 +4,8 @@ const links = [
   ["/", "Início"],
   ["/mvp-21", "Criar negócio"],
   ["/mvp-22", "Equipe"],
+  ["/mvp-23", "Alunos"],
+  ["/mvp-24", "Prescrição"],
   ["/mvp-19.html", "Login"],
   ["/mvp-13.html", "Operação"],
 ];
