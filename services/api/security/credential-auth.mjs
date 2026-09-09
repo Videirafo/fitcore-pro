@@ -216,10 +216,11 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     return { ok: true, mvp: "MVP-19 Credential Login", credential_set: true, user: safeUser(user), audit: { persisted: true } };
   }
 
-  function findCredentialUser(loginIdentifier) {
+  function findCredentialUser(loginIdentifier, candidateTenantSlug = tenantSlug) {
     const identifier = clean(loginIdentifier, "", 120).toLowerCase();
+    const lookupTenantSlug = clean(candidateTenantSlug || tenantSlug, tenantSlug, 80);
     const raw = runSql(env, `
-      WITH ${tenantCte(tenantSlug)}
+      WITH ${tenantCte(lookupTenantSlug)}
       SELECT jsonb_build_object(
         'id', u.id,
         'tenant_id', u.tenant_id,
@@ -245,12 +246,13 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "credential_login_disabled", mensagem: "MVP-19 não está ativo." } } };
     const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
     const secret = input.secret || input.senha || input.codigo_acesso || input.access_code || "";
-    const user = findCredentialUser(loginIdentifier);
+    const lookupTenantSlug = clean(input.tenant_slug || input.tenant || tenantSlug, tenantSlug, 80);
+    const user = findCredentialUser(loginIdentifier, lookupTenantSlug);
     if (!user || !user.credential_hash || user.credential_revoked_at || !verifySecret(user.credential_hash, secret)) {
       if (user) recordSystemAudit(user, "credential_login_failed", `identifier=${loginIdentifier}`, "erro");
       return { guard: { allowed: false, statusCode: 401, response: { erro: "credencial_invalida", mensagem: "Identificador ou senha/código inválido." } } };
     }
-    runSql(env, `WITH ${tenantCte(tenantSlug)} UPDATE fitcore_users SET last_login_at = now(), atualizado_em = now() FROM tenant, scope WHERE fitcore_users.id = ${sqlText(user.id)}::uuid AND fitcore_users.tenant_id = tenant.id RETURNING fitcore_users.id;`);
+    runSql(env, `WITH ${tenantCte(lookupTenantSlug)} UPDATE fitcore_users SET last_login_at = now(), atualizado_em = now() FROM tenant, scope WHERE fitcore_users.id = ${sqlText(user.id)}::uuid AND fitcore_users.tenant_id = tenant.id RETURNING fitcore_users.id;`);
     recordSystemAudit(user, "credential_login_ok", `identifier=${loginIdentifier}`, "ok");
     const created = sessionManager.createSessionForUserRecord(user, { source: "mvp19_credential" });
     return { ok: true, mvp: "MVP-19 Credential Login", login: true, credential_login: true, session: created.session, cookie: created.cookie, user: safeUser(user) };
@@ -281,7 +283,8 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
   function requestRecovery(input = {}) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "credential_login_disabled" } } };
     const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
-    const user = findCredentialUser(loginIdentifier);
+    const lookupTenantSlug = clean(input.tenant_slug || input.tenant || tenantSlug, tenantSlug, 80);
+    const user = findCredentialUser(loginIdentifier, lookupTenantSlug);
     if (!user) {
       return { ok: true, mvp: "MVP-19 Credential Login", recovery_requested: true, delivered: false, message: "Se o usuário existir, um token de recuperação será emitido pelo canal configurado." };
     }
@@ -304,7 +307,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
       recovery_requested: true,
       delivered: "demo_response",
       token,
-      recovery_link: `${publicUrl}/mvp-19.html?recovery=${encodeURIComponent(token)}`,
+      recovery_link: `${publicUrl}/mvp-19.html?tenant_slug=${encodeURIComponent(lookupTenantSlug)}&recovery=${encodeURIComponent(token)}`,
       recovery: { id: recovery?.id, expires_at: recovery?.expires_at },
     };
   }
@@ -315,10 +318,11 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     const secret = input.new_secret || input.senha || input.codigo_acesso || input.secret || "";
     const kind = clean(input.credential_kind || "password", "password", 40) === "access_code" ? "access_code" : "password";
     validateSecretPolicy(env, secret, "", kind);
+    const lookupTenantSlug = clean(input.tenant_slug || input.tenant || tenantSlug, tenantSlug, 80);
     const tokenHash = sha256(token);
     const credentialHash = hashSecret(secret);
     const raw = runSql(env, `
-      WITH ${tenantCte(tenantSlug)}, target AS (
+      WITH ${tenantCte(lookupTenantSlug)}, target AS (
         SELECT r.id AS recovery_id, u.id, u.tenant_id, u.nome, u.papel
         FROM fitcore_user_recovery_tokens r
         JOIN fitcore_users u ON u.id = r.user_id AND u.tenant_id = r.tenant_id

@@ -32,6 +32,9 @@
     "mvp19:rollback": "bash infra/scripts/rollback-mvp-19-credential-login.sh",
     "mvp20:apply": "bash infra/scripts/apply-mvp-20-auth-hardening.sh",
     "mvp20:verify": "bash infra/scripts/verify-mvp-20-auth-hardening.sh",
-    "mvp20:rollback": "bash infra/scripts/rollback-mvp-20-auth-hardening.sh"
+    "mvp20:rollback": "bash infra/scripts/rollback-mvp-20-auth-hardening.sh",
+    "mvp21:apply": "bash infra/scripts/apply-mvp-21-tenant-onboarding.sh",
+    "mvp21:verify": "bash infra/scripts/verify-mvp-21-tenant-onboarding.sh",
+    "mvp21:rollback": "bash infra/scripts/rollback-mvp-21-tenant-onboarding.sh"
   }
 }

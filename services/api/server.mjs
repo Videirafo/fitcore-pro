@@ -18,6 +18,7 @@ import { createRoleNavigation, recordNavigationAudit } from "./security/navigati
 import { createInviteUserManager } from "./security/invite-users.mjs";
 import { createCredentialAuthManager } from "./security/credential-auth.mjs";
 import { createAuthHardeningManager } from "./security/auth-hardening.mjs";
+import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -45,6 +46,8 @@ const sessionManager = createSignedSessionManager(process.env);
 const inviteUserManager = createInviteUserManager(process.env, sessionManager);
 const credentialAuthManager = createCredentialAuthManager(process.env, sessionManager);
 const authHardeningManager = createAuthHardeningManager(process.env, sessionManager);
+const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessionManager);
+let currentAccessContext = null;
 
 let catalogCache = null;
 let catalogLoadedAt = null;
@@ -463,27 +466,27 @@ function writeJsonArray(path, records, mode = 0o640) {
 }
 
 function readMvpRecords() {
-  return persistenceAdapter.readArray("studentsAndWorkouts");
+  return persistenceAdapter.readArray("studentsAndWorkouts", currentAccessContext);
 }
 
 function writeMvpRecords(records) {
-  persistenceAdapter.writeArray("studentsAndWorkouts", records);
+  persistenceAdapter.writeArray("studentsAndWorkouts", records, currentAccessContext);
 }
 
 function readCheckins() {
-  return persistenceAdapter.readArray("checkins");
+  return persistenceAdapter.readArray("checkins", currentAccessContext);
 }
 
 function writeCheckins(records) {
-  persistenceAdapter.writeArray("checkins", records);
+  persistenceAdapter.writeArray("checkins", records, currentAccessContext);
 }
 
 function readProfessorReviews() {
-  return persistenceAdapter.readArray("professorReviews");
+  return persistenceAdapter.readArray("professorReviews", currentAccessContext);
 }
 
 function writeProfessorReviews(records) {
-  persistenceAdapter.writeArray("professorReviews", records);
+  persistenceAdapter.writeArray("professorReviews", records, currentAccessContext);
 }
 
 function buildWorkoutBlocks({ objetivo, foco, modalidade, diasSemana }) {
@@ -1003,6 +1006,7 @@ const server = createServer(async (req, res) => {
     const softAccessContext = createAccessContext(req, process.env);
     const signedAccessContext = sessionManager.resolveAccessContext(req);
     const accessContext = signedAccessContext || softAccessContext;
+    currentAccessContext = accessContext;
     const hardeningDecision = authHardeningManager.checkRequest(req, url, accessContext);
     if (!hardeningDecision.allowed) return sendJson(res, hardeningDecision.statusCode, hardeningDecision.response);
     const routeDecision = sessionManager.authorizeRoute(accessContext, url.pathname, req.method);
@@ -1068,6 +1072,12 @@ const server = createServer(async (req, res) => {
           demo_login_enabled: authHardeningManager.demoLoginEnabled,
           rate_limit: "ip_hash+user_agent_hash+acao",
           logs: "fitcore_security_events",
+        },
+        mvp_21: {
+          tenant_onboarding: tenantOnboardingManager.enabled,
+          demo_is_no_longer_only_flow: true,
+          current_tenant_slug: accessContext.tenant_slug,
+          actor_role: accessContext.actor_role,
         },
         mvp_18: {
           user_invites: true,
@@ -1275,6 +1285,26 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-20/security/cleanup-sessions") {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
       const result = authHardeningManager.cleanupExpiredSessions(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-21/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, tenantOnboardingManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-21/onboarding") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = tenantOnboardingManager.createTenant(input, req);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, onboarding_completed: true, demo_is_no_longer_only_flow: true, tenant: result.tenant, owner: result.owner, first_professor: result.first_professor, first_student_user: result.first_student_user, first_student: result.first_student, login: result.login, session: result.session }, { "set-cookie": result.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-21/tenant") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = tenantOnboardingManager.currentTenant(accessContext);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

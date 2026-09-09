@@ -11,7 +11,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
-    <nav><a href="/mvp-18.html">Usuários</a><a href="/mvp-19.html">Login real</a></nav>
+    <nav><a href="/mvp-21.html">Criar negócio</a><a href="/mvp-18.html">Usuários</a><a href="/mvp-19.html">Login real</a></nav>
   </header>
 
   <main>
@@ -39,6 +39,7 @@
       <form id="login-form" class="panel">
         <p class="kicker">Entrada real</p>
         <h2>Entrar sem botão demo</h2>
+        <label>Tenant <input name="tenant_slug" maxlength="80" value="demo" placeholder="slug do negócio" /></label>
         <label>Identificador <input name="login_identifier" required minlength="4" maxlength="120" /></label>
         <label>Senha ou código <input name="secret" required minlength="6" maxlength="120" type="password" /></label>
         <button type="submit">Entrar com credencial</button>
@@ -50,6 +51,8 @@
       <form id="recovery-request-form" class="panel">
         <p class="kicker">Recuperação</p>
         <h2>Solicitar token de recuperação</h2>
+        <label>Tenant <input name="tenant_slug" maxlength="80" value="demo" placeholder="slug do negócio" /></label>
+        <label>Tenant <input name="tenant_slug" maxlength="80" value="demo" placeholder="slug do negócio" /></label>
         <label>Identificador <input name="login_identifier" required minlength="4" maxlength="120" /></label>
         <button type="submit">Gerar recuperação controlada</button>
         <div class="output" id="recovery-request-output"></div>
@@ -58,6 +61,7 @@
       <form id="recovery-complete-form" class="panel">
         <p class="kicker">Reset</p>
         <h2>Trocar credencial por token</h2>
+        <label>Tenant <input name="tenant_slug" maxlength="80" value="demo" placeholder="slug do negócio" /></label>
         <label>Token <input name="token" id="recovery-token" required maxlength="500" /></label>
         <label>Nova senha/código <input name="new_secret" required minlength="6" maxlength="120" type="password" /></label>
         <button type="submit">Concluir recuperação</button>

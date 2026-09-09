@@ -167,7 +167,7 @@ export function createSignedSessionManager(env = process.env) {
       session: {
         id: sid,
         expires_at: new Date(exp * 1000).toISOString(),
-        tenant_slug: tenantSlug,
+        tenant_slug: clean(user.tenant_slug || meta.tenant_slug || tenantSlug, tenantSlug, 80),
         tenant_id: tenantId,
         user_id: userId,
         actor_name: actorName,
@@ -231,7 +231,6 @@ export function createSignedSessionManager(env = process.env) {
           AND s.revoked_at IS NULL
           AND s.expires_at > now()
           AND u.ativo = true
-          AND t.slug = ${sqlText(tenantSlug)}
         LIMIT 1;
       `);
       if (!raw) return null;
@@ -364,7 +363,7 @@ export function createSignedSessionManager(env = process.env) {
         expires_at: accessContext.expires_at,
         login_source: accessContext.login_source || "signed_session",
       } : null,
-      protected_routes: ["/api/mvp-01/aluno-treino", "/api/mvp-02/checkins", "/api/mvp-03/professor/*", "/api/mvp-17/navigation"],
+      protected_routes: ["/api/mvp-01/aluno-treino", "/api/mvp-02/checkins", "/api/mvp-03/professor/*", "/api/mvp-17/navigation", "/api/mvp-21/tenant"],
       rollback: "bash infra/scripts/rollback-mvp-15-soft-auth.sh",
     };
   }

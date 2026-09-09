@@ -82,6 +82,7 @@ function criticalAuthAction(url, req) {
     "/api/mvp-19/recovery/complete",
     "/api/mvp-19/credentials/set",
     "/api/mvp-19/credentials/revoke",
+    "/api/mvp-21/onboarding",
   ]);
   if (method === "POST" && protectedPaths.has(pathname)) return `${method} ${pathname}`;
   return null;

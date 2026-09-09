@@ -12,8 +12,11 @@ const els = {
   recoveryToken: document.querySelector("#recovery-token"),
 };
 
-const recoveryFromUrl = new URLSearchParams(location.search).get("recovery");
+const params = new URLSearchParams(location.search);
+const recoveryFromUrl = params.get("recovery");
+const tenantFromUrl = params.get("tenant_slug") || params.get("tenant") || "demo";
 if (recoveryFromUrl && els.recoveryToken) els.recoveryToken.value = recoveryFromUrl;
+document.querySelectorAll('[name="tenant_slug"]').forEach((input) => { input.value = tenantFromUrl; });
 
 function safe(value) {
   return String(value ?? "")

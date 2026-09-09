@@ -140,16 +140,24 @@ export function createServerPersistenceAdapter({
   return {
     name: "PersistenceAdapter",
     descriptor,
-    readArray(resource) {
-      assertResource(resource);
-      return activeStore.readArray(resource);
+    storeForScope(scope = {}) {
+      if (activeStore.name === "PostgresStore" && scope?.tenant_id) {
+        return new PostgresStore({ env: { ...env, FITCORE_TENANT_ID: scope.tenant_id } });
+      }
+      return activeStore;
     },
-    writeArray(resource, records) {
+    readArray(resource, scope = null) {
+      assertResource(resource);
+      const scopedStore = this.storeForScope(scope);
+      return scopedStore.readArray(resource);
+    },
+    writeArray(resource, records, scope = null) {
       assertResource(resource);
       if (!Array.isArray(records)) {
         throw new Error(`Persistência esperava array para ${resource}.`);
       }
-      activeStore.writeArray(resource, records);
+      const scopedStore = this.storeForScope(scope);
+      scopedStore.writeArray(resource, records);
     },
     getPath(resource) {
       if (activeStore.getPath) return activeStore.getPath(resource);
