@@ -16,6 +16,7 @@ import { createAccessContext, createAccessHealth } from "./security/access-conte
 import { createSignedSessionManager } from "./security/signed-session.mjs";
 import { createRoleNavigation, recordNavigationAudit } from "./security/navigation-rbac.mjs";
 import { createInviteUserManager } from "./security/invite-users.mjs";
+import { createCredentialAuthManager } from "./security/credential-auth.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -41,6 +42,7 @@ const persistenceAdapter = createServerPersistenceAdapter({
 
 const sessionManager = createSignedSessionManager(process.env);
 const inviteUserManager = createInviteUserManager(process.env, sessionManager);
+const credentialAuthManager = createCredentialAuthManager(process.env, sessionManager);
 
 let catalogCache = null;
 let catalogLoadedAt = null;
@@ -1050,6 +1052,13 @@ const server = createServer(async (req, res) => {
           headers_trusted: Boolean(accessContext.headers_trusted),
           audit: "navigation/menu_resolvido",
         },
+        mvp_19: {
+          credential_login: credentialAuthManager.enabled,
+          invite_not_only_entry: true,
+          demo_replacement_ready: true,
+          recovery_and_revocation: true,
+          audit: "auth/credential_events",
+        },
         mvp_18: {
           user_invites: true,
           actor_role: accessContext.actor_role,
@@ -1187,6 +1196,58 @@ const server = createServer(async (req, res) => {
       const result = inviteUserManager.acceptInvite(input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 201, { ok: true, mvp: result.mvp, accepted: true, invite: result.invite, user: result.user, session: result.session }, { "set-cookie": result.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-19/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, credentialAuthManager.publicHealth(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-19/credentials/me") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = credentialAuthManager.currentProfile(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-19/credentials/set") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = credentialAuthManager.setCredential(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/mvp-19/login") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = credentialAuthManager.credentialLogin(input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, login: true, credential_login: true, user: result.user, session: result.session }, { "set-cookie": result.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-19/credentials/revoke") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = credentialAuthManager.revokeCredential(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-19/recovery/request") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = credentialAuthManager.requestRecovery(input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/mvp-19/recovery/complete") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = credentialAuthManager.completeRecovery(input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, recovery_completed: true, user: result.user, session: result.session }, { "set-cookie": result.cookie });
     }
 
     if (url.pathname === "/api/exercises") {

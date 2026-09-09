@@ -210,7 +210,8 @@ export function createSignedSessionManager(env = process.env) {
           'user_id', u.id,
           'actor_name', u.nome,
           'actor_role', u.papel,
-          'expires_at', s.expires_at
+          'expires_at', s.expires_at,
+          'login_source', s.ip_hash
         )::text
         FROM fitcore_signed_sessions s
         JOIN fitcore_users u ON u.id = s.user_id AND u.tenant_id = s.tenant_id
@@ -244,6 +245,7 @@ export function createSignedSessionManager(env = process.env) {
         capabilities: FITCORE_ROLE_MATRIX[role] || [],
         login_real: true,
         expires_at: session.expires_at,
+        login_source: clean(session.login_source || "signed_session", "signed_session", 80),
         policy: {
           dados_minimos: true,
           tenant_required: true,
@@ -327,6 +329,7 @@ export function createSignedSessionManager(env = process.env) {
         role_from_db: true,
         headers_trusted: false,
         expires_at: accessContext.expires_at,
+        login_source: accessContext.login_source || "signed_session",
       } : null,
       protected_routes: ["/api/mvp-01/aluno-treino", "/api/mvp-02/checkins", "/api/mvp-03/professor/*", "/api/mvp-17/navigation"],
       rollback: "bash infra/scripts/rollback-mvp-15-soft-auth.sh",

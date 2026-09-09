@@ -26,6 +26,9 @@
     "mvp17:verify": "bash infra/scripts/verify-mvp-17-role-navigation.sh",
     "mvp18:apply": "bash infra/scripts/apply-mvp-18-user-invites.sh",
     "mvp18:verify": "bash infra/scripts/verify-mvp-18-user-invites.sh",
-    "mvp18:rollback": "bash infra/scripts/rollback-mvp-18-soft-login.sh"
+    "mvp18:rollback": "bash infra/scripts/rollback-mvp-18-soft-login.sh",
+    "mvp19:apply": "bash infra/scripts/apply-mvp-19-credential-login.sh",
+    "mvp19:verify": "bash infra/scripts/verify-mvp-19-credential-login.sh",
+    "mvp19:rollback": "bash infra/scripts/rollback-mvp-19-credential-login.sh"
   }
 }

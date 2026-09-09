@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-19 do FitCore Pro: login com credencial mínima, recuperação e revogação." />
+  <title>MVP-19 Login por Credencial | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-17-nav-rbac.css?v=fitcore-mvp17-1" />
+  <link rel="stylesheet" href="/mvp-19.css?v=fitcore-mvp19-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav><a href="/mvp-18.html">Usuários</a><a href="/mvp-19.html">Login real</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-19 · credencial mínima</p>
+        <h1>Login por senha ou código de acesso.</h1>
+        <p>O convite deixa de ser a única entrada. O usuário define credencial, entra sem botão demo, pode recuperar acesso e pode revogar a própria credencial.</p>
+      </div>
+      <aside class="card" id="session-card"><strong>Verificando sessão</strong><span>Aguardando API.</span></aside>
+    </section>
+
+    <section class="grid">
+      <form id="credential-form" class="panel">
+        <p class="kicker">Usuário logado</p>
+        <h2>Definir senha ou código</h2>
+        <label>Identificador de login <input name="login_identifier" required minlength="4" maxlength="120" placeholder="ex: professor.maria" /></label>
+        <label>Tipo <select name="credential_kind"><option value="password">Senha</option><option value="access_code">Código de acesso</option></select></label>
+        <label>Senha ou código <input name="secret" required minlength="6" maxlength="120" type="password" placeholder="mínimo 6 caracteres" /></label>
+        <button type="submit">Salvar credencial</button>
+        <button type="button" class="secondary" id="revoke-credential">Revogar minha credencial</button>
+        <div class="output" id="credential-output">Entre por convite ou sessão existente para definir credencial.</div>
+      </form>
+
+      <form id="login-form" class="panel">
+        <p class="kicker">Entrada real</p>
+        <h2>Entrar sem botão demo</h2>
+        <label>Identificador <input name="login_identifier" required minlength="4" maxlength="120" /></label>
+        <label>Senha ou código <input name="secret" required minlength="6" maxlength="120" type="password" /></label>
+        <button type="submit">Entrar com credencial</button>
+        <div class="output" id="login-output"></div>
+      </form>
+    </section>
+
+    <section class="grid bottom">
+      <form id="recovery-request-form" class="panel">
+        <p class="kicker">Recuperação</p>
+        <h2>Solicitar token de recuperação</h2>
+        <label>Identificador <input name="login_identifier" required minlength="4" maxlength="120" /></label>
+        <button type="submit">Gerar recuperação controlada</button>
+        <div class="output" id="recovery-request-output"></div>
+      </form>
+
+      <form id="recovery-complete-form" class="panel">
+        <p class="kicker">Reset</p>
+        <h2>Trocar credencial por token</h2>
+        <label>Token <input name="token" id="recovery-token" required maxlength="500" /></label>
+        <label>Nova senha/código <input name="new_secret" required minlength="6" maxlength="120" type="password" /></label>
+        <button type="submit">Concluir recuperação</button>
+        <div class="output" id="recovery-complete-output"></div>
+      </form>
+    </section>
+  </main>
+
+  <script src="/mvp-17-nav-rbac.js?v=fitcore-mvp17-1"></script>
+  <script src="/mvp-19.js?v=fitcore-mvp19-1"></script>
+</body>
+</html>
