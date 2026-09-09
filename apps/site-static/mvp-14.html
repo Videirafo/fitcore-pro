@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-14 do FitCore Pro: fundamento de autenticação, papéis e tenant." />
+  <title>MVP-14 Auth/RBAC | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-14.css?v=fitcore-mvp14-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav>
+      <a href="/mvp-13.html">Operação</a>
+      <a class="active" href="/mvp-14.html">Papéis</a>
+      <a href="/mvp-10.html">Postgres</a>
+      <a href="/mvp-06.html">Mídia</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="kicker">MVP-14 · Auth/RBAC foundation</p>
+      <h1>Tenant e papéis prontos para login real.</h1>
+      <p>
+        Esta fase não cria login final. Ela organiza o contexto de acesso usado pela API:
+        tenant, papel, ator, permissões e política LGPD. O PostgresStore continua ativo.
+      </p>
+    </section>
+
+    <section class="cards">
+      <article><span>Tenant</span><strong id="tenant">--</strong><small>escopo operacional</small></article>
+      <article><span>Papel atual</span><strong id="role">--</strong><small>gestor, professor ou aluno</small></article>
+      <article><span>Modo</span><strong id="mode">--</strong><small>soft guard nesta fase</small></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="kicker">Simular perfil</p>
+          <h2>Separação operacional</h2>
+        </div>
+        <div class="actions">
+          <button data-role="gestor">Gestor</button>
+          <button data-role="professor">Professor</button>
+          <button data-role="aluno">Aluno</button>
+        </div>
+      </div>
+      <div id="capabilities" class="capabilities"></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Matriz</p>
+        <h2>Permissões por papel</h2>
+        <div id="matrix" class="matrix"></div>
+      </article>
+      <article class="panel">
+        <p class="kicker">API</p>
+        <h2>Diagnóstico</h2>
+        <pre id="output">Carregando /api/mvp-14/access-context</pre>
+      </article>
+    </section>
+  </main>
+
+  <script src="/mvp-14.js?v=fitcore-mvp14-1"></script>
+</body>
+</html>
