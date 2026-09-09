@@ -18,6 +18,7 @@ const nav: NavItem[] = [
   { href: "/execucao", label: "Execução", roles: ["gestor", "professor", "aluno"], hint: "Treino", group: "treinos", icon: "▶" },
   { href: "/evolucao", label: "Evolução", roles: ["gestor", "professor", "aluno"], hint: "Progresso", group: "treinos", icon: "▥" },
   { href: "/agents", label: "IA & Agents", roles: ["gestor", "professor", "aluno"], hint: "Assistente", group: "inteligência", icon: "✦" },
+  { href: "/coach", label: "Coach", roles: ["gestor", "professor", "aluno"], hint: "Evidências", group: "inteligência", icon: "◉" },
   { href: "/relatorios", label: "Relatórios", roles: ["gestor", "professor"], hint: "Dados", group: "inteligência", icon: "▧" },
   { href: "/financeiro", label: "Financeiro", roles: ["gestor"], hint: "Receita", group: "plataforma", icon: "◇" },
   { href: "/seguranca", label: "Segurança & LGPD", roles: ["gestor", "professor", "aluno"], hint: "Proteção", group: "plataforma", icon: "◈" },

@@ -25,6 +25,7 @@ import { createWorkoutPrescriptionManager } from "./security/workout-prescriptio
 import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
+import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
 import { createGuidedSetupManager } from "./security/guided-setup.mjs";
 
 const root = resolve(process.cwd());
@@ -60,6 +61,7 @@ const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env)
 const workoutExecutionManager = createWorkoutExecutionManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
+const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager);
 const guidedSetupManager = createGuidedSetupManager(process.env);
 let currentAccessContext = null;
 
@@ -1102,6 +1104,7 @@ const server = createServer(async (req, res) => {
         },
         mvp_26: { student_evolution: studentEvolutionManager.enabled, history: true, average_effort: true, weekly_frequency: true, professor_dashboard: true },
         mvp_32: { agent_assistant: agentAssistantManager.enabled, exercise_media_cards: true, premium_workspace: true, tenant_scoped: true },
+        mvp_33: { evidence_first_coach: evidenceCoachManager.enabled, evidence_only: true, human_review: true, medical_autonomy: false, next_route: "/coach" },
         mvp_31: { guided_setup: guidedSetupManager.enabled, progress_saved_by_tenant: true, next_route: "/setup" },
         mvp_24: {
           workout_prescription: workoutPrescriptionManager.enabled,
@@ -1560,6 +1563,33 @@ const server = createServer(async (req, res) => {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
       const input = await readJsonBody(req);
       const result = agentAssistantManager.ask(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-33/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, evidenceCoachManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-33/brief") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = evidenceCoachManager.tenantBrief(accessContext, url);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-33/my-coach") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = evidenceCoachManager.studentCoach(accessContext, "", url, true);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp33StudentCoachMatch = url.pathname.match(/^\/api\/mvp-33\/students\/([^/]+)\/coach$/);
+    if (mvp33StudentCoachMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = evidenceCoachManager.studentCoach(accessContext, decodeURIComponent(mvp33StudentCoachMatch[1]), url, false);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }
