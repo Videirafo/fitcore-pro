@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="FitCore Pro, sistema fitness do MarcaIA para academias, estúdios, boxes, personal trainers e alunos." />
-  <title>FitCore Pro | Sistema fitness do MarcaIA</title>
-  <link rel="stylesheet" href="/styles.css?v=fitcore-m6" />
-  <link rel="stylesheet" href="/fitcore-overrides.css?v=fitcore-m2" />
+  <meta name="description" content="FitCore Pro, sistema fitness para academias, estúdios, boxes, personal trainers e alunos." />
+  <title>FitCore Pro | Sistema fitness</title>
+  <link rel="stylesheet" href="/styles.css?v=fitcore-m8" />
+  <link rel="stylesheet" href="/fitcore-overrides.css?v=fitcore-m3" />
 </head>
 <body>
   <header class="navbar">
@@ -14,20 +14,19 @@
       <span class="brand-mark">F</span>
       <span>
         <strong>FitCore Pro</strong>
-        <small>MarcaIA Fitness</small>
       </span>
     </a>
 
     <nav class="nav" aria-label="Navegação principal">
       <a href="#solucoes">Soluções</a>
-      <a href="#modalidades">Modalidades</a>
       <a href="#catalogo">Exercícios</a>
-      <a href="#cross-training">Box e funcional</a>
-      <a href="/mvp-01.html">Aluno + treino</a>
+      <a href="#rotinas">Treinos</a>
       <a href="/mvp-03.html">Professor</a>
       <a href="/mvp-04.html">Aluno</a>
-      <a href="/mvp-05.html">Papéis</a>
-      <a href="#seguranca">Segurança</a>
+      <a href="/mvp-06.html">Mídia</a>
+      <a href="/mvp-07.html">Banco</a>
+      <a href="/mvp-08.html">Persistência</a>
+      <a href="/legal/privacy">LGPD</a>
     </nav>
 
     <div class="nav-actions">
@@ -49,7 +48,7 @@
           <a class="cta large" href="/mvp-01.html">Criar aluno e treino</a>
           <a class="ghost-button" href="/mvp-05.html">Entrar por perfil</a>
         </div>
-        <p class="hero-note">Versão inicial em validação com catálogo, rascunho de treino, revisão do professor, painel do aluno e navegação por papel.</p>
+        <p class="hero-note">Versão inicial em validação com catálogo, rascunho de treino, revisão do professor, painel do aluno, mídia de exercícios, banco mínimo e navegação por papel.</p>
       </div>
 
       <div class="hero-product" aria-label="Prévia do painel FitCore">
@@ -93,7 +92,7 @@
       <div><strong>Alunos</strong><span>cadastro, planos e histórico</span></div>
       <div><strong>Treinos</strong><span>séries, exercícios e progressão</span></div>
       <div><strong>Check-ins</strong><span>status e execução do treino</span></div>
-      <div><strong>Papéis</strong><span>gestor, professor e aluno</span></div>
+      <div><strong>Banco</strong><span>persistência preparada para SaaS</span></div>
     </section>
 
     <section id="solucoes" class="section">
@@ -119,10 +118,10 @@
           <strong>Acompanhamento contínuo</strong>
           <span>O aluno vê o treino aprovado, inicia a execução, marca exercícios e registra histórico.</span>
         </a>
-        <a class="modality-card box" href="/mvp-05.html">
-          <small>Papéis</small>
-          <strong>Navegação por perfil</strong>
-          <span>Separe acessos de gestor, professor e aluno antes da autenticação real.</span>
+        <a class="modality-card box" href="/mvp-08.html">
+          <small>Persistência</small>
+          <strong>Base para SaaS</strong>
+          <span>Adapter preparado para trocar JSON local por PostgreSQL sem quebrar as telas já validadas.</span>
         </a>
       </div>
     </section>
@@ -210,7 +209,7 @@
         </article>
         <article>
           <strong>Para o gestor</strong>
-          <p>Relatórios de uso, retenção, frequência e operação da equipe.</p>
+          <p>Relatórios de uso, retenção, frequência e evolução da equipe.</p>
         </article>
       </div>
     </section>
@@ -229,17 +228,17 @@
       </div>
     </section>
 
-    <section id="seguranca" class="section security-section">
+    <section id="seguranca" class="section security-section pro-security-section">
       <div class="section-head compact">
-        <span>Privacidade e segurança</span>
-        <h2>LGPD, controle de acesso e proteção de dados desde a base.</h2>
-        <p>O FitCore lida com dados de alunos, treinos, avaliações e evolução. Por isso, privacidade, segurança e permissões precisam acompanhar o produto desde a primeira versão.</p>
+        <span>Governança e segurança</span>
+        <h2>Privacidade, acesso e operação organizados desde a base.</h2>
+        <p>O FitCore precisa proteger dados de aluno, treino e evolução. A estrutura fica simples para o cliente e controlada para a operação.</p>
       </div>
-      <div class="security-grid">
-        <a href="/legal/privacy"><strong>Privacidade e LGPD</strong><span>Dados coletados, finalidade, direitos do titular e canal de contato.</span></a>
-        <a href="/legal/security"><strong>Segurança</strong><span>HTTPS, bloqueio de portas internas, segredos, backups e auditoria.</span></a>
-        <a href="/legal/terms"><strong>Termos de uso</strong><span>Uso permitido, responsabilidade profissional e limites da versão atual.</span></a>
-        <a href="/legal/open-source"><strong>Licenças</strong><span>Componentes auditados, obrigações legais e política de mídia externa.</span></a>
+      <div class="security-grid pro-security-grid">
+        <a href="/legal/privacy"><small>01</small><strong>Privacidade e LGPD</strong><span>Finalidade, minimização de dados, direitos do titular e auditoria mínima por ação.</span></a>
+        <a href="/mvp-05.html"><small>02</small><strong>Controle por perfil</strong><span>Gestor, professor e aluno acessam apenas o que precisam para executar o fluxo.</span></a>
+        <a href="/legal/security"><small>03</small><strong>Infraestrutura segura</strong><span>HTTPS, portas internas fechadas, backups, segredos e validação antes de produção.</span></a>
+        <a href="/legal/open-source"><small>04</small><strong>Licenças e mídia</strong><span>Uso controlado de wger, imagens, GIFs e componentes externos com origem registrada.</span></a>
       </div>
     </section>
 
@@ -261,9 +260,9 @@
           <p>Para academias, estúdios e boxes com acompanhamento, equipe e automações.</p>
         </article>
         <article>
-          <small>MarcaIA</small>
+          <small>White-label</small>
           <strong>Marca branca</strong>
-          <p>Para operação fitness integrada ao ecossistema MarcaIA.</p>
+          <p>Para operação fitness com domínio próprio, identidade visual e módulos sob demanda.</p>
         </article>
       </div>
     </section>
@@ -271,17 +270,17 @@
     <section id="demonstracao" class="section demo-section">
       <div>
         <span>Validação funcional</span>
-        <h2>Valide o FitCore com aluno, professor e execução.</h2>
-        <p>Cadastre um aluno, aprove o treino como professor, execute como aluno e confira a navegação por perfil.</p>
+        <h2>Valide o FitCore com aluno, professor, execução e persistência.</h2>
+        <p>Cadastre um aluno, aprove o treino como professor, execute como aluno e confira a base preparada para banco multi-tenant.</p>
       </div>
       <a class="cta large" href="/mvp-01.html">Criar aluno + treino</a>
       <a class="ghost-button" href="/mvp-03.html">Revisar como professor</a>
-      <a class="ghost-button" href="/mvp-05.html">Entrar por perfil</a>
+      <a class="ghost-button" href="/mvp-08.html">Ver persistência</a>
     </section>
   </main>
 
   <footer class="footer">
-    <span>FitCore Pro · Sistema fitness do MarcaIA</span>
+    <span>FitCore Pro · Gestão fitness</span>
     <nav class="footer-links" aria-label="Links legais">
       <a href="/legal/privacy">Privacidade</a>
       <a href="/legal/security">Segurança</a>
@@ -290,6 +289,6 @@
     </nav>
   </footer>
 
-  <script src="/script.js?v=fitcore-m7"></script>
+  <script src="/script.js?v=fitcore-m8"></script>
 </body>
 </html>
