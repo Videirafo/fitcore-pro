@@ -56,6 +56,70 @@ function safeDate(value) {
   }
 }
 
+function mediaForExercise(exercicio) {
+  if (typeof window.fitcoreExerciseMedia === "function") {
+    return window.fitcoreExerciseMedia(exercicio);
+  }
+
+  return {
+    objetivo: "execução técnica do movimento",
+    serve_para: "treinar o grupo muscular indicado, reforçar técnica e apoiar a progressão do aluno.",
+    como_executar: [
+      "Observe a demonstração antes de iniciar.",
+      "Execute com controle, amplitude segura e ritmo constante.",
+      "Interrompa se houver dor, tontura ou perda de técnica.",
+    ],
+    cuidado: "Ajustar carga, amplitude e variação conforme orientação do professor.",
+  };
+}
+
+function exerciseGifHtml(exercicio, media) {
+  const gif = media?.gif || "";
+  const nome = exercicio?.nome || "exercício";
+
+  return `
+    <div class="exercise-visual ${gif ? "" : "media-missing"}">
+      ${gif ? `<img src="${escapeHtml(gif)}" alt="GIF demonstrando ${escapeHtml(nome)}" loading="lazy" onerror="this.closest('.exercise-visual').classList.add('media-missing'); this.remove();" />` : ""}
+      <span>GIF pendente</span>
+      <small>${escapeHtml(gif || "Adicionar arquivo em /media/exercises/slug-do-exercicio.gif")}</small>
+    </div>
+  `;
+}
+
+function exerciseExplanationHtml(exercicio) {
+  const media = mediaForExercise(exercicio);
+  const steps = Array.isArray(media.como_executar) ? media.como_executar.slice(0, 3) : [];
+  const musculo = exercicio?.musculo_principal || exercicio?.foco || "grupo muscular principal";
+  const auxiliares = Array.isArray(exercicio?.musculos_auxiliares) && exercicio.musculos_auxiliares.length
+    ? exercicio.musculos_auxiliares.join(", ")
+    : exercicio?.grupo_muscular || "apoio muscular conforme execução";
+
+  return `
+    <div class="exercise-main">
+      <div class="exercise-copy">
+        <strong>${escapeHtml(exercicio?.nome || "Exercício")}</strong>
+        <span>${escapeHtml(exercicio?.parte_do_corpo || "")}${exercicio?.equipamento ? " · " : ""}${escapeHtml(exercicio?.equipamento || "")} · foco: ${escapeHtml(exercicio?.foco || "não informado")}</span>
+        <div class="exercise-purpose">
+          <b>Para que serve</b>
+          <p>${escapeHtml(media.serve_para)}</p>
+        </div>
+        <div class="exercise-purpose compact">
+          <b>Trabalha principalmente</b>
+          <p>${escapeHtml(musculo)} · auxiliares: ${escapeHtml(auxiliares)}</p>
+        </div>
+        <details class="exercise-details">
+          <summary>Como executar com segurança</summary>
+          <ol>
+            ${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+          </ol>
+          <p>${escapeHtml(media.cuidado)}</p>
+        </details>
+      </div>
+      ${exerciseGifHtml(exercicio, media)}
+    </div>
+  `;
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     cache: "no-store",
@@ -138,13 +202,17 @@ function renderHistory() {
     .slice()
     .reverse()
     .slice(0, 8)
-    .map((item) => `
-      <article class="history-item">
-        <strong>${escapeHtml(item.aluno_nome || "Aluno")} · ${escapeHtml(item.dia_treino || "Treino")}</strong>
-        <span>${escapeHtml(statusLabel(item.status))} · ${escapeHtml(item.duracao_minutos || "--")} min · esforço ${escapeHtml(item.percepcao_esforco || "--")}/10</span><br />
-        <span>${escapeHtml(safeDate(item.atualizado_em || item.criado_em))}</span>
-      </article>
-    `).join("");
+    .map((item) => {
+      const aluno = item.aluno?.nome || item.aluno_nome || "Aluno";
+      const treino = item.treino?.dia || item.dia_treino || "Treino";
+      return `
+        <article class="history-item">
+          <strong>${escapeHtml(aluno)} · ${escapeHtml(treino)}</strong>
+          <span>${escapeHtml(statusLabel(item.status))} · ${escapeHtml(item.duracao_minutos || "--")} min · esforço ${escapeHtml(item.percepcao_esforco || "--")}/10</span><br />
+          <span>${escapeHtml(safeDate(item.atualizado_em || item.criado_em))}</span>
+        </article>
+      `;
+    }).join("");
 }
 
 async function loadData() {
@@ -181,9 +249,9 @@ function renderWorkout(review) {
   workoutEl.innerHTML = `
     <div class="workout-head">
       <div>
-        <p class="eyebrow">Treino aprovado</p>
+        <p class="eyebrow">Treino aprovado com demonstração</p>
         <h2>${escapeHtml(aluno)} · ${escapeHtml(objetivo)}</h2>
-        <p>Marque os exercícios conforme forem executados. Ao concluir, o histórico pessoal será atualizado.</p>
+        <p>Veja o GIF, entenda para que serve cada exercício e marque conforme for executando.</p>
       </div>
       <span class="status-pill" id="execution-status">planejado</span>
     </div>
@@ -193,16 +261,13 @@ function renderWorkout(review) {
         <span class="day-pill">${escapeHtml(bloco.dia || `Dia ${diaIndex + 1}`)}</span>
         <h3>${escapeHtml(bloco.foco || "Treino do dia")}</h3>
         <p>${escapeHtml(bloco.aquecimento || "Aquecimento conforme orientação do professor.")}</p>
-        <div class="exercise-list">
+        <div class="exercise-list visual-list">
           ${(bloco.exercicios || []).map((exercicio, exercicioIndex) => {
             const key = `${diaIndex}-${exercicioIndex}`;
             return `
-              <label class="exercise-row" data-exercise-row="${key}">
+              <label class="exercise-row visual-exercise-row" data-exercise-row="${key}">
                 <input type="checkbox" data-exercise-check="${key}" />
-                <span>
-                  <strong>${escapeHtml(exercicio.nome || "Exercício")}</strong>
-                  <span>${escapeHtml(exercicio.parte_do_corpo || "")}${exercicio.equipamento ? " · " : ""}${escapeHtml(exercicio.equipamento || "")} · foco: ${escapeHtml(exercicio.foco || "não informado")}</span>
-                </span>
+                ${exerciseExplanationHtml(exercicio)}
               </label>
             `;
           }).join("")}
@@ -261,7 +326,7 @@ async function startWorkout() {
         status: "em_execucao",
         papel: "aluno",
         percepcao_esforco: Number(effortEl?.value || 5),
-        duracao_minutos: 0,
+        duracao_minutos: 5,
         observacoes: notesEl?.value || "Execução iniciada pelo painel do aluno.",
       }),
     });
