@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-06 do FitCore Pro: biblioteca visual de exercícios com GIFs, explicações, status de mídia e auditoria de licença." />
+  <title>MVP-06 Biblioteca Visual | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-06.css?v=fitcore-mvp06-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span>F</span>
+      <strong>FitCore Pro</strong>
+      <small>MarcaIA Fitness</small>
+    </a>
+    <nav aria-label="Navegação MVP">
+      <a href="/">Início</a>
+      <a href="/mvp-01.html">Aluno + treino</a>
+      <a href="/mvp-03.html">Professor</a>
+      <a href="/mvp-04.html">Aluno</a>
+      <a href="/mvp-05.html">Papéis</a>
+      <a class="active" href="/mvp-06.html">Mídia</a>
+      <a href="/legal/privacy">LGPD</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-06 · Biblioteca visual de exercícios</p>
+        <h1>Controle quais exercícios têm GIF, explicação e licença validada.</h1>
+        <p>
+          Esta fase organiza a base visual do FitCore: cada exercício pode ter demonstração, finalidade,
+          músculos trabalhados, cuidado técnico e registro de origem do arquivo. O treino continua funcionando
+          mesmo quando o GIF ainda não foi enviado.
+        </p>
+      </div>
+      <aside class="hero-card">
+        <span>Status da biblioteca</span>
+        <strong id="summary-ready">--</strong>
+        <small>exercícios com GIF encontrado nesta busca</small>
+      </aside>
+    </section>
+
+    <section class="metrics" aria-label="Resumo da biblioteca visual">
+      <article><span>Encontrados</span><strong id="summary-total">0</strong><small>exercícios carregados</small></article>
+      <article><span>Com GIF</span><strong id="summary-with-media">0</strong><small>mídia publicada</small></article>
+      <article><span>Sem GIF</span><strong id="summary-without-media">0</strong><small>pendente de upload</small></article>
+      <article><span>Licença</span><strong id="summary-license">0</strong><small>origens registradas no navegador</small></article>
+    </section>
+
+    <section class="workspace">
+      <aside class="panel controls">
+        <p class="kicker">Buscar e filtrar</p>
+        <h2>Catálogo visual</h2>
+        <label>
+          Busca
+          <input id="search" type="search" value="agachamento" placeholder="agachamento, peito, costas, abdominal, burpee" />
+        </label>
+        <div class="grid-2">
+          <label>
+            Área
+            <select id="area-filter">
+              <option value="todos">Todas</option>
+              <option value="pernas">Pernas</option>
+              <option value="peito">Peito</option>
+              <option value="costas">Costas</option>
+              <option value="abdômen">Abdômen</option>
+              <option value="braços">Braços</option>
+              <option value="ombros">Ombros</option>
+              <option value="funcional">Funcional / cross</option>
+            </select>
+          </label>
+          <label>
+            Mídia
+            <select id="media-filter">
+              <option value="todos">Todos</option>
+              <option value="com-gif">Com GIF</option>
+              <option value="sem-gif">Sem GIF</option>
+            </select>
+          </label>
+        </div>
+        <button id="load-button" type="button">Carregar exercícios</button>
+        <div class="quick-list" aria-label="Buscas rápidas">
+          <button type="button" data-query="agachamento">Agachamento</button>
+          <button type="button" data-query="peito">Peito</button>
+          <button type="button" data-query="costas">Costas</button>
+          <button type="button" data-query="abdômen">Abdômen</button>
+          <button type="button" data-query="burpee">Cross / burpee</button>
+          <button type="button" data-query="kettlebell">Kettlebell</button>
+        </div>
+      </aside>
+
+      <section class="panel results-panel">
+        <div class="section-title">
+          <div>
+            <p class="kicker">Exercícios</p>
+            <h2>Lista com status de GIF</h2>
+          </div>
+          <button id="refresh-media" type="button">Revalidar mídia</button>
+        </div>
+        <div id="exercise-list" class="exercise-list" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="workspace details-grid">
+      <section class="panel selected-panel">
+        <p class="kicker">Exercício selecionado</p>
+        <div id="selected-empty" class="empty-state">
+          Selecione um exercício para gerar o comando de envio do GIF e registrar origem/licença.
+        </div>
+        <div id="selected-content" hidden>
+          <div class="selected-head">
+            <div>
+              <h2 id="selected-name">--</h2>
+              <p id="selected-meta">--</p>
+            </div>
+            <span id="selected-status" class="badge">--</span>
+          </div>
+          <div class="media-preview" id="media-preview"></div>
+          <div class="explain-grid">
+            <article><strong>Para que serve</strong><span id="selected-purpose">--</span></article>
+            <article><strong>Trabalha principalmente</strong><span id="selected-muscles">--</span></article>
+            <article><strong>Cuidado técnico</strong><span id="selected-care">--</span></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel upload-panel">
+        <p class="kicker">Upload assistido</p>
+        <h2>Gerar comando para enviar GIF</h2>
+        <p class="hint">
+          Nesta fase o envio continua controlado por terminal. O painel gera o nome correto do arquivo
+          para evitar erro de slug e manter auditoria de licença separada.
+        </p>
+        <label>
+          Caminho do GIF no Windows
+          <input id="windows-path" type="text" value="C:\\Users\\Usuario\\Downloads\\idle-jump-idle.gif" />
+        </label>
+        <label>
+          Slug final no servidor
+          <input id="target-slug" type="text" readonly />
+        </label>
+        <div class="command-block">
+          <div><strong>PowerShell</strong><button type="button" data-copy="powershell-command">Copiar</button></div>
+          <pre id="powershell-command"></pre>
+        </div>
+        <div class="command-block">
+          <div><strong>VPS / root</strong><button type="button" data-copy="server-command">Copiar</button></div>
+          <pre id="server-command"></pre>
+        </div>
+      </section>
+    </section>
+
+    <section class="workspace details-grid">
+      <section class="panel license-panel">
+        <p class="kicker">Auditoria de origem</p>
+        <h2>Registrar licença do GIF</h2>
+        <p class="hint">Use somente GIF autoral ou licenciado. A mídia externa de terceiros não deve entrar no produto sem autorização adequada.</p>
+        <div class="grid-2">
+          <label>
+            Origem
+            <input id="license-source" type="text" placeholder="Ex: gravação própria, fornecedor, banco licenciado" />
+          </label>
+          <label>
+            Licença/autorização
+            <input id="license-type" type="text" placeholder="Ex: autoral, contrato, licença comercial" />
+          </label>
+        </div>
+        <label>
+          Observação
+          <textarea id="license-note" rows="3" placeholder="Quem enviou, data, restrição de uso, comprovante ou pendência."></textarea>
+        </label>
+        <button id="save-license" type="button">Salvar auditoria local</button>
+        <div id="license-record" class="audit-box">Nenhum exercício selecionado.</div>
+      </section>
+
+      <section class="panel roadmap-panel">
+        <p class="kicker">Próxima evolução</p>
+        <h2>Do painel manual para produto real</h2>
+        <ul>
+          <li>Substituir upload por endpoint autenticado com validação de tipo, tamanho e origem.</li>
+          <li>Guardar mídia e comprovantes em storage privado, com URL pública apenas quando aprovada.</li>
+          <li>Levar auditoria de licença para banco multi-tenant com usuário, data e papel.</li>
+          <li>Separar permissões: gestor aprova mídia, professor usa no treino, aluno apenas visualiza.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+  <script src="/exercise-media.js?v=fitcore-media-m1"></script>
+  <script src="/mvp-06.js?v=fitcore-mvp06-1"></script>
+</body>
+</html>
