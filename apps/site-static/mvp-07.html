@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-07 do FitCore Pro: persistência real com banco mínimo, tenant_id, papéis, auditoria LGPD e fallback seguro." />
+  <title>MVP-07 Persistência | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-07.css?v=fitcore-mvp07-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="FitCore Pro">
+      <span>F</span>
+      <strong>FitCore Pro</strong>
+      <small>MarcaIA Fitness</small>
+    </a>
+    <nav aria-label="Navegação MVP">
+      <a href="/">Início</a>
+      <a href="/mvp-01.html">Aluno + treino</a>
+      <a href="/mvp-03.html">Professor</a>
+      <a href="/mvp-04.html">Aluno</a>
+      <a href="/mvp-05.html">Papéis</a>
+      <a href="/mvp-06.html">Mídia</a>
+      <a class="active" href="/mvp-07.html">Banco</a>
+      <a href="/legal/privacy">LGPD</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-07 · Persistência real + banco mínimo</p>
+        <h1>Prepare o FitCore para banco, multi-tenant e auditoria por ação.</h1>
+        <p>
+          Esta fase cria a fundação de persistência: alunos, treinos, revisões do professor,
+          execuções/check-ins e eventos de auditoria LGPD com tenant_id e papel do usuário.
+          Enquanto o banco não estiver ativo, a API continua em fallback seguro.
+        </p>
+      </div>
+      <aside class="hero-card">
+        <span>Status atual</span>
+        <strong id="persistence-mode">verificando</strong>
+        <small id="persistence-detail">checando API e fallback</small>
+      </aside>
+    </section>
+
+    <section class="metrics" aria-label="Resumo MVP-07">
+      <article><span>Alunos</span><strong id="metric-students">0</strong><small>registros do MVP</small></article>
+      <article><span>Treinos</span><strong id="metric-workouts">0</strong><small>rascunhos e aprovados</small></article>
+      <article><span>Check-ins</span><strong id="metric-checkins">0</strong><small>execuções salvas</small></article>
+      <article><span>Revisões</span><strong id="metric-reviews">0</strong><small>ações do professor</small></article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel">
+        <p class="kicker">Estrutura mínima</p>
+        <h2>Tabelas criadas pelo MVP-07</h2>
+        <div class="table-list" id="table-list"></div>
+      </article>
+      <article class="panel">
+        <p class="kicker">Segurança</p>
+        <h2>Regras de base</h2>
+        <ul class="check-list">
+          <li><strong>tenant_id</strong><span>todo dado operacional pertence a um tenant.</span></li>
+          <li><strong>papel</strong><span>gestor, professor e aluno ficam separados desde a modelagem.</span></li>
+          <li><strong>RLS</strong><span>políticas preparadas por tenant no PostgreSQL.</span></li>
+          <li><strong>LGPD</strong><span>auditoria mínima, sem documento, telefone, foto ou dado médico nesta fase.</span></li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel command-panel">
+        <p class="kicker">Executar na VPS</p>
+        <h2>Aplicar ou validar o banco</h2>
+        <p class="hint">
+          Se FITCORE_DATABASE_URL não estiver definido, o script não quebra produção.
+          Ele registra modo fallback_json_local e mantém a API atual funcionando.
+        </p>
+        <div class="command-block">
+          <div><strong>Aplicar MVP-07</strong><button type="button" data-copy="apply-command">Copiar</button></div>
+          <pre id="apply-command">cd /opt/fitcore-pro
+chmod +x infra/scripts/apply-mvp-07-db.sh infra/scripts/verify-mvp-07-db.sh
+bash infra/scripts/apply-mvp-07-db.sh</pre>
+        </div>
+        <div class="command-block">
+          <div><strong>Verificar schema</strong><button type="button" data-copy="verify-command">Copiar</button></div>
+          <pre id="verify-command">cd /opt/fitcore-pro
+bash infra/scripts/verify-mvp-07-db.sh
+cat storage/mvp-07/db-status.json 2>/dev/null || true</pre>
+        </div>
+      </article>
+
+      <article class="panel flow-panel">
+        <p class="kicker">Fluxo validado</p>
+        <h2>Do arquivo local para o SaaS real</h2>
+        <ol>
+          <li>Manter MVP-01 a MVP-06 funcionando em JSON local.</li>
+          <li>Criar schema PostgreSQL com isolamento por tenant.</li>
+          <li>Adicionar adaptador da API para Postgres quando a URL do banco existir.</li>
+          <li>Migrar dados de validação para tabelas reais.</li>
+          <li>Ativar autenticação, permissões reais e RLS por usuário.</li>
+        </ol>
+      </article>
+    </section>
+
+    <section class="panel schema-panel">
+      <p class="kicker">Matriz de dados</p>
+      <h2>Como os MVPs anteriores entram no banco</h2>
+      <div class="schema-grid" id="schema-grid"></div>
+    </section>
+  </main>
+
+  <script src="/mvp-07.js?v=fitcore-mvp07-1"></script>
+</body>
+</html>
