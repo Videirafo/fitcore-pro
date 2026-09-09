@@ -77,6 +77,8 @@
     "mvp34:check": "node tools/check-mvp-34-layout-stabilization.mjs",
     "mvp34:verify": "bash infra/scripts/verify-mvp-34-layout-stabilization.sh",
     "mvp35:check": "node tools/check-mvp-35-public-landing-shell.mjs",
-    "mvp35:verify": "bash infra/scripts/verify-mvp-35-public-landing-shell.sh"
+    "mvp35:verify": "bash infra/scripts/verify-mvp-35-public-landing-shell.sh",
+    "mvp36:check": "node tools/check-mvp-36-role-console.mjs",
+    "mvp36:verify": "bash infra/scripts/verify-mvp-36-role-console.sh"
   }
 }

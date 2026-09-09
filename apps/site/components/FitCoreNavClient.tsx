@@ -8,7 +8,8 @@ type Session = { actor_role?: string; tenant_slug?: string; actor_name?: string 
 type NavItem = { href: string; label: string; roles: string[]; hint: string; icon: string; group: "gestao" | "treinos" | "plataforma" };
 
 const nav: NavItem[] = [
-  { href: "/", label: "Dashboard", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Visão geral", icon: "⌂", group: "gestao" },
+  { href: "/dashboard", label: "Dashboard", roles: ["gestor", "professor", "aluno"], hint: "Visão geral", icon: "⌂", group: "gestao" },
+  { href: "/", label: "Início", roles: ["visitante"], hint: "Landing", icon: "⌂", group: "gestao" },
   { href: "/agents", label: "IA & Agents", roles: ["visitante", "gestor", "professor"], hint: "Assistente", icon: "✦", group: "gestao" },
   { href: "/onboarding", label: "Onboarding", roles: ["visitante"], hint: "Criar negócio", icon: "+", group: "gestao" },
   { href: "/setup", label: "Setup", roles: ["gestor"], hint: "Checklist", icon: "✓", group: "gestao" },
