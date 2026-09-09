@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Histórico e evolução real do aluno no FitCore Pro." />
+  <title>Evolução do Aluno | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-17-nav-rbac.css?v=fitcore-mvp17-1" />
+  <link rel="stylesheet" href="/fitcore-system.css?v=fitcore-pro-ux-26" />
+  <link rel="stylesheet" href="/mvp-26.css?v=fitcore-mvp26-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark">FC</span><strong>FitCore Pro</strong></a>
+    <nav><a href="/mvp-21.html">Criar negócio</a><a href="/mvp-22.html">Equipe</a><a href="/mvp-23.html">Alunos</a><a href="/mvp-24.html">Prescrição</a><a href="/mvp-25.html">Execução</a><a href="/mvp-26.html">Evolução</a></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">Histórico e evolução</p>
+        <h1>Evolução real do aluno com dados de execução.</h1>
+        <p>Histórico, frequência semanal, esforço médio, duração média, progresso por treino e painel do professor/gestor por unidade.</p>
+      </div>
+      <aside class="card" id="session-card"><strong>Verificando sessão</strong><span>Aguardando API.</span></aside>
+    </section>
+    <section class="fc-kpi-grid" id="kpis"></section>
+    <section class="fc-dashboard section-tight">
+      <article class="panel">
+        <p class="kicker">Painel do professor</p>
+        <h2>Alunos em acompanhamento</h2>
+        <div class="filters"><input id="search" placeholder="buscar aluno" /><button id="refresh" type="button">Atualizar</button></div>
+        <div id="students-output" class="list">Faça login como gestor ou professor.</div>
+      </article>
+      <article class="panel">
+        <p class="kicker">Gráfico</p>
+        <h2>Frequência e esforço</h2>
+        <div id="chart" class="fc-chart"><span>Carregando evolução...</span></div>
+      </article>
+    </section>
+    <section class="grid bottom">
+      <article class="panel"><p class="kicker">Aluno</p><h2>Minha evolução</h2><button id="load-my" type="button">Carregar minha evolução</button><div id="my-output" class="output">Disponível para papel aluno.</div></article>
+      <article class="panel"><p class="kicker">Detalhe</p><h2>Histórico do aluno</h2><div id="detail-output" class="output">Selecione um aluno ou carregue minha evolução.</div></article>
+    </section>
+  </main>
+  <script src="/mvp-17-nav-rbac.js?v=fitcore-mvp17-1"></script>
+  <script src="/mvp-26.js?v=fitcore-mvp26-1"></script>
+</body>
+</html>

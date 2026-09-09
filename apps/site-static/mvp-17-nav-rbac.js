@@ -4,6 +4,15 @@
   const originalFetch = window.fetch.bind(window);
   const fetchWithCookie = (input, init = {}) => originalFetch(input, { credentials: "include", ...init });
 
+  function ensureSystemStyles() {
+    if (!document.querySelector('link[href*="fitcore-system.css"]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "/fitcore-system.css?v=fitcore-pro-ux-26";
+      document.head.appendChild(link);
+    }
+  }
+
   function escapeHtml(value) {
     return String(value ?? "")
       .replaceAll("&", "&amp;")
@@ -46,6 +55,7 @@
   }
 
   async function init() {
+    ensureSystemStyles();
     const nav = targetNav();
     if (!nav) return;
     try {

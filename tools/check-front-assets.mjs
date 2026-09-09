@@ -10,6 +10,7 @@ const files = [
   "apps/site-static/mvp-23.html",
   "apps/site-static/mvp-24.html",
   "apps/site-static/mvp-25.html",
+  "apps/site-static/mvp-26.html",
 ];
 
 let failed = false;
@@ -41,6 +42,14 @@ for (const file of files) {
   }
   if (file.endsWith("mvp-24.html") && (!html.includes('/mvp-24.css') || !html.includes('/mvp-24.js'))) {
     console.error("ERRO: mvp-24.html não conecta CSS/JS do MVP-24.");
+    failed = true;
+  }
+  if (file.endsWith("mvp-25.html") && (!html.includes('/mvp-25.css') || !html.includes('/mvp-25.js'))) {
+    console.error("ERRO: mvp-25.html não conecta CSS/JS do MVP-25.");
+    failed = true;
+  }
+  if (file.endsWith("mvp-26.html") && (!html.includes('/mvp-26.css') || !html.includes('/mvp-26.js'))) {
+    console.error("ERRO: mvp-26.html não conecta CSS/JS do MVP-26.");
     failed = true;
   }
 }

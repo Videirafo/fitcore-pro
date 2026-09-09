@@ -23,6 +23,7 @@ import { createTenantUserManagement } from "./security/tenant-user-management.mj
 import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
 import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
+import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -55,6 +56,7 @@ const tenantUserManagement = createTenantUserManagement(process.env, sessionMana
 const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
 const workoutExecutionManager = createWorkoutExecutionManager(process.env);
+const studentEvolutionManager = createStudentEvolutionManager(process.env);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1094,6 +1096,7 @@ const server = createServer(async (req, res) => {
           student_entity_complete: true,
           cross_tenant_block: true,
         },
+        mvp_26: { student_evolution: studentEvolutionManager.enabled, history: true, average_effort: true, weekly_frequency: true, professor_dashboard: true },
         mvp_24: {
           workout_prescription: workoutPrescriptionManager.enabled,
           student_bound: true,
@@ -1517,6 +1520,34 @@ const server = createServer(async (req, res) => {
     if (mvp25ExecutionMatch) {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = workoutExecutionManager.getExecution(accessContext, decodeURIComponent(mvp25ExecutionMatch[1]));
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+
+    if (url.pathname === "/api/mvp-26/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, studentEvolutionManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-26/evolution") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = studentEvolutionManager.tenantEvolution(accessContext, url);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-26/my-evolution") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = studentEvolutionManager.studentEvolution(accessContext, "", url, true);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp26StudentEvolutionMatch = url.pathname.match(/^\/api\/mvp-26\/students\/([^/]+)\/evolution$/);
+    if (mvp26StudentEvolutionMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = studentEvolutionManager.studentEvolution(accessContext, decodeURIComponent(mvp26StudentEvolutionMatch[1]), url, false);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

@@ -3,303 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="FitCore Pro, sistema fitness para academias, estúdios, boxes, personal trainers e alunos." />
-  <title>FitCore Pro | Sistema fitness</title>
-  <link rel="stylesheet" href="/styles.css?v=fitcore-m8" />
-  <link rel="stylesheet" href="/fitcore-overrides.css?v=fitcore-m3" />
+  <meta name="description" content="FitCore Pro, sistema profissional para gestão fitness, alunos, treinos e evolução." />
+  <title>FitCore Pro | Sistema fitness profissional</title>
+  <link rel="stylesheet" href="/styles.css?v=fitcore-home-27" />
+  <link rel="stylesheet" href="/fitcore-system.css?v=fitcore-pro-ux-27" />
 </head>
 <body>
   <header class="navbar">
-    <a class="brand" href="/" aria-label="FitCore Pro">
-      <span class="brand-mark">F</span>
-      <span>
-        <strong>FitCore Pro</strong>
-      </span>
-    </a>
-
+    <a class="brand" href="/" aria-label="FitCore Pro"><span class="brand-mark">FC</span><strong>FitCore Pro</strong></a>
     <nav class="nav" aria-label="Navegação principal">
-      <a href="#solucoes">Soluções</a>
-      <a href="#catalogo">Exercícios</a>
-      <a href="#rotinas">Treinos</a>
-      <a href="/mvp-03.html">Professor</a>
-      <a href="/mvp-04.html">Aluno</a>
-      <a href="/mvp-06.html">Mídia</a>
-      <a href="/mvp-07.html">Banco</a>
-      <a href="/mvp-08.html">Persistência</a>
-      <a href="/mvp-19.html">Login</a>
-      <a href="/mvp-20.html">Segurança</a>
       <a href="/mvp-21.html">Criar negócio</a>
+      <a href="/mvp-19.html">Login</a>
       <a href="/mvp-22.html">Equipe</a>
       <a href="/mvp-23.html">Alunos</a>
-      <a href="/mvp-24.html">Prescrição</a>
+      <a href="/mvp-24.html">Treinos</a>
       <a href="/mvp-25.html">Execução</a>
-      <a href="/legal/privacy">LGPD</a>
+      <a href="/mvp-26.html">Evolução</a>
     </nav>
-
-    <div class="nav-actions">
-      <a class="login-link" href="/mvp-19.html">Entrar</a>
-      <a class="cta" href="/mvp-21.html">Criar negócio</a>
-    </div>
+    <div class="nav-actions"><a class="login-link" href="/mvp-19.html">Entrar</a><a class="cta" href="/mvp-21.html">Começar</a></div>
   </header>
 
   <main>
-    <section class="hero" id="inicio">
+    <section class="hero">
       <div class="hero-copy">
-        <div class="kicker">Sistema para academias, estúdios, boxes e personal trainers</div>
-        <h1>Controle alunos, treinos e evolução em um só lugar.</h1>
-        <p>
-          Organize cadastros, planos, prescrição de treino, avaliações, frequência e acompanhamento diário.
-          O gestor ganha visão da operação, o professor ganha agilidade e o aluno acompanha a própria evolução.
-        </p>
-        <div class="hero-actions">
-          <a class="cta large" href="/mvp-21.html">Criar academia/box</a>
-          <a class="ghost-button" href="/mvp-19.html">Entrar com senha/código</a>
-        </div>
-        <p class="hero-note">Versão inicial em validação com catálogo, rascunho de treino, revisão do professor, painel do aluno, mídia de exercícios, PostgreSQL real, onboarding real de tenant, login por credencial, RBAC e navegação por papel.</p>
+        <div class="kicker">Operação fitness completa</div>
+        <h1>Alunos, treinos e evolução em um painel profissional.</h1>
+        <p>O FitCore Pro organiza a rotina de academias, estúdios, boxes e personal trainers: cadastro, equipe, prescrição, execução do treino e acompanhamento da evolução.</p>
+        <div class="hero-actions"><a class="cta large" href="/mvp-21.html">Criar academia ou box</a><a class="ghost-button" href="/mvp-19.html">Entrar no painel</a></div>
+        <p class="hero-note">Fluxo principal: negócio criado, equipe configurada, aluno cadastrado, treino prescrito, execução registrada e evolução acompanhada.</p>
       </div>
-
-      <div class="hero-product" aria-label="Prévia do painel FitCore">
-        <div class="product-top">
-          <span>Painel FitCore</span>
-          <strong id="api-state">Sistema online</strong>
-        </div>
+      <aside class="hero-product" aria-label="Resumo do painel FitCore">
+        <div class="product-top"><span>Painel de gestão</span><strong>Online</strong></div>
         <div class="product-grid">
-          <article>
-            <small>Alunos</small>
-            <strong>128</strong>
-            <span>histórico e evolução</span>
-          </article>
-          <article>
-            <small>Treinos</small>
-            <strong>42</strong>
-            <span>rotinas em andamento</span>
-          </article>
-          <article>
-            <small>Exercícios</small>
-            <strong id="catalog-total">1.324</strong>
-            <span>base para prescrição</span>
-          </article>
-          <article>
-            <small>Papéis</small>
-            <strong>3</strong>
-            <span>gestor · professor · aluno</span>
-          </article>
+          <article><small>Alunos</small><strong>Ativos</strong><span>cadastro e histórico</span></article>
+          <article><small>Treinos</small><strong>Guiados</strong><span>prescrição revisada</span></article>
+          <article><small>Execução</small><strong>Diária</strong><span>esforço e duração</span></article>
+          <article><small>Evolução</small><strong>Clara</strong><span>frequência e progresso</span></article>
         </div>
-        <div class="schedule-card">
-          <div>
-            <strong>Fluxo do aluno</strong>
-            <span>cadastro → revisão → treino aprovado → execução</span>
-          </div>
-          <em>ativo</em>
-        </div>
-      </div>
+        <div class="schedule-card"><div><strong>Fluxo conectado</strong><span>cadastro → treino → execução → evolução</span></div><em>ativo</em></div>
+      </aside>
     </section>
 
-    <section class="status-strip" aria-label="Resumo da plataforma">
-      <div><strong>Alunos</strong><span>cadastro, planos e histórico</span></div>
-      <div><strong>Treinos</strong><span>séries, exercícios e progressão</span></div>
-      <div><strong>Check-ins</strong><span>status e execução do treino</span></div>
-      <div><strong>Banco</strong><span>persistência preparada para SaaS</span></div>
+    <section class="status-strip" aria-label="Módulos principais">
+      <div><strong>Equipe</strong><span>gestor, professor e aluno com acesso correto</span></div>
+      <div><strong>Alunos</strong><span>cadastro operacional e vínculo com professor</span></div>
+      <div><strong>Treinos</strong><span>prescrição vinculada ao aluno real</span></div>
+      <div><strong>Evolução</strong><span>histórico, esforço médio e frequência</span></div>
     </section>
 
-    <section id="solucoes" class="section">
-      <div class="section-head">
-        <span>Soluções</span>
-        <h2>Menos planilha. Menos retrabalho. Mais controle da rotina fitness.</h2>
-        <p>Uma base para acompanhar alunos, acelerar a prescrição de treinos e organizar a operação do negócio.</p>
-      </div>
-
+    <section class="section">
+      <div class="section-head"><span>Produto</span><h2>Um sistema direto para operar a rotina fitness.</h2><p>As áreas principais estão conectadas em um único fluxo, sem menus soltos ou páginas isoladas.</p></div>
       <div class="modality-grid">
-        <a class="modality-card academy" href="/mvp-01.html">
-          <small>Gestão</small>
-          <strong>Controle da operação</strong>
-          <span>Centralize alunos, planos, presença, treinos, avaliações e relatórios em um painel único.</span>
-        </a>
-        <a class="modality-card studio" href="/mvp-03.html">
-          <small>Professor</small>
-          <strong>Prescrição mais rápida</strong>
-          <span>Revise treinos, substitua exercícios, aprove rotinas e libere execução para o aluno.</span>
-        </a>
-        <a class="modality-card personal" href="/mvp-04.html">
-          <small>Aluno</small>
-          <strong>Acompanhamento contínuo</strong>
-          <span>O aluno vê o treino aprovado, inicia a execução, marca exercícios e registra histórico.</span>
-        </a>
-        <a class="modality-card box" href="/mvp-08.html">
-          <small>Persistência</small>
-          <strong>Base para SaaS</strong>
-          <span>Adapter preparado para trocar JSON local por PostgreSQL sem quebrar as telas já validadas.</span>
-        </a>
+        <a class="modality-card" href="/mvp-21.html"><small>Início</small><strong>Criar negócio</strong><span>Abra a operação com academia, estúdio, box ou personal.</span></a>
+        <a class="modality-card" href="/mvp-22.html"><small>Equipe</small><strong>Gerenciar usuários</strong><span>Configure gestores, professores e alunos com acesso correto.</span></a>
+        <a class="modality-card" href="/mvp-23.html"><small>Alunos</small><strong>Cadastrar aluno</strong><span>Organize objetivo, nível, frequência e professor responsável.</span></a>
+        <a class="modality-card" href="/mvp-24.html"><small>Treinos</small><strong>Prescrever treino</strong><span>Crie treinos vinculados ao aluno e revise antes da liberação.</span></a>
+        <a class="modality-card" href="/mvp-25.html"><small>Execução</small><strong>Acompanhar treino</strong><span>Registre exercícios feitos, esforço percebido e duração.</span></a>
+        <a class="modality-card" href="/mvp-26.html"><small>Evolução</small><strong>Ver progresso</strong><span>Acompanhe histórico, frequência semanal e evolução por treino.</span></a>
       </div>
-    </section>
-
-    <section id="modalidades" class="section">
-      <div class="section-head">
-        <span>Tipos de negócio</span>
-        <h2>Preparado para diferentes formatos de operação fitness.</h2>
-      </div>
-
-      <div class="modality-grid modalities-five">
-        <a class="modality-card academy" href="#catalogo">
-          <small>FitCore</small>
-          <strong>Academia</strong>
-          <span>Gestão de alunos, planos, presença, treinos e evolução.</span>
-        </a>
-        <a class="modality-card studio" href="/mvp-01.html">
-          <small>FitCore</small>
-          <strong>Estúdio</strong>
-          <span>Agenda, pacotes, acompanhamento próximo e retenção.</span>
-        </a>
-        <a class="modality-card personal" href="/mvp-01.html">
-          <small>FitCore</small>
-          <strong>Personal trainer</strong>
-          <span>Prescrição individual, histórico e ajustes por aluno.</span>
-        </a>
-        <a class="modality-card box" href="#cross-training">
-          <small>FitCore</small>
-          <strong>Box funcional</strong>
-          <span>Turmas, treinos do dia, presença e performance.</span>
-        </a>
-        <a class="modality-card cross" href="#cross-training">
-          <small>FitCore</small>
-          <strong>Cross training</strong>
-          <span>Treinos intensos, circuitos, escalas por nível e acompanhamento de evolução.</span>
-        </a>
-      </div>
-    </section>
-
-    <section id="catalogo" class="section catalog-section">
-      <div class="section-head compact">
-        <span>Banco de exercícios</span>
-        <h2>Pesquise exercícios e monte treinos com mais agilidade.</h2>
-        <p>Busque por movimento, grupo muscular, equipamento ou parte do corpo. A base inicial já apoia a montagem de treinos e rotinas.</p>
-      </div>
-
-      <div class="search-panel">
-        <div class="search-box">
-          <input id="exercise-search" type="search" value="agachamento" placeholder="Ex: agachamento, peito, halter, abdominal" autocomplete="off" />
-          <button id="search-button" type="button">Buscar</button>
-        </div>
-        <div class="quick-filters" aria-label="Filtros rápidos">
-          <button type="button" data-query="squat">Agachamento</button>
-          <button type="button" data-query="chest dumbbell">Peito com halter</button>
-          <button type="button" data-query="back cable">Costas no cabo</button>
-          <button type="button" data-query="abs body weight">Abdômen sem equipamento</button>
-          <button type="button" data-query="burpee">Burpee</button>
-          <button type="button" data-query="kettlebell">Kettlebell</button>
-        </div>
-        <div class="catalog-count" id="catalog-count">Carregando exercícios</div>
-      </div>
-
-      <div class="results-grid" id="exercise-results" aria-live="polite">
-        <article class="result-card skeleton"></article>
-        <article class="result-card skeleton"></article>
-        <article class="result-card skeleton"></article>
-      </div>
-    </section>
-
-    <section id="rotinas" class="section workflow-section">
-      <div class="routine-board">
-        <article class="routine-main">
-          <span>Treinos</span>
-          <h2>Criador de treinos</h2>
-          <p>Monte rotinas por objetivo, frequência semanal, nível do aluno, restrições, tempo de descanso, progressão de carga e observações do professor.</p>
-          <a class="ghost-button" href="/mvp-01.html">Abrir aluno + treino</a>
-        </article>
-        <article>
-          <strong>Para o aluno</strong>
-          <p>Treino claro, histórico de execução, check-ins e evolução visível.</p>
-        </article>
-        <article>
-          <strong>Para o professor</strong>
-          <p>Prescrição mais rápida, ajustes por aluno e menos trabalho repetitivo.</p>
-        </article>
-        <article>
-          <strong>Para o gestor</strong>
-          <p>Relatórios de uso, retenção, frequência e evolução da equipe.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="cross-training" class="section cross-section">
-      <div class="section-head compact">
-        <span>Box, funcional e cross training</span>
-        <h2>Treinos do dia, circuitos e evolução por turma.</h2>
-        <p>Crie uma rotina para aulas coletivas com aquecimento, técnica, força, WOD ou circuito, escala por nível e registro de presença.</p>
-      </div>
-      <div class="cross-grid">
-        <article><strong>WOD / treino do dia</strong><span>Organize blocos de treino, tempo, rounds, reps e observações do coach.</span></article>
-        <article><strong>Escala por nível</strong><span>Adapte movimentos para iniciante, intermediário e avançado sem perder o padrão da aula.</span></article>
-        <article><strong>Turmas e presença</strong><span>Acompanhe frequência, horários, vagas, faltas e evolução dos alunos por grupo.</span></article>
-        <article><strong>Performance</strong><span>Registre cargas, tempos, PRs, evolução técnica e histórico de cada aluno.</span></article>
-      </div>
-    </section>
-
-    <section id="seguranca" class="section security-section pro-security-section">
-      <div class="section-head compact">
-        <span>Governança e segurança</span>
-        <h2>Privacidade, acesso e operação organizados desde a base.</h2>
-        <p>O FitCore precisa proteger dados de aluno, treino e evolução. A estrutura fica simples para o cliente e controlada para a operação.</p>
-      </div>
-      <div class="security-grid pro-security-grid">
-        <a href="/legal/privacy"><small>01</small><strong>Privacidade e LGPD</strong><span>Finalidade, minimização de dados, direitos do titular e auditoria mínima por ação.</span></a>
-        <a href="/mvp-05.html"><small>02</small><strong>Controle por perfil</strong><span>Gestor, professor e aluno acessam apenas o que precisam para executar o fluxo.</span></a>
-        <a href="/legal/security"><small>03</small><strong>Infraestrutura segura</strong><span>HTTPS, portas internas fechadas, backups, segredos e validação antes de produção.</span></a>
-        <a href="/legal/open-source"><small>04</small><strong>Licenças e mídia</strong><span>Uso controlado de wger, imagens, GIFs e componentes externos com origem registrada.</span></a>
-      </div>
-    </section>
-
-    <section id="precos" class="section pricing-section">
-      <div class="section-head compact">
-        <span>Planos</span>
-        <h2>Comece simples e evolua conforme a operação crescer.</h2>
-        <p>Primeira fase focada em catálogo, treinos e acompanhamento. Depois entram financeiro, WhatsApp e relatórios avançados.</p>
-      </div>
-      <div class="pricing-grid">
-        <article>
-          <small>Inicial</small>
-          <strong>Essencial</strong>
-          <p>Para validar cadastro de alunos, busca de exercícios e montagem de treinos.</p>
-        </article>
-        <article class="highlight">
-          <small>Recomendado</small>
-          <strong>Pro</strong>
-          <p>Para academias, estúdios e boxes com acompanhamento, equipe e automações.</p>
-        </article>
-        <article>
-          <small>White-label</small>
-          <strong>Marca branca</strong>
-          <p>Para operação fitness com domínio próprio, identidade visual e módulos sob demanda.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="demonstracao" class="section demo-section">
-      <div>
-        <span>Validação funcional</span>
-        <h2>Valide o FitCore com aluno, professor, execução e persistência.</h2>
-        <p>Cadastre um aluno, aprove o treino como professor, execute como aluno e confira a base preparada para banco multi-tenant.</p>
-      </div>
-      <a class="cta large" href="/mvp-21.html">Criar negócio</a>
-      <a class="ghost-button" href="/mvp-19.html">Entrar no sistema</a>
-      <a class="ghost-button" href="/mvp-22.html">Gestão de equipe</a>
-      <a class="ghost-button" href="/mvp-23.html">Cadastro de alunos</a>
-      <a class="ghost-button" href="/mvp-24.html">Prescrição de treino</a>
-      <a class="ghost-button" href="/mvp-25.html">Execução do treino</a>
-      <a class="ghost-button" href="/mvp-08.html">Ver persistência</a>
     </section>
   </main>
 
-  <footer class="footer">
-    <span>FitCore Pro · Gestão fitness</span>
-    <nav class="footer-links" aria-label="Links legais">
-      <a href="/legal/privacy">Privacidade</a>
-      <a href="/legal/security">Segurança</a>
-      <a href="/legal/terms">Termos</a>
-      <a href="/legal/open-source">Licenças</a>
-    </nav>
-  </footer>
-
-  <script src="/script.js?v=fitcore-m8"></script>
+  <footer class="footer"><span>FitCore Pro · Gestão fitness</span><nav><a href="/legal/privacy">Privacidade</a><a href="/mvp-20.html">Segurança</a><a href="/mvp-26.html">Evolução</a></nav></footer>
+  <script src="/script.js?v=fitcore-home-27"></script>
 </body>
 </html>

@@ -54,6 +54,9 @@
     "mvp24:rollback": "bash infra/scripts/rollback-mvp-24-workout-prescription.sh",
     "mvp25:apply": "bash infra/scripts/apply-mvp-25-workout-execution.sh",
     "mvp25:verify": "bash infra/scripts/verify-mvp-25-workout-execution.sh",
-    "mvp25:rollback": "bash infra/scripts/rollback-mvp-25-workout-execution.sh"
+    "mvp25:rollback": "bash infra/scripts/rollback-mvp-25-workout-execution.sh",
+    "mvp26:apply": "bash infra/scripts/apply-mvp-26-student-evolution.sh",
+    "mvp26:verify": "bash infra/scripts/verify-mvp-26-student-evolution.sh",
+    "mvp26:rollback": "bash infra/scripts/rollback-mvp-26-student-evolution.sh"
   }
 }
