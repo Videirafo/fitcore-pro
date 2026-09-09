@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-05 do FitCore Pro: papéis, navegação por perfil, permissões simuladas e auditoria unificada." />
+  <title>MVP-05 Papéis e Navegação | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-05.css?v=1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Voltar para a página inicial do FitCore">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>FitCore Pro</strong>
+        <small>MarcaIA Fitness</small>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Fluxos do FitCore">
+      <a href="/">Início</a>
+      <a href="/mvp-01.html">Aluno + treino</a>
+      <a href="/mvp-02.html">Check-in</a>
+      <a href="/mvp-03.html">Professor</a>
+      <a href="/mvp-04.html">Aluno</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-05 · Papéis e Navegação</p>
+        <h1>Cada perfil vê somente o que precisa para operar.</h1>
+        <p>
+          Esta fase organiza a navegação por papel: gestor, professor e aluno. O objetivo é validar permissões simuladas,
+          menus por perfil e uma visão única de eventos antes da autenticação real e do banco multi-tenant.
+        </p>
+      </div>
+      <article class="hero-card">
+        <span>Perfil selecionado</span>
+        <strong id="current-role-label">Gestor</strong>
+        <small id="current-role-summary">Visão da operação, alunos, treinos, check-ins e auditoria.</small>
+      </article>
+    </section>
+
+    <section class="role-switcher" aria-label="Escolha o perfil de navegação">
+      <button class="role-tab active" type="button" data-role="gestor">
+        <strong>Gestor</strong>
+        <span>operação e auditoria</span>
+      </button>
+      <button class="role-tab" type="button" data-role="professor">
+        <strong>Professor</strong>
+        <span>revisão e prescrição</span>
+      </button>
+      <button class="role-tab" type="button" data-role="aluno">
+        <strong>Aluno</strong>
+        <span>execução e histórico</span>
+      </button>
+    </section>
+
+    <section class="metrics" aria-label="Resumo do MVP">
+      <article>
+        <span>Alunos</span>
+        <strong id="metric-students">--</strong>
+        <small>com rascunho de treino</small>
+      </article>
+      <article>
+        <span>Treinos aprovados</span>
+        <strong id="metric-approved">--</strong>
+        <small>liberados para o aluno</small>
+      </article>
+      <article>
+        <span>Check-ins</span>
+        <strong id="metric-checkins">--</strong>
+        <small>planejados, em execução ou concluídos</small>
+      </article>
+      <article>
+        <span>Eventos</span>
+        <strong id="metric-audit">--</strong>
+        <small>auditoria mínima do MVP</small>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel primary-panel">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">Menu por perfil</p>
+            <h2 id="role-title">Gestor</h2>
+            <p id="role-description">Acompanha operação, alunos, treinos, check-ins e eventos mínimos de auditoria.</p>
+          </div>
+          <span class="pill" id="role-pill">gestor</span>
+        </div>
+        <div class="nav-cards" id="role-navigation"></div>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">Permissões simuladas</p>
+        <h2>O que este perfil pode acessar</h2>
+        <div class="permission-list" id="permission-list"></div>
+      </article>
+    </section>
+
+    <section class="matrix-section">
+      <div class="section-head">
+        <p class="kicker">Matriz de acesso</p>
+        <h2>Separação inicial entre gestor, professor e aluno.</h2>
+      </div>
+      <div class="matrix" id="permission-matrix"></div>
+    </section>
+
+    <section class="audit-section">
+      <div class="section-head with-action">
+        <div>
+          <p class="kicker">Auditoria unificada</p>
+          <h2>Eventos do aluno, professor e check-in em uma visão.</h2>
+          <p>Esta visão consolida os eventos mínimos gerados pelos MVPs anteriores. Em produção, isso migra para banco com tenant, usuário autenticado e RLS.</p>
+        </div>
+        <button id="refresh-button" type="button">Atualizar</button>
+      </div>
+      <div class="audit-list" id="audit-list">
+        <article class="empty">Carregando eventos...</article>
+      </div>
+    </section>
+  </main>
+
+  <script src="/mvp-05.js?v=1"></script>
+</body>
+</html>
