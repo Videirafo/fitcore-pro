@@ -128,9 +128,108 @@
   gap: 14px;
 }
 
+@media (min-width: 941px) {
+  .navbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 20px;
+    padding: 20px 22px;
+  }
+
+  .brand {
+    min-width: 132px;
+  }
+
+  .brand small {
+    display: none !important;
+  }
+
+  .nav,
+  .nav-actions {
+    flex-wrap: nowrap !important;
+    min-width: 0;
+  }
+
+  .nav {
+    gap: 14px;
+    justify-content: center;
+  }
+
+  .nav a,
+  .login-link {
+    white-space: nowrap;
+    font-size: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-actions {
+    gap: 10px;
+  }
+
+  .nav-actions .cta,
+  .login-link {
+    min-height: 42px;
+  }
+}
+
+.pro-security-section .section-head {
+  margin-bottom: 22px;
+}
+
+.pro-security-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pro-security-grid a {
+  position: relative;
+  overflow: hidden;
+  min-height: 210px;
+  padding: 24px;
+}
+
+.pro-security-grid a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 100% 0%, rgba(166, 255, 75, 0.18), transparent 9rem);
+}
+
+.pro-security-grid small,
+.pro-security-grid strong,
+.pro-security-grid span {
+  position: relative;
+  z-index: 1;
+  display: block;
+}
+
+.pro-security-grid small {
+  width: max-content;
+  margin-bottom: 18px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #0b4218;
+  background: #a6ff4b;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.pro-security-grid strong {
+  min-height: 52px;
+  margin-bottom: 10px;
+  font-size: 23px;
+  line-height: 1.02;
+}
+
+.pro-security-grid span {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 @media (max-width: 1180px) {
   .modalities-five,
-  .cross-grid {
+  .cross-grid,
+  .pro-security-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -145,6 +244,10 @@
     display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 14px !important;
+  }
+
+  .brand small {
+    display: none !important;
   }
 
   .nav,
@@ -242,7 +345,8 @@
   .modalities-five,
   .cross-grid,
   .security-grid,
-  .legal-grid {
+  .legal-grid,
+  .pro-security-grid {
     grid-template-columns: 1fr;
   }
 
@@ -260,7 +364,7 @@
   }
 
   .brand small {
-    font-size: 10px;
+    display: none !important;
   }
 
   .hero-actions,
