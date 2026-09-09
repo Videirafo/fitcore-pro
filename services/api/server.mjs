@@ -13,6 +13,7 @@ import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createServerPersistenceAdapter, createServerPersistenceHealth } from "./persistence/server-adapter-glue.mjs";
 import { createAccessContext, createAccessHealth } from "./security/access-context.mjs";
+import { createSignedSessionManager } from "./security/signed-session.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -35,6 +36,8 @@ const persistenceAdapter = createServerPersistenceAdapter({
   readJsonArray,
   writeJsonArray,
 });
+
+const sessionManager = createSignedSessionManager(process.env);
 
 let catalogCache = null;
 let catalogLoadedAt = null;
@@ -248,12 +251,13 @@ const allowedCheckinStatus = new Set(["planejado", "em_execucao", "concluido"]);
 const allowedRoles = new Set(["gestor", "professor", "aluno"]);
 const allowedReviewStatus = new Set(["em_revisao", "ajustes_solicitados", "aprovado"]);
 
-function sendJson(res, statusCode, payload) {
+function sendJson(res, statusCode, payload, extraHeaders = {}) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
     "x-fitcore-api": "owned-api",
+    ...extraHeaders,
   });
   res.end(body);
 }
@@ -989,7 +993,11 @@ function getProfessorContext() {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-    const accessContext = createAccessContext(req, process.env);
+    const softAccessContext = createAccessContext(req, process.env);
+    const signedAccessContext = sessionManager.resolveAccessContext(req);
+    const accessContext = signedAccessContext || softAccessContext;
+    const routeDecision = sessionManager.authorizeRoute(accessContext, url.pathname, req.method);
+    if (!routeDecision.allowed) return sendJson(res, routeDecision.statusCode, routeDecision.response);
 
     if (url.pathname === "/api/health") {
       const persistence = createServerPersistenceHealth(persistenceAdapter);
@@ -1022,6 +1030,15 @@ const server = createServer(async (req, res) => {
           actor_role: access.actor_role,
           enforcement: access.enforcement,
           login_real: false,
+        },
+        mvp_15: {
+          signed_session: sessionManager.signedMode,
+          tenant_slug: accessContext.tenant_slug,
+          actor_role: accessContext.actor_role,
+          session_signed: Boolean(accessContext.session_signed),
+          role_from_db: Boolean(accessContext.role_from_db),
+          headers_trusted: Boolean(accessContext.headers_trusted),
+          rollback_soft: "bash infra/scripts/rollback-mvp-15-soft-auth.sh",
         },
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
@@ -1074,6 +1091,25 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-14/access-context") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       return sendJson(res, 200, createAccessHealth(accessContext));
+    }
+
+
+    if (url.pathname === "/api/mvp-15/session") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, sessionManager.publicHealth(req, accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-15/session/login") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const created = sessionManager.createSession(input);
+      return sendJson(res, 201, { ok: true, mvp: "MVP-15 Signed Session RBAC", login: true, session: created.session }, { "set-cookie": created.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-15/session/logout") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const result = sessionManager.logout(req);
+      return sendJson(res, 200, { ok: true, mvp: "MVP-15 Signed Session RBAC", logout: true }, { "set-cookie": result.cookie });
     }
 
     if (url.pathname === "/api/exercises") {

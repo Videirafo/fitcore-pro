@@ -18,6 +18,9 @@
     "mvp12:verify": "bash infra/scripts/verify-mvp-12-smoke.sh",
     "mvp13:verify": "bash infra/scripts/verify-mvp-13-operational-dashboard.sh",
     "mvp14:apply": "bash infra/scripts/apply-mvp-14-access-control.sh",
-    "mvp14:verify": "bash infra/scripts/verify-mvp-14-access-control.sh"
+    "mvp14:verify": "bash infra/scripts/verify-mvp-14-access-control.sh",
+    "mvp15:apply": "bash infra/scripts/apply-mvp-15-signed-session.sh",
+    "mvp15:verify": "bash infra/scripts/verify-mvp-15-signed-session.sh",
+    "mvp15:rollback": "bash infra/scripts/rollback-mvp-15-soft-auth.sh"
   }
 }

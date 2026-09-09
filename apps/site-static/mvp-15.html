@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MVP-15 Sessão Assinada | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-15.css?v=fitcore-mvp15-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav>
+      <a href="/mvp-13.html">Operação</a>
+      <a href="/mvp-14.html">Papéis</a>
+      <a class="active" href="/mvp-15.html">Sessão</a>
+      <a href="/mvp-12.html">Postgres</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="kicker">MVP-15 · Sessão assinada</p>
+      <h1>Login real de validação com papel vindo do banco.</h1>
+      <p>
+        O FitCore passa a proteger as APIs operacionais por cookie assinado.
+        O tenant e o papel final deixam de vir dos headers e passam a ser resolvidos pela sessão vinculada ao PostgreSQL.
+      </p>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Entrar</p>
+        <h2>Criar sessão demo</h2>
+        <div class="actions">
+          <button data-role="gestor">Entrar como gestor</button>
+          <button data-role="professor">Entrar como professor</button>
+          <button data-role="aluno">Entrar como aluno</button>
+        </div>
+        <button id="logout" class="secondary">Sair da sessão</button>
+      </article>
+
+      <article class="panel status">
+        <p class="kicker">Estado</p>
+        <h2 id="status-title">Verificando</h2>
+        <p id="status-detail">Consultando /api/mvp-15/session</p>
+        <ul>
+          <li><span>Tenant</span><strong id="tenant">--</strong></li>
+          <li><span>Papel</span><strong id="role">--</strong></li>
+          <li><span>Origem</span><strong id="source">--</strong></li>
+          <li><span>Headers</span><strong id="headers">--</strong></li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel">
+      <p class="kicker">Diagnóstico</p>
+      <pre id="output">Aguardando resposta da API.</pre>
+    </section>
+  </main>
+
+  <script src="/mvp-15.js?v=fitcore-mvp15-1"></script>
+</body>
+</html>
