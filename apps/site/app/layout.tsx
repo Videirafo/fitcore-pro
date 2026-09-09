@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import "./premium-console.css";
 
 export const metadata: Metadata = {
   title: "FitCore Pro | Gestão fitness",

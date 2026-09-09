@@ -23,9 +23,9 @@ Transformar o shell operacional em uma experiência mais próxima de SaaS fitnes
 - Professor: alunos, treinos, execução, evolução, biblioteca e IA de apoio à prescrição.
 - Aluno: treino do dia, biblioteca de apoio, execução, evolução, IA de orientação e segurança.
 
-## GIFs
+## Orientação visual e mídia
 
-Os cards usam a mídia interna publicada em `/media/exercises/*.gif` e mostram o que fazer no treino:
+Os cards usam orientação visual source-owned do FitCore por padrão. Mídia publicada em `/media/exercises/*` só pode ser exibida quando a proveniência e a licença comercial estiverem aprovadas. Os cards mostram o que fazer no treino:
 
 - agachamento;
 - supino;
