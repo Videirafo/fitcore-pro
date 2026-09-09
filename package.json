@@ -13,6 +13,8 @@
     "mvp09:apply": "bash infra/scripts/apply-mvp-09-adapter.sh",
     "mvp09:verify": "bash infra/scripts/verify-mvp-09-adapter.sh",
     "mvp10:apply": "bash infra/scripts/apply-mvp-10-postgres-store.sh",
-    "mvp10:verify": "bash infra/scripts/verify-mvp-10-postgres-store.sh"
+    "mvp10:verify": "bash infra/scripts/verify-mvp-10-postgres-store.sh",
+    "mvp12:smoke": "bash infra/scripts/smoke-mvp-12-postgres-write-read.sh",
+    "mvp12:verify": "bash infra/scripts/verify-mvp-12-smoke.sh"
   }
 }
