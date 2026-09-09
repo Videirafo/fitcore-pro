@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-13 do FitCore Pro: painel operacional lendo dados reais do PostgresStore." />
+  <title>MVP-13 Painel Operacional | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-13.css?v=fitcore-mvp13-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span>F</span>
+      <strong>FitCore Pro</strong>
+    </a>
+    <nav>
+      <a href="/mvp-11.html">PostgreSQL</a>
+      <a href="/mvp-12.html">Smoke</a>
+      <a class="active" href="/mvp-13.html">Operação</a>
+      <a href="/mvp-05.html">Papéis</a>
+      <a href="/legal/privacy">LGPD</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-13 · Operação real</p>
+        <h1>Painel operacional com dados reais do PostgresStore.</h1>
+        <p>
+          Esta tela consolida o estado do FitCore Pro depois da ativação do PostgreSQL: store ativo,
+          alunos/treinos, revisões, check-ins e sinais de auditoria. É o primeiro painel de operação do SaaS.
+        </p>
+      </div>
+      <aside class="status-card">
+        <span>Persistência</span>
+        <strong id="store-status">Carregando</strong>
+        <small id="store-detail">verificando API</small>
+      </aside>
+    </section>
+
+    <section class="metrics">
+      <article>
+        <span>Treinos</span>
+        <strong id="metric-workouts">--</strong>
+        <small>alunos + treinos</small>
+      </article>
+      <article>
+        <span>Revisões</span>
+        <strong id="metric-reviews">--</strong>
+        <small>professor/gestor</small>
+      </article>
+      <article>
+        <span>Check-ins</span>
+        <strong id="metric-checkins">--</strong>
+        <small>execuções do aluno</small>
+      </article>
+      <article>
+        <span>Store</span>
+        <strong id="metric-store">--</strong>
+        <small>fonte ativa</small>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Últimos treinos</p>
+        <h2>Alunos e treinos reais</h2>
+        <div id="workout-list" class="list muted-box">Carregando treinos...</div>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">Fila técnica</p>
+        <h2>Revisões do professor</h2>
+        <div id="review-list" class="list muted-box">Carregando revisões...</div>
+      </article>
+    </section>
+
+    <section class="grid bottom-grid">
+      <article class="panel">
+        <p class="kicker">Execução</p>
+        <h2>Check-ins recentes</h2>
+        <div id="checkin-list" class="list muted-box">Carregando check-ins...</div>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">Diagnóstico</p>
+        <h2>Estado técnico</h2>
+        <pre id="debug-output">Aguardando resposta...</pre>
+      </article>
+    </section>
+  </main>
+
+  <script src="/mvp-13.js?v=fitcore-mvp13-1"></script>
+</body>
+</html>
