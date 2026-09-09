@@ -45,6 +45,9 @@
     "site:next:build": "npm --prefix apps/site run build",
     "mvp23:apply": "bash infra/scripts/apply-mvp-23-student-management.sh",
     "mvp23:verify": "bash infra/scripts/verify-mvp-23-student-management.sh",
-    "mvp23:rollback": "bash infra/scripts/rollback-mvp-23-student-management.sh"
+    "mvp23:rollback": "bash infra/scripts/rollback-mvp-23-student-management.sh",
+    "ui:lightswind": "node tools/lightswind.mjs",
+    "ui:lightswind:doctor": "node tools/lightswind.mjs doctor",
+    "ui:lightswind:list": "node tools/lightswind.mjs list"
   }
 }
