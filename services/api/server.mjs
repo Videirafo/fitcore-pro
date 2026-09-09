@@ -1004,6 +1004,14 @@ const server = createServer(async (req, res) => {
           active_store: persistence.active_store,
           fallback_seguro: persistence.fallback_seguro,
         },
+        mvp_10: {
+          postgres_store_controlado: true,
+          active_store: persistence.active_store,
+          database_configured: persistence.database_configured,
+          postgres_ready: Boolean(persistence.postgres?.ready),
+          activation_requested: Boolean(persistence.postgres?.activation_requested),
+          fallback_seguro: persistence.fallback_seguro,
+        },
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
         catalogo_carregado_em: catalogLoadedAt,
@@ -1029,6 +1037,27 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-09/persistence") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       return sendJson(res, 200, createServerPersistenceHealth(persistenceAdapter));
+    }
+
+    if (url.pathname === "/api/mvp-10/postgres-store") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const persistence = createServerPersistenceHealth(persistenceAdapter);
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "MVP-10 PostgresStore controlado",
+        postgres_store_controlado: true,
+        adapter: persistence.adapter,
+        selected_store: persistence.selected_store,
+        active_store: persistence.active_store,
+        requested_store: persistence.requested_store,
+        database_configured: persistence.database_configured,
+        fallback_seguro: persistence.fallback_seguro,
+        postgres: persistence.postgres,
+        resources: persistence.resources,
+        stores: persistence.stores,
+        policy: persistence.policy,
+        reason: persistence.reason,
+      });
     }
 
     if (url.pathname === "/api/exercises") {
