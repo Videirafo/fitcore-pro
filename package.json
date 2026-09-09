@@ -71,6 +71,9 @@
     "mvp31:verify": "bash infra/scripts/verify-mvp-31-guided-setup.sh",
     "mvp32:apply": "bash infra/scripts/apply-mvp-32-premium-agent-workspace.sh",
     "mvp32:check": "node tools/check-mvp-32-premium-agent-workspace.mjs",
-    "mvp32:verify": "bash infra/scripts/verify-mvp-32-premium-agent-workspace.sh"
+    "mvp32:verify": "bash infra/scripts/verify-mvp-32-premium-agent-workspace.sh",
+    "mvp33:check": "node tools/check-mvp-33-evidence-coach.mjs",
+    "mvp33:test": "node --test tools/evidence-coach.test.mjs",
+    "mvp33:verify": "npm run mvp33:check && npm run mvp33:test && npm run site:next:check && npm run site:next:build"
   }
 }
