@@ -9,6 +9,7 @@ const required = [
   "apps/site/app/layout.tsx",
   "apps/site/app/page.tsx",
   "apps/site/app/mvp-22/page.tsx",
+  "apps/site/app/mvp-23/page.tsx",
   "apps/site/app/globals.css",
   "apps/site/components/FitCoreShell.tsx",
   "apps/site/lib/fitcore-api.ts",
@@ -31,9 +32,14 @@ if (!layout.includes('import "./globals.css"')) {
   console.error("ERRO: layout Next não importa globals.css.");
   failed = true;
 }
-const page = readFileSync(resolve(root, "apps/site/app/mvp-22/page.tsx"), "utf8");
-if (!page.includes("/mvp-22.html") || !page.includes("Gestão real de usuários")) {
+const page22 = readFileSync(resolve(root, "apps/site/app/mvp-22/page.tsx"), "utf8");
+if (!page22.includes("/mvp-22.html") || !page22.includes("Gestão real de usuários")) {
   console.error("ERRO: página Next MVP-22 não aponta para a tela operacional.");
+  failed = true;
+}
+const page23 = readFileSync(resolve(root, "apps/site/app/mvp-23/page.tsx"), "utf8");
+if (!page23.includes("/mvp-23.html") || !page23.includes("Cadastro operacional de aluno")) {
+  console.error("ERRO: página Next MVP-23 não aponta para a tela operacional.");
   failed = true;
 }
 if (failed) process.exit(1);

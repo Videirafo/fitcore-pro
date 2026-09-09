@@ -295,6 +295,7 @@ export function createSignedSessionManager(env = process.env) {
 
   function allowedRolesFor(pathname, method) {
     if (pathname.startsWith("/api/mvp-22")) return ["gestor"];
+    if (pathname.startsWith("/api/mvp-23/students")) return ["gestor", "professor"];
     if (pathname.startsWith("/api/mvp-03/professor")) return ["gestor", "professor"];
     if (pathname.startsWith("/api/mvp-01/aluno-treino") && method !== "GET") return ["gestor", "professor"];
     if (pathname.startsWith("/api/mvp-02/checkins")) return ["gestor", "professor", "aluno"];

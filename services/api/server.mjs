@@ -20,6 +20,7 @@ import { createCredentialAuthManager } from "./security/credential-auth.mjs";
 import { createAuthHardeningManager } from "./security/auth-hardening.mjs";
 import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs";
 import { createTenantUserManagement } from "./security/tenant-user-management.mjs";
+import { createStudentManagement } from "./security/student-management.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -49,6 +50,7 @@ const credentialAuthManager = createCredentialAuthManager(process.env, sessionMa
 const authHardeningManager = createAuthHardeningManager(process.env, sessionManager);
 const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessionManager);
 const tenantUserManagement = createTenantUserManagement(process.env, sessionManager);
+const studentManagement = createStudentManagement(process.env);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1082,6 +1084,12 @@ const server = createServer(async (req, res) => {
           cross_tenant_block: true,
           next_ready_frontend: true,
         },
+        mvp_23: {
+          student_management: studentManagement.enabled,
+          tenant_scoped: true,
+          student_entity_complete: true,
+          cross_tenant_block: true,
+        },
         mvp_21: {
           tenant_onboarding: tenantOnboardingManager.enabled,
           demo_is_no_longer_only_flow: true,
@@ -1363,6 +1371,44 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-22/cross-tenant-check") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = tenantUserManagement.crossTenantCheck(accessContext, url);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+
+    if (url.pathname === "/api/mvp-23/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, studentManagement.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-23/students") {
+      if (req.method === "GET") {
+        const result = studentManagement.listStudents(accessContext, url);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = studentManagement.createStudent(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    const mvp23StatusMatch = url.pathname.match(/^\/api\/mvp-23\/students\/([^/]+)\/status$/);
+    if (mvp23StatusMatch) {
+      if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = studentManagement.updateStudentStatus(accessContext, decodeURIComponent(mvp23StatusMatch[1]), input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp23StudentMatch = url.pathname.match(/^\/api\/mvp-23\/students\/([^/]+)$/);
+    if (mvp23StudentMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = studentManagement.getStudent(accessContext, decodeURIComponent(mvp23StudentMatch[1]));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

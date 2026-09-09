@@ -42,6 +42,9 @@
     "front:check": "node tools/check-front-assets.mjs",
     "site:next:check": "node tools/check-next-app.mjs",
     "site:next:dev": "npm --prefix apps/site run dev",
-    "site:next:build": "npm --prefix apps/site run build"
+    "site:next:build": "npm --prefix apps/site run build",
+    "mvp23:apply": "bash infra/scripts/apply-mvp-23-student-management.sh",
+    "mvp23:verify": "bash infra/scripts/verify-mvp-23-student-management.sh",
+    "mvp23:rollback": "bash infra/scripts/rollback-mvp-23-student-management.sh"
   }
 }
