@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createServerPersistenceAdapter, createServerPersistenceHealth } from "./persistence/server-adapter-glue.mjs";
+import { createAccessContext, createAccessHealth } from "./security/access-context.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -988,9 +989,11 @@ function getProfessorContext() {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const accessContext = createAccessContext(req, process.env);
 
     if (url.pathname === "/api/health") {
       const persistence = createServerPersistenceHealth(persistenceAdapter);
+      const access = createAccessHealth(accessContext);
       const catalogExists = existsSync(catalogPath);
       const checkins = readCheckins();
       const reviews = readProfessorReviews();
@@ -999,6 +1002,7 @@ const server = createServer(async (req, res) => {
         servico: "fitcore-api",
         api: "api-propria",
         persistence,
+        access,
         mvp_09: {
           persistence_adapter: true,
           active_store: persistence.active_store,
@@ -1011,6 +1015,13 @@ const server = createServer(async (req, res) => {
           postgres_ready: Boolean(persistence.postgres?.ready),
           activation_requested: Boolean(persistence.postgres?.activation_requested),
           fallback_seguro: persistence.fallback_seguro,
+        },
+        mvp_14: {
+          auth_rbac_foundation: true,
+          tenant_slug: access.tenant_slug,
+          actor_role: access.actor_role,
+          enforcement: access.enforcement,
+          login_real: false,
         },
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
@@ -1058,6 +1069,11 @@ const server = createServer(async (req, res) => {
         policy: persistence.policy,
         reason: persistence.reason,
       });
+    }
+
+    if (url.pathname === "/api/mvp-14/access-context") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, createAccessHealth(accessContext));
     }
 
     if (url.pathname === "/api/exercises") {
