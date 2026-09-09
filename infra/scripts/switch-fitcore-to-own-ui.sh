@@ -97,6 +97,14 @@ server {
         try_files /legal-terms.html =404;
     }
 
+    # Mídia pública do FitCore: nunca cair para index.html.
+    # Se o GIF não existir, retorna 404 real. Isso evita cache HTML da Cloudflare no caminho de mídia.
+    location /media/ {
+        try_files \$uri =404;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
     location /api/ {
         proxy_pass $UPSTREAM_API/api/;
         proxy_http_version 1.1;
@@ -133,3 +141,4 @@ curl -I "https://$DOMAIN/health" || true
 curl -I "https://$DOMAIN/api/health" || true
 curl -I "https://$DOMAIN/legal/privacy" || true
 curl -I "https://$DOMAIN/legal/security" || true
+curl -I "https://$DOMAIN/media/exercises/0026-barbell-bench-squat.gif?fitcore-media-test=$(date +%s)" || true
