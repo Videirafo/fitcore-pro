@@ -325,3 +325,80 @@ button:disabled { cursor: not-allowed; opacity: .55; box-shadow: none !important
   .app-header { gap: 12px; }
   .workspace-main { overflow: hidden; }
 }
+
+/* MVP-30 — guided operational flow */
+.flow-guide {
+  background:
+    linear-gradient(135deg, rgba(71,240,106,.12), rgba(112,165,255,.075)),
+    rgba(255,255,255,.045);
+}
+.flow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.flow-header span,
+.action-summary span {
+  color: var(--lime);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.flow-header strong {
+  color: #fff;
+  font-size: clamp(24px, 3vw, 38px);
+  letter-spacing: -.055em;
+}
+.flow-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.flow-card,
+.action-summary {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.04));
+}
+.flow-card::before,
+.action-summary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--card-x, 50%) var(--card-y, 0%), rgba(71,240,106,.14), transparent 18rem);
+  opacity: 0;
+  transition: opacity .25s var(--ease);
+}
+.flow-card:hover::before,
+.action-summary:hover::before { opacity: 1; }
+.flow-card strong,
+.action-summary strong { color: #fff; font-size: 17px; }
+.flow-card span,
+.action-summary small { color: var(--muted); line-height: 1.55; }
+.action-summary { margin-top: 16px; }
+.action-summary a {
+  color: #07120b;
+  background: var(--lime);
+  width: max-content;
+  border-radius: 999px;
+  padding: 8px 12px;
+  text-decoration: none;
+  font-weight: 950;
+}
+.result-box { display: none !important; }
+select option { color: #0f172a; background: #fff; }
+@media (max-width: 900px) {
+  .flow-header { align-items: flex-start; flex-direction: column; }
+  .flow-cards { grid-template-columns: 1fr; }
+}

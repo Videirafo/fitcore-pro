@@ -79,5 +79,5 @@ echo "OK: execução e auditoria por tenant persistidas no PostgreSQL."
 
 curl -fsSI "$BASE/" | grep -E "HTTP/2 200|x-fitcore-shell|x-fitcore-engine"
 curl -fsSI "$BASE/mvp-25.html" | grep -E "HTTP/2 200|x-fitcore-shell|x-fitcore-engine"
-echo "OK: home e /mvp-25.html publicados."
+echo "OK: execução publicada e legado /mvp-25.html preservado."
 echo "MVP-25 verificado: execução real do treino pelo aluno, progresso por exercício, esforço/duração, acompanhamento e auditoria ativos."

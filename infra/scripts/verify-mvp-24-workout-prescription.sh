@@ -162,6 +162,6 @@ echo "OK: status e auditoria por tenant persistidos no PostgreSQL."
 
 curl -fsS "$BASE/api/health" | grep -q '"mvp_24"'
 curl -fsSI "$BASE/mvp-24.html" | grep -q "HTTP/2 200"
-curl -fsSL "$BASE/" | grep -q '/mvp-24.html'
-echo "OK: health, home e /mvp-24.html publicados."
+curl -fsSL "$BASE/treinos" | grep -q '__next'
+echo "OK: health, /treinos Next e legado /mvp-24.html publicados."
 echo "MVP-24 verificado: prescrição real de treino vinculada ao aluno, revisão do professor, visibilidade do aluno, RBAC e auditoria por tenant ativos."

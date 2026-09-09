@@ -63,6 +63,8 @@
     "mvp28:check": "node tools/check-mvp-28-next-operational-ui.mjs",
     "mvp28:verify": "bash infra/scripts/verify-mvp-28-next-operational-ui.sh",
     "mvp29:check": "node tools/check-mvp-29-role-premium-ux.mjs",
-    "mvp29:verify": "bash infra/scripts/verify-mvp-29-role-premium-ux.sh"
+    "mvp29:verify": "bash infra/scripts/verify-mvp-29-role-premium-ux.sh",
+    "mvp30:check": "node tools/check-mvp-30-guided-operational-flow.mjs",
+    "mvp30:verify": "bash infra/scripts/verify-mvp-30-guided-operational-flow.sh"
   }
 }

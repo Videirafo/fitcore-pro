@@ -94,8 +94,8 @@ echo "OK: métricas e auditoria por tenant persistidas no PostgreSQL."
 
 curl -fsSI "$BASE/" | grep -E 'HTTP/2 200|x-fitcore-shell|x-fitcore-engine'
 curl -fsSI "$BASE/mvp-26.html" | grep -E 'HTTP/2 200|x-fitcore-shell|x-fitcore-engine'
-curl -fsS "$BASE/" | grep -q 'mvp-26.html'
+curl -fsS "$BASE/evolucao" | grep -q '__next'
 curl -fsS "$BASE/mvp-26.html" | grep -q '/mvp-26.js'
 curl -fsS "$BASE/fitcore-system.css" | grep -q 'fc-kpi-grid'
-echo "OK: home profissional, CSS global e /mvp-26.html publicados."
+echo "OK: evolução publicada em Next e legado /mvp-26.html preservado."
 echo "MVP-26 verificado: histórico, evolução, esforço médio, frequência semanal, painel do professor, gráficos/tabelas e auditoria por tenant ativos."
