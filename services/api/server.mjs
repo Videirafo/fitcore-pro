@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { createServerPersistenceAdapter, createServerPersistenceHealth } from "./persistence/server-adapter-glue.mjs";
 import { createAccessContext, createAccessHealth } from "./security/access-context.mjs";
 import { createSignedSessionManager } from "./security/signed-session.mjs";
+import { createRoleNavigation, recordNavigationAudit } from "./security/navigation-rbac.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -1040,6 +1041,13 @@ const server = createServer(async (req, res) => {
           headers_trusted: Boolean(accessContext.headers_trusted),
           rollback_soft: "bash infra/scripts/rollback-mvp-15-soft-auth.sh",
         },
+        mvp_17: {
+          role_navigation: true,
+          actor_role: accessContext.actor_role,
+          role_from_db: Boolean(accessContext.role_from_db),
+          headers_trusted: Boolean(accessContext.headers_trusted),
+          audit: "navigation/menu_resolvido",
+        },
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
         catalogo_carregado_em: catalogLoadedAt,
@@ -1110,6 +1118,30 @@ const server = createServer(async (req, res) => {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
       const result = sessionManager.logout(req);
       return sendJson(res, 200, { ok: true, mvp: "MVP-15 Signed Session RBAC", logout: true }, { "set-cookie": result.cookie });
+    }
+
+    if (url.pathname === "/api/mvp-17/navigation") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const navigation = createRoleNavigation(accessContext);
+      const audit = recordNavigationAudit(process.env, accessContext, {
+        acao: "menu_resolvido",
+        status: "ok",
+        detalhe: `role=${navigation.actor_role}; visible=${navigation.items.length}; hidden=${navigation.hidden_items.length}`,
+        userAgent: req.headers["user-agent"] || "mvp17",
+      });
+      return sendJson(res, 200, { ...navigation, audit });
+    }
+
+    if (url.pathname === "/api/mvp-17/navigation/audit") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const audit = recordNavigationAudit(process.env, accessContext, {
+        acao: input.acao || "ui_navigation_event",
+        status: input.status || "ok",
+        detalhe: input.detalhe || "evento de navegação MVP-17",
+        userAgent: req.headers["user-agent"] || "mvp17",
+      });
+      return sendJson(res, audit.ok ? 201 : 200, { ok: true, mvp: "MVP-17 Role Navigation RBAC", audit });
     }
 
     if (url.pathname === "/api/exercises") {

@@ -261,7 +261,9 @@ export function createSignedSessionManager(env = process.env) {
       || pathname.startsWith("/api/mvp-02/checkins/")
       || pathname === "/api/mvp-03/professor/contexto"
       || pathname === "/api/mvp-03/professor/reviews"
-      || pathname.startsWith("/api/mvp-03/professor/reviews/");
+      || pathname.startsWith("/api/mvp-03/professor/reviews/")
+      || pathname === "/api/mvp-17/navigation"
+      || pathname === "/api/mvp-17/navigation/audit";
   }
 
   function allowedRolesFor(pathname, method) {
@@ -313,7 +315,7 @@ export function createSignedSessionManager(env = process.env) {
         headers_trusted: false,
         expires_at: accessContext.expires_at,
       } : null,
-      protected_routes: ["/api/mvp-01/aluno-treino", "/api/mvp-02/checkins", "/api/mvp-03/professor/*"],
+      protected_routes: ["/api/mvp-01/aluno-treino", "/api/mvp-02/checkins", "/api/mvp-03/professor/*", "/api/mvp-17/navigation"],
       rollback: "bash infra/scripts/rollback-mvp-15-soft-auth.sh",
     };
   }

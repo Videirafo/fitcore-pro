@@ -133,6 +133,10 @@
         lock("Sessão assinada obrigatória para esta tela.");
         return null;
       }
+      if (config.required && session && config.roles.length && !config.roles.includes(session.actor_role)) {
+        lock(`Perfil sem acesso a esta tela. Papel atual: ${session.actor_role}.`);
+        return null;
+      }
       unlock();
       return session || null;
     } catch (error) {

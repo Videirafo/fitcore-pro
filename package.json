@@ -22,6 +22,7 @@
     "mvp15:apply": "bash infra/scripts/apply-mvp-15-signed-session.sh",
     "mvp15:verify": "bash infra/scripts/verify-mvp-15-signed-session.sh",
     "mvp15:rollback": "bash infra/scripts/rollback-mvp-15-soft-auth.sh",
-    "mvp16:verify": "bash infra/scripts/verify-mvp-16-login-ui.sh"
+    "mvp16:verify": "bash infra/scripts/verify-mvp-16-login-ui.sh",
+    "mvp17:verify": "bash infra/scripts/verify-mvp-17-role-navigation.sh"
   }
 }

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-17 do FitCore Pro: navegação por papel baseada em sessão assinada." />
+  <title>MVP-17 Navegação por Papel | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-16-auth-ui.css?v=fitcore-mvp16-1" />
+  <link rel="stylesheet" href="/mvp-17-nav-rbac.css?v=fitcore-mvp17-1" />
+  <link rel="stylesheet" href="/mvp-17.css?v=fitcore-mvp17-1" />
+</head>
+<body data-fitcore-auth-required="true" data-fitcore-roles="gestor" data-fitcore-auth-title="Login de gestor obrigatório para configurar menus">
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav><a href="/mvp-17.html">Navegação</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-17 · Navegação por papel</p>
+        <h1>O menu agora muda conforme o papel logado.</h1>
+        <p>Aluno não recebe painel do professor. Professor não recebe áreas administrativas. Gestor recebe a operação completa.</p>
+      </div>
+      <aside class="status-card">
+        <span>Estado</span>
+        <strong id="nav-role">Carregando</strong>
+        <small id="nav-source">verificando sessão</small>
+      </aside>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Menu visível</p>
+        <h2>Itens permitidos</h2>
+        <div id="allowed-list" class="list muted-box">Carregando navegação...</div>
+      </article>
+      <article class="panel">
+        <p class="kicker">Itens ocultos</p>
+        <h2>Bloqueados para o papel atual</h2>
+        <div id="hidden-list" class="list muted-box">Carregando restrições...</div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <p class="kicker">Política</p>
+      <h2>Garantias do gate</h2>
+      <pre id="policy-output">Aguardando API...</pre>
+    </section>
+  </main>
+
+  <script src="/mvp-16-auth-ui.js?v=fitcore-mvp16-1"></script>
+  <script src="/mvp-17-nav-rbac.js?v=fitcore-mvp17-1"></script>
+  <script src="/mvp-17.js?v=fitcore-mvp17-1"></script>
+</body>
+</html>
