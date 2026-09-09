@@ -1,5 +1,6 @@
+import { FitCoreAppShell } from "../../components/FitCoreAppShell";
 import { FitCoreRouteClient } from "../../components/FitCoreRouteClient";
 
 export default function CoachPage() {
-  return <FitCoreRouteClient mode="coach" />;
+  return <FitCoreAppShell section="IA & Agents"><FitCoreRouteClient mode="agents" /></FitCoreAppShell>;
 }
