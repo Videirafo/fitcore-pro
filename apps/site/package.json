@@ -9,17 +9,17 @@
     "lint:contract": "node ../../tools/check-next-app.mjs"
   },
   "dependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
     "next": "16.2.12",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "6.0.3"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.0.0",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.4",
     "postcss": "8.5.26",
-    "tailwindcss": "4.3.3"
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3"
   }
 }
