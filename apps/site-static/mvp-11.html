@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-11 do FitCore Pro: ativação controlada do PostgreSQL real com rollback para JsonFileStore." />
+  <title>MVP-11 PostgreSQL Real | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-11.css?v=fitcore-mvp11-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav>
+      <a href="/mvp-09.html">Adapter</a>
+      <a href="/mvp-10.html">PostgresStore</a>
+      <a class="active" href="/mvp-11.html">PostgreSQL real</a>
+      <a href="/mvp-06.html">Mídia</a>
+      <a href="/legal/security">Segurança</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-11 · Ativação controlada</p>
+        <h1>Banco real dedicado para o FitCore, sem misturar com outros sistemas.</h1>
+        <p>
+          Este gate ativa o PostgreSQL próprio do FitCore somente depois das migrations e do healthcheck.
+          Se algo falhar, a API volta para JsonFileStore automaticamente.
+        </p>
+      </div>
+      <aside class="status-card">
+        <span>Store ativo</span>
+        <strong id="active-store">--</strong>
+        <small id="store-detail">verificando API</small>
+      </aside>
+    </section>
+
+    <section class="metrics">
+      <article><span>Banco</span><strong id="db-state">--</strong><small>FITCORE_DATABASE_URL</small></article>
+      <article><span>Postgres</span><strong id="pg-state">--</strong><small>pronto para ativação</small></article>
+      <article><span>Rollback</span><strong id="rollback-state">--</strong><small>volta segura para JSON</small></article>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Arquitetura</p>
+        <h2>FitCore API → PersistenceAdapter → PostgresStore</h2>
+        <div class="flow">
+          <div><strong>PostgreSQL dedicado</strong><span>Container separado: fitcore_postgres em 127.0.0.1:55435.</span></div>
+          <div><strong>Migrations controladas</strong><span>MVP-07 cria o core; MVP-10 adiciona payload/source_mvp_id.</span></div>
+          <div><strong>Ativação explícita</strong><span>Somente com FITCORE_PERSISTENCE_STORE=postgres.</span></div>
+          <div><strong>Rollback rápido</strong><span>Remover o drop-in systemd volta para JsonFileStore.</span></div>
+        </div>
+      </article>
+      <article class="panel">
+        <p class="kicker">Diagnóstico</p>
+        <h2>Resposta atual</h2>
+        <pre id="api-output">Carregando...</pre>
+      </article>
+    </section>
+  </main>
+
+  <script src="/mvp-11.js?v=fitcore-mvp11-1"></script>
+</body>
+</html>
