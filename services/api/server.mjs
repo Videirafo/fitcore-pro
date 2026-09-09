@@ -11,6 +11,7 @@ import { createServer } from "node:http";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { createServerPersistenceAdapter, createServerPersistenceHealth } from "./persistence/server-adapter-glue.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -22,6 +23,17 @@ const mvp02CheckinStorePath = resolve(root, "storage/mvp-02/checkins.json");
 const mvp03ReviewStorePath = resolve(root, "storage/mvp-03/professor-reviews.json");
 
 const wgerInternalUrl = process.env.FITCORE_WGER_INTERNAL_URL || "http://127.0.0.1:8088";
+
+const persistenceAdapter = createServerPersistenceAdapter({
+  env: process.env,
+  paths: {
+    studentsAndWorkouts: mvp01StorePath,
+    checkins: mvp02CheckinStorePath,
+    professorReviews: mvp03ReviewStorePath,
+  },
+  readJsonArray,
+  writeJsonArray,
+});
 
 let catalogCache = null;
 let catalogLoadedAt = null;
@@ -439,27 +451,27 @@ function writeJsonArray(path, records, mode = 0o640) {
 }
 
 function readMvpRecords() {
-  return readJsonArray(mvp01StorePath);
+  return persistenceAdapter.readArray("studentsAndWorkouts");
 }
 
 function writeMvpRecords(records) {
-  writeJsonArray(mvp01StorePath, records);
+  persistenceAdapter.writeArray("studentsAndWorkouts", records);
 }
 
 function readCheckins() {
-  return readJsonArray(mvp02CheckinStorePath);
+  return persistenceAdapter.readArray("checkins");
 }
 
 function writeCheckins(records) {
-  writeJsonArray(mvp02CheckinStorePath, records);
+  persistenceAdapter.writeArray("checkins", records);
 }
 
 function readProfessorReviews() {
-  return readJsonArray(mvp03ReviewStorePath);
+  return persistenceAdapter.readArray("professorReviews");
 }
 
 function writeProfessorReviews(records) {
-  writeJsonArray(mvp03ReviewStorePath, records);
+  persistenceAdapter.writeArray("professorReviews", records);
 }
 
 function buildWorkoutBlocks({ objetivo, foco, modalidade, diasSemana }) {
@@ -978,6 +990,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     if (url.pathname === "/api/health") {
+      const persistence = createServerPersistenceHealth(persistenceAdapter);
       const catalogExists = existsSync(catalogPath);
       const checkins = readCheckins();
       const reviews = readProfessorReviews();
@@ -985,6 +998,12 @@ const server = createServer(async (req, res) => {
         ok: true,
         servico: "fitcore-api",
         api: "api-propria",
+        persistence,
+        mvp_09: {
+          persistence_adapter: true,
+          active_store: persistence.active_store,
+          fallback_seguro: persistence.fallback_seguro,
+        },
         catalogo_existe: catalogExists,
         catalogo_carregado: Boolean(catalogCache),
         catalogo_carregado_em: catalogLoadedAt,
@@ -1005,6 +1024,11 @@ const server = createServer(async (req, res) => {
         motor_fitness_interno: wgerInternalUrl,
         politica_midia: "uso_textual_autorizado",
       });
+    }
+
+    if (url.pathname === "/api/mvp-09/persistence") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, createServerPersistenceHealth(persistenceAdapter));
     }
 
     if (url.pathname === "/api/exercises") {
