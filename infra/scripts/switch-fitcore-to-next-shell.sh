@@ -102,6 +102,10 @@ server {
         proxy_set_header X-Forwarded-Proto https;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Expires;
+        add_header Cache-Control "no-store, no-cache, max-age=0, must-revalidate" always;
+        add_header Pragma "no-cache" always;
         proxy_read_timeout 120;
         proxy_connect_timeout 30;
         proxy_send_timeout 120;
