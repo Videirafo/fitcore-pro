@@ -6,6 +6,8 @@ API_BASE="${FITCORE_PUBLIC_API_BASE:-https://fitcore.marcaia.app}"
 SECRETS_FILE="$ROOT_DIR/storage/secrets/fitcore-postgres.env"
 SMOKE_DIR="$ROOT_DIR/storage/mvp-12"
 SMOKE_ID="mvp12-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+DEFAULT_DB_HOST="127.0.0.1"
+DEFAULT_DB_PORT="55435"
 
 mkdir -p "$SMOKE_DIR"
 cd "$ROOT_DIR"
@@ -60,6 +62,57 @@ patch_json() {
     "$url" > "$output"
 }
 
+urlencode_component() {
+  python3 - "$1" <<'PY'
+import sys
+from urllib.parse import quote
+print(quote(sys.argv[1], safe=""))
+PY
+}
+
+resolve_database_url() {
+  local db_url="${FITCORE_DATABASE_URL:-${DATABASE_URL:-}}"
+
+  if [[ -n "$db_url" ]]; then
+    printf '%s' "$db_url"
+    return 0
+  fi
+
+  if [[ -f "$SECRETS_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$SECRETS_FILE"
+    db_url="${FITCORE_DATABASE_URL:-${DATABASE_URL:-}}"
+
+    if [[ -n "$db_url" ]]; then
+      printf '%s' "$db_url"
+      return 0
+    fi
+
+    if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_DB:-}" ]]; then
+      local db_host="${FITCORE_DB_HOST:-$DEFAULT_DB_HOST}"
+      local db_port="${FITCORE_DB_PORT:-$DEFAULT_DB_PORT}"
+      local enc_user
+      local enc_pass
+      local enc_db
+      enc_user="$(urlencode_component "$POSTGRES_USER")"
+      enc_pass="$(urlencode_component "$POSTGRES_PASSWORD")"
+      enc_db="$(urlencode_component "$POSTGRES_DB")"
+      printf 'postgresql://%s:%s@%s:%s/%s?sslmode=disable' "$enc_user" "$enc_pass" "$db_host" "$db_port" "$enc_db"
+      return 0
+    fi
+  fi
+
+  if [[ -f /etc/systemd/system/fitcore-api.service.d/10-fitcore-persistence.conf ]]; then
+    db_url="$(grep -Eo 'FITCORE_DATABASE_URL=[^"]+' /etc/systemd/system/fitcore-api.service.d/10-fitcore-persistence.conf | head -n 1 | sed 's/^FITCORE_DATABASE_URL=//' || true)"
+    if [[ -n "$db_url" ]]; then
+      printf '%s' "$db_url"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 need curl
 need python3
 need psql
@@ -70,11 +123,12 @@ if [[ ! -f "$SECRETS_FILE" ]]; then
   exit 1
 fi
 
-# shellcheck disable=SC1090
-source "$SECRETS_FILE"
-DB_URL="${FITCORE_DATABASE_URL:-${DATABASE_URL:-}}"
-if [[ -z "$DB_URL" ]]; then
-  echo "ERRO: FITCORE_DATABASE_URL não encontrado em $SECRETS_FILE" >&2
+if ! DB_URL="$(resolve_database_url)"; then
+  echo "ERRO: não foi possível resolver a URL do PostgreSQL." >&2
+  echo "Fontes aceitas:" >&2
+  echo "  - FITCORE_DATABASE_URL ou DATABASE_URL no ambiente" >&2
+  echo "  - POSTGRES_DB/POSTGRES_USER/POSTGRES_PASSWORD em $SECRETS_FILE" >&2
+  echo "  - drop-in /etc/systemd/system/fitcore-api.service.d/10-fitcore-persistence.conf" >&2
   exit 1
 fi
 
