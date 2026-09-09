@@ -1,0 +1,38 @@
+name: FitCore CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fitcore-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/site/package-lock.json
+
+      - name: Install site dependencies
+        run: npm ci --prefix apps/site
+
+      - name: Verify MVP-34 and regressions
+        run: npm run mvp34:verify
+
+      - name: Security audit
+        run: npm audit --prefix apps/site --audit-level=high

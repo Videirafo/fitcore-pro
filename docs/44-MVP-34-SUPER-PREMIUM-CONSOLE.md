@@ -36,6 +36,11 @@ Desktop, tablet e mobile usam as mesmas rotas e hierarquia. Ângulos e composiç
 
 ## Gate
 
+Local e CI usam o mesmo contrato:
+
 ```bash
 npm run mvp34:verify
+npm audit --prefix apps/site --audit-level=high
 ```
+
+Workflow: `.github/workflows/fitcore-ci.yml`.
