@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "doctor": "tsx src/doctor.ts"
+    "doctor": "tsx src/doctor.ts",
+    "agency:check": "tsx src/agency-check.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
