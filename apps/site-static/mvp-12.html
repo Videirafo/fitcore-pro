@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-12 do FitCore Pro: smoke real de escrita e leitura no PostgreSQL." />
+  <title>MVP-12 Smoke PostgreSQL | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-12.css?v=fitcore-mvp12-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span>F</span><strong>FitCore Pro</strong></a>
+    <nav>
+      <a href="/mvp-09.html">Adapter</a>
+      <a href="/mvp-10.html">PostgresStore</a>
+      <a href="/mvp-11.html">Banco real</a>
+      <a class="active" href="/mvp-12.html">Smoke</a>
+      <a href="/mvp-05.html">Papéis</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="kicker">MVP-12 · Smoke real PostgreSQL</p>
+      <h1>Escrita e leitura reais precisam passar pela API e aparecer no banco.</h1>
+      <p>
+        Este gate valida o ciclo operacional mínimo: criar aluno/treino, criar revisão, aprovar, registrar check-in, concluir treino e confirmar tudo no PostgreSQL dedicado.
+      </p>
+      <div class="actions">
+        <a href="/api/mvp-10/postgres-store" target="_blank" rel="noreferrer">Ver store ativo</a>
+        <a href="/api/health" target="_blank" rel="noreferrer">Ver health</a>
+      </div>
+    </section>
+
+    <section class="cards">
+      <article>
+        <span>Store ativo</span>
+        <strong id="active-store">--</strong>
+        <small id="store-reason">verificando...</small>
+      </article>
+      <article>
+        <span>Banco</span>
+        <strong id="db-ready">--</strong>
+        <small>tabelas e colunas do MVP-10</small>
+      </article>
+      <article>
+        <span>Fallback</span>
+        <strong id="rollback-state">--</strong>
+        <small>rollback para JsonFileStore preservado</small>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Fluxo do smoke</p>
+        <h2>Operação ponta a ponta</h2>
+        <ol>
+          <li>Criar aluno + treino via <code>/api/mvp-01/aluno-treino</code>.</li>
+          <li>Criar revisão do professor via <code>/api/mvp-03/professor/reviews</code>.</li>
+          <li>Aprovar treino.</li>
+          <li>Criar check-in via <code>/api/mvp-02/checkins</code>.</li>
+          <li>Concluir check-in.</li>
+          <li>Confirmar registros no PostgreSQL.</li>
+          <li>Confirmar auditoria LGPD persistida.</li>
+        </ol>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">Diagnóstico</p>
+        <h2>Estado atual</h2>
+        <pre id="api-output">Carregando /api/mvp-10/postgres-store...</pre>
+      </article>
+    </section>
+
+    <section class="panel command">
+      <p class="kicker">Comando de validação</p>
+      <h2>Rodar na VPS</h2>
+      <pre>cd /opt/fitcore-pro
+bash infra/scripts/smoke-mvp-12-postgres-write-read.sh
+bash infra/scripts/verify-mvp-12-smoke.sh</pre>
+    </section>
+  </main>
+
+  <script src="/mvp-12.js?v=fitcore-mvp12-1"></script>
+</body>
+</html>
