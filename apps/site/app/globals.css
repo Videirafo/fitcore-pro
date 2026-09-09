@@ -674,3 +674,99 @@ textarea { min-height: 112px; resize: vertical; }
 .table > div:last-child { border-bottom: 0; }
 @media (max-width: 1200px) { .app-shell { grid-template-columns: 1fr; } .sidebar { position: relative; height: auto; } .side-nav { grid-template-columns: repeat(3, minmax(0,1fr)); } .workspace-grid, .dashboard-grid, .student-workout-layout, .route-hero, .hero-dashboard { grid-template-columns: 1fr; } .student-workout-layout aside { position: static; } }
 @media (max-width: 860px) { .route-page { width: min(100% - 24px, 1480px); } .topbar, .workspace-top { flex-direction: column; align-items: stretch; } .side-nav { display: flex; overflow-x: auto; padding-bottom: 6px; } .nav-group { min-width: 220px; } .route-hero h1 { font-size: clamp(40px, 13vw, 60px); } .role-dashboard, .split-grid, .workout-day-card { grid-template-columns: 1fr; } .role-metrics, .metric-grid, .mini-grid, .hero-dashboard-kpis, .exercise-media-grid, .exercise-media-grid.is-compact, .flow-line { grid-template-columns: 1fr; } .flow-node i { display: none; } }
+
+/* MVP-34 — layout stabilization, public landing and mobile alignment */
+html, body { width: 100%; overflow-x: hidden; }
+body::before { opacity: .28; }
+.app-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: clip;
+  grid-template-columns: 292px minmax(0, 1fr);
+}
+.workspace, .workspace-main, .route-page, .premium-home, .workspace-grid, .dashboard-grid, .split-grid, .panel { min-width: 0; }
+.workspace { width: 100%; padding: 0; }
+.workspace-main { width: 100%; }
+.route-page { width: min(calc(100% - 52px), 1360px); padding: 28px 0 64px; }
+.workspace-top { display: grid; grid-template-columns: minmax(0, 760px) auto; }
+.route-hero { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); align-items: center; }
+.route-hero.public-hero { grid-template-columns: minmax(0, 1.03fr) minmax(320px, .78fr); min-height: 440px; }
+.route-hero h1 { max-width: 760px; font-size: clamp(46px, 5.2vw, 78px); line-height: .94; }
+.route-hero p { max-width: 700px; }
+.hero-actions-inline { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.landing-preview-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid rgba(71,240,106,.25);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 76% 14%, rgba(71,240,106,.28), transparent 13rem),
+    linear-gradient(180deg, rgba(16,25,42,.92), rgba(9,14,28,.88));
+  box-shadow: 0 30px 110px rgba(0,0,0,.38), 0 0 70px rgba(71,240,106,.08);
+}
+.landing-preview-card .preview-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.landing-preview-card .preview-top span { color: var(--lime); text-transform: uppercase; letter-spacing:.12em; font-size: 11px; font-weight: 950; }
+.landing-preview-card .preview-top strong { color:#fff; font-size: 20px; }
+.preview-metrics { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.preview-metrics .metric { min-height: 92px; padding: 14px; }
+.preview-metrics .metric strong { font-size: 25px; }
+.preview-chart { height: 170px; display:flex; align-items:end; gap:12px; padding:18px; margin:16px 0; border:1px solid var(--line); border-radius:20px; background:rgba(0,0,0,.22); }
+.preview-chart i { flex:1; border-radius: 14px 14px 6px 6px; background: linear-gradient(180deg, var(--neon), rgba(71,240,106,.18)); box-shadow: 0 0 28px rgba(71,240,106,.14); }
+.premium-home { gap: 20px; }
+.workspace-grid, .dashboard-grid { grid-template-columns: minmax(0, 1.35fr) minmax(300px, .8fr); align-items: start; }
+.hero-dashboard { grid-template-columns: minmax(0, 1fr) minmax(300px, .85fr); }
+.flow-line { grid-template-columns: repeat(auto-fit, minmax(156px, 1fr)); }
+.flow-node { min-width: 0; }
+.exercise-media-grid, .exercise-media-grid.is-compact, .exercise-media-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(218px, 1fr));
+  align-items: stretch;
+}
+.exercise-media-card { min-width: 0; overflow: hidden; }
+.exercise-media-card strong, .exercise-media-card p, .exercise-media-card small, .exercise-media-card em { overflow-wrap: anywhere; }
+.media-frame { height: auto; aspect-ratio: 16 / 10; }
+.media-actions { grid-template-columns: 1fr; }
+.media-actions button, .agent-actions button { min-width: 0; white-space: normal; text-align: left; line-height: 1.25; }
+.agent-panel { min-width: 0; }
+.agent-actions { grid-template-columns: 1fr; }
+.agent-input { grid-template-columns: minmax(0, 1fr) auto; }
+.security-panel.compact h2 { font-size: clamp(24px, 3vw, 34px); }
+.role-dashboard { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
+.role-metrics { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+.session-card.is-offline { background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035)); }
+.session-card.is-offline button { display: none; }
+.global-search, input, select, textarea { max-width: 100%; }
+@media (max-width: 1200px) {
+  .app-shell { display: block; overflow: visible; }
+  .sidebar { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .side-nav { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
+  .nav-group { min-width: 0; }
+  .workspace-grid, .dashboard-grid, .split-grid, .route-hero, .route-hero.public-hero, .hero-dashboard, .student-workout-layout, .workout-day-card, .role-dashboard { grid-template-columns: 1fr; }
+  .student-workout-layout aside { position: static; }
+}
+@media (max-width: 760px) {
+  .app-shell { width: 100%; margin: 0; border-radius: 0; }
+  .sidebar { padding: 14px; gap: 14px; }
+  .brand { gap: 10px; }
+  .brand-mark { width: 42px; height: 42px; flex-basis: 42px; }
+  .side-nav { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 8px; scroll-snap-type: x proximity; }
+  .nav-group { min-width: 230px; scroll-snap-align: start; }
+  .side-nav a { min-height: 48px; }
+  .sidebar-user { margin-top: 0; }
+  .app-header { padding: 14px 18px; align-items: stretch; flex-direction: column; }
+  .header-actions { width: 100%; display:grid; grid-template-columns: 1fr 1fr; }
+  .workspace-top { grid-template-columns: 1fr; }
+  .route-page { width: min(calc(100% - 24px), 720px); padding: 22px 0 44px; }
+  .route-hero h1 { font-size: clamp(38px, 12vw, 54px); line-height: .98; letter-spacing: -.06em; }
+  .route-hero p { font-size: 15.5px; line-height: 1.62; }
+  .landing-preview-card { padding: 18px; }
+  .preview-metrics, .metric-grid, .hero-dashboard-kpis, .mini-grid { grid-template-columns: 1fr; }
+  .exercise-media-grid, .exercise-media-grid.is-compact, .exercise-media-grid.compact { grid-template-columns: 1fr; }
+  .agent-input { grid-template-columns: 1fr; }
+  .panel { padding: 18px; }
+  .panel-title { align-items: stretch; }
+  .panel-title button { width: 100%; }
+}

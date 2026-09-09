@@ -73,6 +73,8 @@
     "mvp32:check": "node tools/check-mvp-32-premium-agent-workspace.mjs",
     "mvp32:verify": "bash infra/scripts/verify-mvp-32-premium-agent-workspace.sh",
     "mvp33:check": "node tools/check-mvp-33-exact-premium-console.mjs",
-    "mvp33:verify": "bash infra/scripts/verify-mvp-33-exact-premium-console.sh"
+    "mvp33:verify": "bash infra/scripts/verify-mvp-33-exact-premium-console.sh",
+    "mvp34:check": "node tools/check-mvp-34-layout-stabilization.mjs",
+    "mvp34:verify": "bash infra/scripts/verify-mvp-34-layout-stabilization.sh"
   }
 }
