@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MVP-10 PostgresStore controlado | FitCore Pro</title>
+  <meta name="description" content="MVP-10 do FitCore Pro: PostgresStore controlado com fallback JSON seguro." />
+  <link rel="stylesheet" href="/mvp-10.css?v=fitcore-mvp10-1" />
+</head>
+<body>
+  <main class="shell">
+    <nav class="topbar" aria-label="Navegação principal">
+      <a class="brand" href="/">
+        <span class="logo">F</span>
+        <span><strong>FitCore Pro</strong><small>persistência controlada</small></span>
+      </a>
+      <div class="links">
+        <a href="/mvp-01.html">Aluno + treino</a>
+        <a href="/mvp-03.html">Professor</a>
+        <a href="/mvp-04.html">Aluno</a>
+        <a href="/mvp-05.html">Papéis</a>
+        <a href="/mvp-06.html">Mídia</a>
+        <a href="/legal/privacy">LGPD</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-10 · PostgresStore controlado</p>
+        <h1>Banco real sem perder o fallback seguro.</h1>
+        <p class="lead">
+          Esta etapa prepara a troca controlada de JSON local para PostgreSQL. O sistema só usa banco quando
+          a URL, a migration e a ativação explícita estiverem prontas.
+        </p>
+      </div>
+      <aside class="status-card">
+        <span>Store ativo</span>
+        <strong id="active-store">--</strong>
+        <small id="store-reason">carregando diagnóstico</small>
+      </aside>
+    </section>
+
+    <section class="grid stats" aria-label="Resumo da persistência">
+      <article><span>Banco configurado</span><strong id="db-configured">--</strong></article>
+      <article><span>Postgres pronto</span><strong id="pg-ready">--</strong></article>
+      <article><span>Fallback JSON</span><strong id="fallback">--</strong></article>
+      <article><span>Recursos</span><strong id="resources-count">--</strong></article>
+    </section>
+
+    <section class="grid two">
+      <article class="panel">
+        <p class="kicker">Controle de ativação</p>
+        <h2>PostgresStore não liga sozinho.</h2>
+        <ul>
+          <li>Precisa de <code>FITCORE_DATABASE_URL</code>.</li>
+          <li>Precisa da migration <code>002-mvp-10-postgres-store.sql</code>.</li>
+          <li>Precisa de <code>FITCORE_PERSISTENCE_STORE=postgres</code>.</li>
+          <li>Rollback: remover a variável volta para JSON local.</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">LGPD e multi-tenant</p>
+        <h2>Dados mínimos, tenant e auditoria.</h2>
+        <ul>
+          <li><code>tenant_id</code> permanece obrigatório.</li>
+          <li><code>user_role</code> orienta permissão por papel.</li>
+          <li>Cada ação gera evento mínimo de auditoria.</li>
+          <li>A UI não expõe estrutura interna do banco.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="kicker">Diagnóstico da API</p>
+          <h2>Resposta de /api/mvp-10/postgres-store</h2>
+        </div>
+        <button id="refresh">Atualizar</button>
+      </div>
+      <pre id="diagnostic">Carregando...</pre>
+    </section>
+  </main>
+
+  <script src="/mvp-10.js?v=fitcore-mvp10-1"></script>
+</body>
+</html>
