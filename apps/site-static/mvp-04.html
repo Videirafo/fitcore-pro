@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="MVP-04 do FitCore Pro: painel do aluno para visualizar treino aprovado, iniciar execução, marcar exercícios e concluir treino." />
   <title>MVP-04 Aluno | FitCore Pro</title>
-  <link rel="stylesheet" href="/mvp-04.css?v=fitcore-mvp04-1" />
+  <link rel="stylesheet" href="/mvp-04.css?v=fitcore-mvp04-2" />
 </head>
 <body>
   <header class="topbar">
@@ -19,6 +19,7 @@
       <a href="/mvp-02.html">Check-in</a>
       <a href="/mvp-03.html">Professor</a>
       <a href="/mvp-04.html" aria-current="page">Aluno</a>
+      <a href="/mvp-05.html">Papéis</a>
       <a href="/legal/privacy">LGPD</a>
     </nav>
   </header>
@@ -107,12 +108,21 @@
       </aside>
     </section>
 
+    <section class="panel-card media-policy-card">
+      <p class="eyebrow">GIFs e explicação</p>
+      <h2>Cada exercício pode ter demonstração visual e orientação simples.</h2>
+      <p>
+        Os GIFs devem ser autorais ou licenciados. Quando o arquivo do GIF ainda não existir,
+        o treino continua funcionando e mostra o espaço de mídia pendente para revisão.
+      </p>
+    </section>
+
     <section id="student-workout" class="panel-card workout-shell" aria-live="polite">
       <h2>Nenhum treino aberto.</h2>
       <p>Selecione um treino aprovado para o aluno iniciar a execução.</p>
     </section>
 
-    <section class="panel-card">
+    <section class="panel-card" id="historico">
       <div class="section-head">
         <div>
           <p class="eyebrow">Histórico pessoal</p>
@@ -124,6 +134,7 @@
     </section>
   </main>
 
-  <script src="/mvp-04.js?v=fitcore-mvp04-1"></script>
+  <script src="/exercise-media.js?v=fitcore-media-m1"></script>
+  <script src="/mvp-04.js?v=fitcore-mvp04-2"></script>
 </body>
 </html>
