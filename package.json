@@ -46,8 +46,11 @@
     "mvp23:apply": "bash infra/scripts/apply-mvp-23-student-management.sh",
     "mvp23:verify": "bash infra/scripts/verify-mvp-23-student-management.sh",
     "mvp23:rollback": "bash infra/scripts/rollback-mvp-23-student-management.sh",
-    "ui:lightswind": "node tools/lightswind.mjs",
+"ui:lightswind": "node tools/lightswind.mjs",
     "ui:lightswind:doctor": "node tools/lightswind.mjs doctor",
-    "ui:lightswind:list": "node tools/lightswind.mjs list"
+    "ui:lightswind:list": "node tools/lightswind.mjs list",
+    "mvp24:apply": "bash infra/scripts/apply-mvp-24-workout-prescription.sh",
+    "mvp24:verify": "bash infra/scripts/verify-mvp-24-workout-prescription.sh",
+    "mvp24:rollback": "bash infra/scripts/rollback-mvp-24-workout-prescription.sh"
   }
 }

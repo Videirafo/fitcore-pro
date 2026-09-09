@@ -10,6 +10,7 @@ const required = [
   "apps/site/app/page.tsx",
   "apps/site/app/mvp-22/page.tsx",
   "apps/site/app/mvp-23/page.tsx",
+  "apps/site/app/mvp-24/page.tsx",
   "apps/site/app/globals.css",
   "apps/site/components/FitCoreShell.tsx",
   "apps/site/lib/fitcore-api.ts",
@@ -40,6 +41,11 @@ if (!page22.includes("/mvp-22.html") || !page22.includes("Gestão real de usuár
 const page23 = readFileSync(resolve(root, "apps/site/app/mvp-23/page.tsx"), "utf8");
 if (!page23.includes("/mvp-23.html") || !page23.includes("Cadastro operacional de aluno")) {
   console.error("ERRO: página Next MVP-23 não aponta para a tela operacional.");
+  failed = true;
+}
+const page24 = readFileSync(resolve(root, "apps/site/app/mvp-24/page.tsx"), "utf8");
+if (!page24.includes("/mvp-24.html") || !page24.includes("Prescrição real de treino")) {
+  console.error("ERRO: página Next MVP-24 não aponta para a tela operacional.");
   failed = true;
 }
 if (failed) process.exit(1);
