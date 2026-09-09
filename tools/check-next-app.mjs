@@ -10,6 +10,8 @@ const required = [
   "apps/site/app/page.tsx",
   "apps/site/app/login/page.tsx",
   "apps/site/app/onboarding/page.tsx",
+  "apps/site/app/setup/page.tsx",
+  "apps/site/app/convite/page.tsx",
   "apps/site/app/equipe/page.tsx",
   "apps/site/app/alunos/page.tsx",
   "apps/site/app/treinos/page.tsx",
@@ -45,14 +47,14 @@ if (!shell.includes("FitCoreNavClient") || !shell.includes("FitCoreHeaderActions
   failed = true;
 }
 const nav = readFileSync(resolve(root, "apps/site/components/FitCoreNavClient.tsx"), "utf8");
-for (const route of ["/login", "/onboarding", "/equipe", "/alunos", "/treinos", "/execucao", "/evolucao"]) {
+for (const route of ["/login", "/onboarding", "/setup", "/equipe", "/alunos", "/treinos", "/execucao", "/evolucao"]) {
   if (!nav.includes(route)) {
     console.error(`ERRO: navegação Next sem rota limpa ${route}.`);
     failed = true;
   }
 }
 const client = readFileSync(resolve(root, "apps/site/components/FitCoreRouteClient.tsx"), "utf8");
-for (const endpoint of ["/api/mvp-19/login", "/api/mvp-21/onboarding", "/api/mvp-22/users", "/api/mvp-23/students", "/api/mvp-24/prescriptions", "/api/mvp-25/executions", "/api/mvp-26/evolution"]) {
+for (const endpoint of ["/api/mvp-19/login", "/api/mvp-21/onboarding", "/api/mvp-22/users", "/api/mvp-23/students", "/api/mvp-24/prescriptions", "/api/mvp-25/executions", "/api/mvp-26/evolution", "/api/mvp-31/setup", "/api/mvp-22/invites/accept"]) {
   if (!client.includes(endpoint)) {
     console.error(`ERRO: client Next sem endpoint ${endpoint}.`);
     failed = true;

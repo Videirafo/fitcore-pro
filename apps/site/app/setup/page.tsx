@@ -1,0 +1,6 @@
+import { FitCoreAppShell } from "../../components/FitCoreAppShell";
+import { FitCoreRouteClient } from "../../components/FitCoreRouteClient";
+
+export default function SetupPage() {
+  return <FitCoreAppShell section="Setup"><FitCoreRouteClient mode="setup" /></FitCoreAppShell>;
+}

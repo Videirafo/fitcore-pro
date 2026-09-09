@@ -12,6 +12,7 @@ const nav: NavItem[] = [
   { href: "/", label: "Visão geral", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Resumo" },
   { href: "/onboarding", label: "Criar negócio", roles: ["visitante"], hint: "Nova unidade" },
   { href: "/login", label: "Login", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Acesso" },
+  { href: "/setup", label: "Setup", roles: ["gestor"], hint: "Checklist" },
   { href: "/equipe", label: "Equipe", roles: ["gestor"], hint: "Usuários" },
   { href: "/alunos", label: "Alunos", roles: ["gestor", "professor"], hint: "Cadastro" },
   { href: "/treinos", label: "Treinos", roles: ["gestor", "professor", "aluno"], hint: "Prescrição" },

@@ -138,8 +138,8 @@ function publicInvite(invite, includeToken = false, token = null, publicUrl = ""
   };
   if (includeToken && token) {
     base.token = token;
-    base.invite_link = `/mvp-22.html?tenant_slug=${encodeURIComponent(invite.tenant_slug)}&token=${encodeURIComponent(token)}`;
-    base.full_invite_url = `${publicUrl}/mvp-22.html?tenant_slug=${encodeURIComponent(invite.tenant_slug)}&token=${encodeURIComponent(token)}`;
+    base.invite_link = `/convite?tenant_slug=${encodeURIComponent(invite.tenant_slug)}&token=${encodeURIComponent(token)}${invite.login_identifier_hint ? `&login_identifier=${encodeURIComponent(invite.login_identifier_hint)}` : ""}`;
+    base.full_invite_url = `${publicUrl}${base.invite_link}`;
   }
   return base;
 }

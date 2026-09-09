@@ -65,6 +65,9 @@
     "mvp29:check": "node tools/check-mvp-29-role-premium-ux.mjs",
     "mvp29:verify": "bash infra/scripts/verify-mvp-29-role-premium-ux.sh",
     "mvp30:check": "node tools/check-mvp-30-guided-operational-flow.mjs",
-    "mvp30:verify": "bash infra/scripts/verify-mvp-30-guided-operational-flow.sh"
+    "mvp30:verify": "bash infra/scripts/verify-mvp-30-guided-operational-flow.sh",
+    "mvp31:apply": "bash infra/scripts/apply-mvp-31-guided-setup.sh",
+    "mvp31:check": "node tools/check-mvp-31-guided-setup.mjs",
+    "mvp31:verify": "bash infra/scripts/verify-mvp-31-guided-setup.sh"
   }
 }

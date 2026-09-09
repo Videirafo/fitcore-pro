@@ -28,5 +28,5 @@ export function FitCoreHeaderActionsClient() {
   if (role === "professor") {
     return <div className="header-actions"><Link href="/alunos">Alunos</Link><Link className="primary-pill topbar-cta" href="/treinos">Treinos pendentes</Link></div>;
   }
-  return <div className="header-actions"><Link href="/equipe">Equipe</Link><Link className="primary-pill topbar-cta" href="/evolucao">Dashboard</Link></div>;
+  return <div className="header-actions"><Link href="/setup">Setup</Link><Link className="primary-pill topbar-cta" href="/evolucao">Dashboard</Link></div>;
 }

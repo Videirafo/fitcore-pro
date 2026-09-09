@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Json = Record<string, any>;
-type Mode = "home" | "login" | "onboarding" | "team" | "students" | "training" | "execution" | "evolution";
+type Mode = "home" | "login" | "onboarding" | "setup" | "invite" | "team" | "students" | "training" | "execution" | "evolution";
 type LoadState = "idle" | "loading" | "success" | "error";
 
 type RouteCopy = { eyebrow: string; title: string; text: string };
@@ -14,6 +14,8 @@ const routeCopy: Record<Mode, RouteCopy> = {
   home: { eyebrow: "Operação conectada", title: "Painel único para vender, operar e acompanhar treinos.", text: "Crie a unidade, configure a equipe, cadastre alunos, prescreva treinos e acompanhe a evolução em um fluxo único." },
   login: { eyebrow: "Acesso", title: "Entrar no FitCore Pro.", text: "Use o slug da unidade, identificador e senha ou código de acesso." },
   onboarding: { eyebrow: "Novo negócio", title: "Criar academia, estúdio, box ou personal.", text: "O cadastro cria a unidade, gestor proprietário e leva direto para o setup guiado." },
+  setup: { eyebrow: "Setup guiado", title: "Complete a primeira operação da unidade.", text: "Siga as etapas reais: equipe, aluno, treino, execução e evolução. O progresso fica salvo por unidade." },
+  invite: { eyebrow: "Convite", title: "Aceitar convite da unidade.", text: "Confira o convite, defina seu identificador e crie senha ou código de acesso." },
   team: { eyebrow: "Equipe", title: "Usuários e papéis da unidade.", text: "Crie professores e alunos sem copiar IDs; o sistema vincula cada pessoa ao negócio atual." },
   students: { eyebrow: "Alunos", title: "Cadastro de aluno em fluxo guiado.", text: "Escolha professor responsável por lista, registre objetivo e avance para prescrição." },
   training: { eyebrow: "Treinos", title: "Prescrição com seleção real de aluno.", text: "Escolha o aluno no dropdown, monte o treino e libere para execução após revisão." },
@@ -82,6 +84,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
   const [prescriptions, setPrescriptions] = useState<Json>({ prescriptions: [] });
   const [executions, setExecutions] = useState<Json>({ executions: [] });
   const [evolution, setEvolution] = useState<Json>({ students: [], weekly: [], summary: {} });
+  const [setup, setSetup] = useState<Json>({ steps: [], progress_percent: 0 });
   const [detail, setDetail] = useState<Json | null>(null);
   const [studentQuery, setStudentQuery] = useState("");
 
@@ -123,12 +126,16 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
       const current = await loadSession();
       const currentRole = roleOf(current);
       const currentIsStaff = isStaffRole(currentRole);
-      const needsTeam = target === "team" || target === "students" || target === "home";
+      const needsSetup = ["setup", "home", "team", "students", "training", "execution", "evolution"].includes(target);
+      const needsTeam = target === "team" || target === "students" || target === "setup" || target === "home";
       const needsStudents = ["students", "training", "home"].includes(target);
       const needsTraining = ["training", "execution", "home"].includes(target);
       const needsExecution = ["execution", "home"].includes(target);
       const needsEvolution = ["evolution", "home"].includes(target);
 
+      if (currentRole === "gestor" && needsSetup) {
+        try { setSetup(await api(`/api/mvp-31/setup?v=${Date.now()}`)); } catch { setSetup({ steps: [], progress_percent: 0 }); }
+      }
       if (currentRole === "gestor" && needsTeam) {
         try { setTeam(await api(`/api/mvp-22/users?v=${Date.now()}`)); } catch { setTeam({ users: [], invites: [] }); }
       }
@@ -200,8 +207,8 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
 
   async function submitOnboarding(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await runAction("Criar negócio", () => api("/api/mvp-21/onboarding", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "team");
-    if (result?.ok) router.push("/equipe?setup=1");
+    const result = await runAction("Criar negócio", () => api("/api/mvp-21/onboarding", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "setup");
+    if (result?.ok) router.push("/setup");
   }
 
   async function submitUser(event: FormEvent<HTMLFormElement>) {
@@ -212,6 +219,12 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
   async function submitInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await runAction("Gerar convite", () => api("/api/mvp-22/users/invite", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "team");
+  }
+
+  async function submitInviteAccept(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const result = await runAction("Aceitar convite", () => api("/api/mvp-22/invites/accept", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "home");
+    if (result?.ok) router.push("/");
   }
 
   async function submitStudent(event: FormEvent<HTMLFormElement>) {
@@ -264,12 +277,14 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
         <SessionPanel session={session} state={state} error={error} onRefresh={() => loadRouteData(mode)} />
       </div>
 
-      <RoleDashboard session={session} navigation={navigation} team={team} students={students} prescriptions={prescriptions} executions={executions} evolution={evolution} />
+      <RoleDashboard session={session} navigation={navigation} team={team} students={students} prescriptions={prescriptions} executions={executions} evolution={evolution} setup={setup} />
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {mode === "home" && <HomePanel session={session} role={role} students={students} prescriptions={prescriptions} executions={executions} evolution={evolution} />}
       {mode === "login" && <LoginPanel onSubmit={submitLogin} onLogout={logout} state={state} />}
       {mode === "onboarding" && <OnboardingPanel onSubmit={submitOnboarding} state={state} />}
+      {mode === "setup" && <SetupPanel setup={setup} session={session} state={state} error={error} onRefresh={() => loadRouteData("setup")} />}
+      {mode === "invite" && <InvitePanel onSubmit={submitInviteAccept} state={state} />}
       {mode === "team" && <TeamPanel role={role} data={team} detail={detail} state={state} error={error} onCreate={submitUser} onInvite={submitInvite} onRefresh={() => loadRouteData("team")} />}
       {mode === "students" && <StudentsPanel role={role} team={team} data={students} detail={detail} state={state} error={error} onSubmit={submitStudent} onRefresh={() => loadRouteData("students")} />}
       {mode === "training" && <TrainingPanel role={role} students={students?.students || []} data={prescriptions} detail={detail} state={state} error={error} selectedStudentId={firstStudentId} onSubmit={submitPrescription} onReview={reviewPrescription} onRefresh={() => loadRouteData("training")} />}
@@ -289,16 +304,16 @@ function Toast({ toast, onClose }: { toast: Json | null; onClose: () => void }) 
   return <div className={`toast toast-${toast.type || "info"}`}><div><strong>{safe(toast.title)}</strong><span>{safe(toast.message)}</span></div><button type="button" className="secondary mini" onClick={onClose}>Fechar</button></div>;
 }
 
-function RoleDashboard({ session, navigation, team, students, prescriptions, executions, evolution }: { session: Json | null; navigation: Json | null; team: Json; students: Json; prescriptions: Json; executions: Json; evolution: Json }) {
+function RoleDashboard({ session, navigation, team, students, prescriptions, executions, evolution, setup }: { session: Json | null; navigation: Json | null; team: Json; students: Json; prescriptions: Json; executions: Json; evolution: Json; setup: Json }) {
   const role = roleOf(session);
   const kpis = role === "gestor" ? [
-    ["Equipe", team?.total_users || team?.users?.length || 0], ["Alunos", students?.total || students?.students?.length || 0], ["Treinos", prescriptions?.total || 0], ["Execuções", executions?.total || 0],
+    ["Setup", `${setup?.progress_percent || 0}%`], ["Alunos", students?.total || students?.students?.length || 0], ["Treinos", prescriptions?.total || 0], ["Execuções", executions?.total || 0],
   ] : role === "professor" ? [
     ["Alunos", students?.total || students?.students?.length || 0], ["Treinos", prescriptions?.total || 0], ["Pendentes", prescriptions?.em_revisao || 0], ["Evolução", evolution?.students?.length || 0],
   ] : role === "aluno" ? [
     ["Treinos", prescriptions?.total || prescriptions?.prescriptions?.length || 0], ["Execuções", executions?.total || 0], ["Concluídos", executions?.concluidos || 0], ["Frequência", evolution?.student?.weekly_frequency || 0],
   ] : [["Comece", 1], ["Login", 1], ["Unidade", 0], ["Fluxo", 6]];
-  const hrefs = role === "gestor" ? [["/evolucao", "Dashboard"], ["/equipe", "Equipe"], ["/alunos", "Alunos"], ["/treinos", "Treinos"]] : role === "professor" ? [["/alunos", "Alunos"], ["/treinos", "Treinos"], ["/execucao", "Execuções"], ["/evolucao", "Progresso"]] : role === "aluno" ? [["/execucao", "Treino do dia"], ["/evolucao", "Minha evolução"], ["/treinos", "Treinos"]] : [["/onboarding", "Criar negócio"], ["/login", "Login"]];
+  const hrefs = role === "gestor" ? [["/setup", "Setup"], ["/evolucao", "Dashboard"], ["/equipe", "Equipe"], ["/alunos", "Alunos"], ["/treinos", "Treinos"]] : role === "professor" ? [["/alunos", "Alunos"], ["/treinos", "Treinos"], ["/execucao", "Execuções"], ["/evolucao", "Progresso"]] : role === "aluno" ? [["/execucao", "Treino do dia"], ["/evolucao", "Minha evolução"], ["/treinos", "Treinos"]] : [["/onboarding", "Criar negócio"], ["/login", "Login"]];
   const title = role === "gestor" ? "Dashboard executivo" : role === "professor" ? "Painel do professor" : role === "aluno" ? "Painel do aluno" : "Visitante";
   const note = role === "visitante" ? "Crie uma unidade ou entre para carregar o painel." : `${navigation?.menu?.length || hrefs.length} áreas disponíveis para esta sessão.`;
   return <section className={`role-dashboard role-dashboard-${role}`}><div className="role-copy"><span>Painel por papel</span><strong>{title}</strong><p>{note}</p></div><div className="role-metrics">{kpis.map(([label, value]) => <Metric label={String(label)} value={value} key={String(label)} />)}</div><div className="role-actions">{hrefs.map(([href, label]) => <Link key={href} className="primary-pill" href={href}>{label}</Link>)}</div></section>;
@@ -323,6 +338,23 @@ function LoginPanel({ onSubmit, onLogout, state }: { onSubmit: (event: FormEvent
 
 function OnboardingPanel({ onSubmit, state }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; state: LoadState }) {
   return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Novo negócio" title="Criar operação fitness" text="Depois do cadastro você será levado para configurar a equipe." /><label>Nome do negócio<input name="business_name" required minLength={3} placeholder="ex: Academia Centro" /></label><label>Tipo<select name="business_type" defaultValue="academia"><option value="academia">Academia</option><option value="estudio">Estúdio</option><option value="box">Box</option><option value="personal">Personal trainer</option></select></label><label>Slug desejado<input name="slug" placeholder="academia-centro" /></label><label>Gestor proprietário<input name="owner_name" required placeholder="nome do gestor" /></label><label>Identificador de login<input name="login_identifier" required placeholder="gestor.academia" /></label><label>Senha ou código<input name="secret" required type="password" placeholder="mínimo 8 caracteres" /></label><button type="submit" disabled={state === "loading"}>Criar e configurar equipe</button></form><article className="panel flow-panel"><h2>Setup guiado</h2><Process steps={["Criar unidade", "Adicionar professor", "Cadastrar aluno", "Prescrever treino", "Executar treino", "Acompanhar evolução"]} /></article></div>;
+}
+
+
+
+function InvitePanel({ onSubmit, state }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; state: LoadState }) {
+  const [params, setParams] = useState({ tenant_slug: "", token: "", login_identifier: "" });
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setParams({ tenant_slug: q.get("tenant_slug") || "", token: q.get("token") || "", login_identifier: q.get("login_identifier") || "" });
+  }, []);
+  return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Convite" title="Definir acesso" text="Use o link recebido e crie sua credencial para entrar no painel." /><label>Slug da unidade<input name="tenant_slug" required defaultValue={params.tenant_slug} placeholder="unidade" /></label><label>Token do convite<input name="token" required defaultValue={params.token} placeholder="token recebido" /></label><label>Nome<input name="nome" required placeholder="seu nome" /></label><label>Identificador<input name="login_identifier" required defaultValue={params.login_identifier} placeholder="seu.login" /></label><label>Senha ou código<input name="secret" required type="password" placeholder="mínimo 8 caracteres" /></label><button disabled={state === "loading"}>Aceitar convite e entrar</button></form><article className="panel guidance-panel"><h2>Acesso por convite</h2><p>Após aceitar, a sessão entra na unidade correta e o menu muda conforme o papel recebido.</p><div className="mini-grid"><Metric label="Papel" value="Automático" /><Metric label="Unidade" value="Vinculada" /><Metric label="Sessão" value="Assinada" /><Metric label="Acesso" value="Filtrado" /></div></article></div>;
+}
+
+function SetupPanel({ setup, session, state, error, onRefresh }: { setup: Json; session: Json | null; state: LoadState; error: string; onRefresh: () => void }) {
+  const steps = setup.steps || [];
+  if (!session) return <PermissionPanel title="Setup" text="Entre como gestor para continuar a configuração da unidade." />;
+  return <div className="dashboard-grid setup-workspace"><section className="panel wide setup-board"><div className="setup-board-head"><div><span className="label">Checklist da unidade</span><h2>{setup.all_done ? "Operação pronta para testar" : "Continue a primeira operação"}</h2><p>{setup.all_done ? "Equipe, aluno, treino, execução e evolução já foram validados nesta unidade." : "Cada etapa usa dados reais do sistema e salva progresso no negócio atual."}</p></div><div className="setup-progress"><strong>{numberText(setup.progress_percent)}%</strong><span>concluído</span></div></div><div className="setup-meter"><i style={{ width: `${Math.max(0, Math.min(100, Number(setup.progress_percent || 0)))}%` }} /></div><div className="setup-steps">{steps.length ? steps.map((step: Json) => <Link className={`setup-step ${step.done ? "is-done" : "is-open"}`} href={step.href || "/"} key={step.id}><span>{String(step.order || 1).padStart(2, "0")}</span><div><strong>{safe(step.title)}</strong><small>{step.done ? "Concluído" : "Abrir etapa"} · {safe(step.count)} registro(s)</small></div><em>{step.done ? "OK" : "Fazer"}</em></Link>) : <article className="item"><strong>Setup não carregado</strong><span>{statusText(error, state === "loading" ? "Carregando..." : "Atualize para calcular o progresso.")}</span></article>}</div><div className="row-actions"><button type="button" className="secondary" onClick={onRefresh}>Atualizar progresso</button><Link className="primary-pill" href={setup?.steps?.find?.((step: Json) => !step.done)?.href || "/evolucao"}>{setup.all_done ? "Ver evolução" : "Continuar etapa"}</Link></div></section><section className="panel setup-summary"><h2>Próxima ação</h2><p>{setup.all_done ? "Use os logins de teste para validar cada papel." : `Etapa atual: ${safe(setup.current_step)}`}</p><div className="mini-grid"><Metric label="Professor" value={setup?.counters?.professors_with_access || 0} /><Metric label="Alunos" value={setup?.counters?.students || 0} /><Metric label="Treinos" value={setup?.counters?.workouts || 0} /><Metric label="Execuções" value={setup?.counters?.completed_executions || 0} /></div></section></div>;
 }
 
 function TeamPanel({ role, data, detail, state, error, onCreate, onInvite, onRefresh }: { role: string; data: Json; detail: Json | null; state: LoadState; error: string; onCreate: (event: FormEvent<HTMLFormElement>) => void; onInvite: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void }) {

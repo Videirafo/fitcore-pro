@@ -24,6 +24,7 @@ import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
 import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
+import { createGuidedSetupManager } from "./security/guided-setup.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -57,6 +58,7 @@ const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
 const workoutExecutionManager = createWorkoutExecutionManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
+const guidedSetupManager = createGuidedSetupManager(process.env);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1097,6 +1099,7 @@ const server = createServer(async (req, res) => {
           cross_tenant_block: true,
         },
         mvp_26: { student_evolution: studentEvolutionManager.enabled, history: true, average_effort: true, weekly_frequency: true, professor_dashboard: true },
+        mvp_31: { guided_setup: guidedSetupManager.enabled, progress_saved_by_tenant: true, next_route: "/setup" },
         mvp_24: {
           workout_prescription: workoutPrescriptionManager.enabled,
           student_bound: true,
@@ -1524,6 +1527,26 @@ const server = createServer(async (req, res) => {
       return sendJson(res, 200, result);
     }
 
+
+    if (url.pathname === "/api/mvp-31/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, guidedSetupManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-31/setup") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = guidedSetupManager.getSetup(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-31/setup/event") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = guidedSetupManager.recordEvent(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
 
     if (url.pathname === "/api/mvp-26/status") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);

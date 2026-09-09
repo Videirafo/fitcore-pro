@@ -13,7 +13,7 @@ const client = read("apps/site/components/FitCoreRouteClient.tsx");
 const css = read("apps/site/app/globals.css");
 const pkg = JSON.parse(read("package.json"));
 
-check(client.includes('router.push("/equipe?setup=1")'), "onboarding não leva para setup guiado de equipe.");
+check(client.includes('router.push("/setup")') || client.includes('router.push("/equipe?setup=1")'), "onboarding não leva para fluxo guiado pós-criação.");
 check(client.includes('router.push(`/treinos?student='), "cadastro de aluno não avança para prescrição do aluno.");
 check(client.includes('name="student_id"'), "prescrição sem dropdown de aluno real.");
 check(client.includes('name="professor_id"'), "cadastro de aluno sem seleção de professor.");
