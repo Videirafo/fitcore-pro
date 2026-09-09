@@ -18,6 +18,8 @@ const required = [
   "apps/site/app/globals.css",
   "apps/site/components/FitCoreAppShell.tsx",
   "apps/site/components/FitCoreRouteClient.tsx",
+  "apps/site/components/FitCoreNavClient.tsx",
+  "apps/site/components/FitCoreHeaderActionsClient.tsx",
   "apps/site/lib/fitcore-api.ts",
 ];
 let failed = false;
@@ -38,9 +40,14 @@ if (!layout.includes('import "./globals.css"')) {
   failed = true;
 }
 const shell = readFileSync(resolve(root, "apps/site/components/FitCoreAppShell.tsx"), "utf8");
+if (!shell.includes("FitCoreNavClient") || !shell.includes("FitCoreHeaderActionsClient")) {
+  console.error("ERRO: shell Next sem navegação por papel.");
+  failed = true;
+}
+const nav = readFileSync(resolve(root, "apps/site/components/FitCoreNavClient.tsx"), "utf8");
 for (const route of ["/login", "/onboarding", "/equipe", "/alunos", "/treinos", "/execucao", "/evolucao"]) {
-  if (!shell.includes(route)) {
-    console.error(`ERRO: shell Next sem rota limpa ${route}.`);
+  if (!nav.includes(route)) {
+    console.error(`ERRO: navegação Next sem rota limpa ${route}.`);
     failed = true;
   }
 }

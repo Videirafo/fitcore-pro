@@ -244,3 +244,84 @@ button:disabled { cursor: not-allowed; opacity: .55; box-shadow: none !important
 @keyframes fc-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 980px) { .role-dashboard { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .toast, .form-actions { align-items: stretch; flex-direction: column; } .mini-grid { grid-template-columns: 1fr; } }
+
+/* MVP-29 — premium role UX */
+.side-card { display: none !important; }
+.sidebar { gap: 18px; }
+.sidebar-user {
+  margin-top: auto;
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.035));
+}
+.sidebar-user span { color: var(--lime); font-size: 11px; font-weight: 950; letter-spacing: .14em; text-transform: uppercase; }
+.sidebar-user strong { color: #fff; font-size: 16px; }
+.sidebar-user small { color: var(--muted); }
+.side-nav a { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.side-nav a span { color: inherit; line-height: 1.1; }
+.side-nav a small { color: rgba(225,232,255,.55); font-size: 11px; line-height: 1.1; }
+.side-nav a.active,
+.side-nav a[aria-current="page"] {
+  color: #07120b;
+  background: linear-gradient(135deg, var(--green), var(--lime));
+  border-color: rgba(71,240,106,.55);
+  transform: translateX(3px);
+  box-shadow: 0 12px 34px rgba(71,240,106,.20);
+}
+.side-nav a.active small,
+.side-nav a[aria-current="page"] small { color: rgba(7,18,11,.70); }
+.role-dashboard {
+  grid-template-columns: minmax(250px,.7fr) minmax(0,1fr);
+  align-items: stretch;
+  padding: 22px;
+  gap: 18px;
+}
+.role-copy { display: grid; align-content: center; gap: 8px; }
+.role-copy strong { font-size: clamp(26px, 3vw, 42px); line-height: 1; letter-spacing: -.055em; }
+.role-copy p { margin: 0; max-width: 560px; }
+.role-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+}
+.role-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.role-actions .primary-pill { min-height: 40px; }
+.role-note { grid-column: 1 / -1; color: var(--muted); }
+.role-dashboard-gestor { background: linear-gradient(135deg, rgba(71,240,106,.15), rgba(112,165,255,.07)); }
+.role-dashboard-professor { background: linear-gradient(135deg, rgba(112,165,255,.14), rgba(255,255,255,.055)); }
+.role-dashboard-aluno { background: linear-gradient(135deg, rgba(189,255,99,.13), rgba(141,92,246,.07)); }
+.permission-panel { min-height: 260px; align-content: center; }
+.muted-note { color: var(--muted); align-self: center; }
+.kpi-card, .module-card, .panel, .session-card, .role-dashboard {
+  outline: 1px solid transparent;
+}
+.kpi-card:hover, .module-card:hover, .panel:hover, .session-card:hover, .role-dashboard:hover {
+  outline-color: rgba(71,240,106,.16);
+}
+@media (max-width: 1180px) {
+  .role-dashboard { grid-template-columns: 1fr; }
+  .role-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 860px) {
+  .app-shell { display: block; overflow: visible; }
+  .sidebar { position: sticky; top: 0; z-index: 40; border-radius: 24px 24px 0 0; background: rgba(7,9,20,.94); backdrop-filter: blur(18px); }
+  .side-nav { display: flex; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .side-nav::-webkit-scrollbar { display: none; }
+  .side-nav a { min-width: 132px; }
+  .side-nav a.active, .side-nav a[aria-current="page"] { transform: none; }
+  .sidebar-user { margin-top: 0; }
+}
+@media (max-width: 540px) {
+  .role-metrics { grid-template-columns: 1fr; }
+  .role-actions { display: grid; }
+  .app-header { gap: 12px; }
+  .workspace-main { overflow: hidden; }
+}

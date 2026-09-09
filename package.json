@@ -61,6 +61,8 @@
     "mvp27:deploy": "bash infra/scripts/switch-fitcore-to-next-shell.sh",
     "mvp27:verify": "bash infra/scripts/verify-mvp-27-next-shell.sh",
     "mvp28:check": "node tools/check-mvp-28-next-operational-ui.mjs",
-    "mvp28:verify": "bash infra/scripts/verify-mvp-28-next-operational-ui.sh"
+    "mvp28:verify": "bash infra/scripts/verify-mvp-28-next-operational-ui.sh",
+    "mvp29:check": "node tools/check-mvp-29-role-premium-ux.mjs",
+    "mvp29:verify": "bash infra/scripts/verify-mvp-29-role-premium-ux.sh"
   }
 }
