@@ -1,0 +1,19 @@
+services:
+  fitcore_postgres:
+    image: postgres:16-alpine
+    container_name: fitcore_postgres
+    restart: unless-stopped
+    env_file:
+      - /opt/fitcore-pro/storage/secrets/fitcore-postgres.env
+    ports:
+      - "127.0.0.1:55435:5432"
+    volumes:
+      - fitcore-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  fitcore-postgres-data:
