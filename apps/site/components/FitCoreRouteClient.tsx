@@ -1,19 +1,21 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type Json = Record<string, any>;
 type Mode = "home" | "login" | "onboarding" | "team" | "students" | "training" | "execution" | "evolution";
+type LoadState = "idle" | "loading" | "success" | "error";
 
-const titles: Record<Mode, { eyebrow: string; title: string; text: string }> = {
-  home: { eyebrow: "Sistema profissional", title: "Operação fitness completa em rotas limpas.", text: "Cadastre o negócio, organize equipe e alunos, prescreva treinos, acompanhe execução e evolução sem páginas soltas." },
-  login: { eyebrow: "Acesso", title: "Entrar no painel", text: "Use o slug do negócio, identificador e senha ou código para abrir a sessão real." },
-  onboarding: { eyebrow: "Novo negócio", title: "Criar academia, estúdio, box ou operação personal.", text: "O cadastro cria a unidade, gestor proprietário, primeiro professor, primeiro aluno e abre a sessão do gestor." },
-  team: { eyebrow: "Equipe", title: "Gestão de usuários da unidade.", text: "Crie professores e alunos com acesso próprio, credencial e papel correto." },
-  students: { eyebrow: "Alunos", title: "Cadastro operacional de aluno real.", text: "Registre nível, objetivo, frequência semanal e vínculo com professor responsável." },
-  training: { eyebrow: "Treinos", title: "Prescrição vinculada ao aluno.", text: "Crie treinos para alunos reais e libere após revisão do professor ou gestor." },
-  execution: { eyebrow: "Execução", title: "Registro real do treino pelo aluno.", text: "O aluno inicia treino aprovado, marca exercícios, esforço, duração e conclusão." },
-  evolution: { eyebrow: "Evolução", title: "Histórico e progresso do aluno.", text: "Acompanhe histórico, esforço médio, frequência semanal e evolução por treino." },
+const routeCopy: Record<Mode, { eyebrow: string; title: string; text: string }> = {
+  home: { eyebrow: "Operação conectada", title: "Painel único para vender, operar e acompanhar treinos.", text: "Da criação do negócio até a evolução do aluno, tudo roda em uma interface única, com sessão real, dados do banco e navegação por papel." },
+  login: { eyebrow: "Acesso", title: "Entrar no FitCore Pro.", text: "Use o slug da unidade, seu identificador e senha ou código de acesso para abrir o painel correto." },
+  onboarding: { eyebrow: "Novo negócio", title: "Criar academia, estúdio, box ou personal.", text: "O cadastro cria a unidade, o gestor proprietário, a primeira equipe e a sessão de entrada." },
+  team: { eyebrow: "Equipe", title: "Usuários, papéis e acesso da unidade.", text: "Crie professores e alunos com credenciais próprias, liste a equipe e mantenha cada pessoa no papel correto." },
+  students: { eyebrow: "Alunos", title: "Cadastro operacional de alunos.", text: "Registre objetivo, nível, frequência, professor responsável e status em uma tela real de operação." },
+  training: { eyebrow: "Treinos", title: "Prescrição vinculada ao aluno real.", text: "Crie treinos para alunos cadastrados, revise como professor ou gestor e libere a execução para o aluno." },
+  execution: { eyebrow: "Execução", title: "Treino em andamento e conclusão.", text: "O aluno inicia o treino aprovado, marca exercícios, registra esforço, duração e finaliza a sessão." },
+  evolution: { eyebrow: "Evolução", title: "Histórico e progresso por aluno.", text: "Veja frequência semanal, esforço médio, histórico de execuções e progresso por aluno dentro da unidade." },
 };
 
 async function api(path: string, options: RequestInit = {}): Promise<Json> {
@@ -25,114 +27,271 @@ async function api(path: string, options: RequestInit = {}): Promise<Json> {
 }
 
 function safe(value: any): string { return value === undefined || value === null || value === "" ? "—" : String(value); }
-function rows(form: HTMLFormElement): Record<string, string> { const out: Record<string, string> = {}; new FormData(form).forEach((value, key) => { if (typeof value === "string") out[key] = value.trim(); }); return out; }
-function n(value: any): string { const num = Number(value || 0); return Number.isFinite(num) ? num.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "0"; }
+function numberText(value: any): string { const n = Number(value ?? 0); return Number.isFinite(n) ? n.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "0"; }
+function formPayload(form: HTMLFormElement): Json {
+  const out: Json = {};
+  new FormData(form).forEach((raw, key) => {
+    const value = typeof raw === "string" ? raw.trim() : String(raw);
+    if (!value) return;
+    out[key] = /^\d+$/.test(value) ? Number(value) : value;
+  });
+  return out;
+}
+function statusText(error: string, fallback = "Nenhum registro carregado") { return error ? `Erro: ${error}` : fallback; }
 
 export function FitCoreRouteClient({ mode }: { mode: Mode }) {
-  const copy = titles[mode];
+  const copy = routeCopy[mode];
   const [session, setSession] = useState<Json | null>(null);
-  const [message, setMessage] = useState("Carregando sessão...");
-  const [data, setData] = useState<Json>({});
+  const [navigation, setNavigation] = useState<Json | null>(null);
+  const [state, setState] = useState<LoadState>("idle");
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState<Json | null>(null);
+  const [team, setTeam] = useState<Json>({});
+  const [students, setStudents] = useState<Json>({ students: [] });
+  const [prescriptions, setPrescriptions] = useState<Json>({ prescriptions: [] });
+  const [executions, setExecutions] = useState<Json>({ executions: [] });
+  const [evolution, setEvolution] = useState<Json>({ students: [], weekly: [], summary: {} });
   const [detail, setDetail] = useState<Json | null>(null);
 
-  async function loadSession() {
+  const role = String(session?.actor_role || "visitante");
+  const isStaff = role === "gestor" || role === "professor";
+  const firstStudentId = useMemo(() => students?.students?.[0]?.id || "", [students]);
+  const firstPrescriptionId = useMemo(() => prescriptions?.prescriptions?.[0]?.id || prescriptions?.workouts?.[0]?.id || "", [prescriptions]);
+  const firstExecutionId = useMemo(() => executions?.executions?.find((item: Json) => item.status === "em_execucao")?.id || executions?.executions?.[0]?.id || "", [executions]);
+
+  const loadSession = useCallback(async () => {
     try {
       const result = await api(`/api/mvp-15/session?v=${Date.now()}`);
       setSession(result.current_session || null);
-      setMessage(result.current_session ? `${result.current_session.actor_name} · ${result.current_session.actor_role}` : "Login necessário");
+      if (result.current_session) {
+        try { setNavigation(await api(`/api/mvp-17/navigation?v=${Date.now()}`)); } catch { setNavigation(null); }
+      } else {
+        setNavigation(null);
+      }
       return result.current_session || null;
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Sessão indisponível");
+    } catch {
+      setSession(null);
+      setNavigation(null);
       return null;
     }
-  }
+  }, []);
 
-  async function refresh(target = mode) {
-    await loadSession();
+  const loadRouteData = useCallback(async (target: Mode = mode) => {
+    setState("loading");
+    setError("");
     try {
-      if (target === "team") setData(await api(`/api/mvp-22/users?v=${Date.now()}`));
-      if (target === "students") setData(await api(`/api/mvp-23/students?limit=80&v=${Date.now()}`));
-      if (target === "training") setData(await api(`/api/mvp-24/prescriptions?limit=80&v=${Date.now()}`));
-      if (target === "execution") setData(await api(`/api/mvp-25/executions?limit=80&v=${Date.now()}`));
-      if (target === "evolution") setData(await api(`/api/mvp-26/evolution?limit=80&v=${Date.now()}`));
-    } catch (error) {
-      setData({ error: error instanceof Error ? error.message : "Não foi possível carregar" });
+      const current = await loadSession();
+      const currentRole = String(current?.actor_role || "");
+      const currentIsStaff = currentRole === "gestor" || currentRole === "professor";
+      if (["students", "training"].includes(target) && currentIsStaff) setStudents(await api(`/api/mvp-23/students?limit=80&v=${Date.now()}`));
+      if (target === "team" && currentRole === "gestor") setTeam(await api(`/api/mvp-22/users?v=${Date.now()}`));
+      if (target === "training" && currentIsStaff) setPrescriptions(await api(`/api/mvp-24/prescriptions?limit=80&v=${Date.now()}`));
+      if (target === "training" && currentRole === "aluno") setPrescriptions(await api(`/api/mvp-24/my-workouts?status=aprovado&limit=40&v=${Date.now()}`));
+      if (target === "execution") {
+        if (currentRole === "aluno") {
+          setPrescriptions(await api(`/api/mvp-24/my-workouts?status=aprovado&limit=40&v=${Date.now()}`));
+          setExecutions(await api(`/api/mvp-25/my-executions?limit=60&v=${Date.now()}`));
+        } else if (currentIsStaff) {
+          setExecutions(await api(`/api/mvp-25/executions?limit=80&v=${Date.now()}`));
+        }
+      }
+      if (target === "evolution") {
+        if (currentIsStaff) setEvolution(await api(`/api/mvp-26/evolution?limit=80&v=${Date.now()}`));
+        if (currentRole === "aluno") setEvolution(await api(`/api/mvp-26/my-evolution?limit=80&v=${Date.now()}`));
+      }
+      setState("success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível carregar os dados.");
+      setState("error");
+    }
+  }, [loadSession, mode]);
+
+  useEffect(() => { loadRouteData(mode); }, [loadRouteData, mode]);
+
+  useEffect(() => {
+    const cards = Array.from(document.querySelectorAll<HTMLElement>(".panel, .session-card, .module-card, .metric"));
+    const update = (event: PointerEvent) => {
+      cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
+        card.style.setProperty("--card-x", `${event.clientX - rect.left}px`);
+        card.style.setProperty("--card-y", `${event.clientY - rect.top}px`);
+      });
+    };
+    window.addEventListener("pointermove", update, { passive: true });
+    return () => window.removeEventListener("pointermove", update);
+  }, [mode]);
+
+  async function runAction(label: string, action: () => Promise<Json>, refreshTarget: Mode = mode) {
+    setToast({ type: "loading", title: label, message: "Processando..." });
+    try {
+      const result = await action();
+      setToast({ type: "success", title: label, message: "Concluído com sucesso.", result });
+      setDetail(result);
+      await loadRouteData(refreshTarget);
+    } catch (err) {
+      setToast({ type: "error", title: label, message: err instanceof Error ? err.message : "Ação não concluída." });
     }
   }
 
-  useEffect(() => { refresh(); }, [mode]);
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = formPayload(event.currentTarget);
+    await runAction("Login", () => api("/api/mvp-19/login", { method: "POST", body: JSON.stringify(payload) }), "home");
+  }
 
-  async function submitLogin(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = rows(event.currentTarget); const result = await api("/api/mvp-19/login", { method: "POST", body: JSON.stringify(body) }); setSession(result.session || null); setMessage("Login realizado"); await refresh(); }
-  async function submitOnboarding(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const result = await api("/api/mvp-21/onboarding", { method: "POST", body: JSON.stringify(rows(event.currentTarget)) }); setData(result); setSession(result.session || null); setMessage("Negócio criado"); }
-  async function submitUser(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const result = await api("/api/mvp-22/users", { method: "POST", body: JSON.stringify(rows(event.currentTarget)) }); setDetail(result); await refresh("team"); }
-  async function submitStudent(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const result = await api("/api/mvp-23/students", { method: "POST", body: JSON.stringify(rows(event.currentTarget)) }); setDetail(result); await refresh("students"); }
-  async function submitPrescription(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body: Json = rows(event.currentTarget); body.exercicios = String(body.exercicios || "").split("\n").map((x) => x.trim()).filter(Boolean); const result = await api("/api/mvp-24/prescriptions", { method: "POST", body: JSON.stringify(body) }); setDetail(result); await refresh("training"); }
-  async function reviewPrescription(id: string, status: string) { const result = await api(`/api/mvp-24/prescriptions/${encodeURIComponent(id)}/review`, { method: "POST", body: JSON.stringify({ status, observacoes: status === "aprovado" ? "Aprovado no painel." : "Ajustes solicitados no painel." }) }); setDetail(result); await refresh("training"); }
-  async function startExecution(id: string) { const result = await api("/api/mvp-25/executions/start", { method: "POST", body: JSON.stringify({ workout_id: id }) }); setDetail(result); await refresh("execution"); }
-  async function finishExecution(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const body = rows(event.currentTarget); const id = body.execution_id; const result = await api(`/api/mvp-25/executions/${encodeURIComponent(id)}/finish`, { method: "POST", body: JSON.stringify(body) }); setDetail(result); await refresh("execution"); }
+  async function logout() {
+    await runAction("Logout", () => api("/api/mvp-15/session/logout", { method: "POST", body: "{}" }), "login");
+    setSession(null);
+  }
+
+  async function submitOnboarding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction("Criar negócio", () => api("/api/mvp-21/onboarding", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "home");
+  }
+
+  async function submitUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction("Criar usuário", () => api("/api/mvp-22/users", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "team");
+  }
+
+  async function submitInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction("Gerar convite", () => api("/api/mvp-22/users/invite", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "team");
+  }
+
+  async function submitStudent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction("Cadastrar aluno", () => api("/api/mvp-23/students", { method: "POST", body: JSON.stringify(formPayload(event.currentTarget)) }), "students");
+  }
+
+  async function submitPrescription(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = formPayload(event.currentTarget);
+    payload.exercicios = String(payload.exercicios || "").split("\n").map((item) => item.trim()).filter(Boolean);
+    await runAction("Criar prescrição", () => api("/api/mvp-24/prescriptions", { method: "POST", body: JSON.stringify(payload) }), "training");
+  }
+
+  async function reviewPrescription(id: string, status: "aprovado" | "ajustes_solicitados") {
+    await runAction(status === "aprovado" ? "Aprovar treino" : "Solicitar ajustes", () => api(`/api/mvp-24/prescriptions/${encodeURIComponent(id)}/review`, { method: "POST", body: JSON.stringify({ status, observacoes: status === "aprovado" ? "Aprovado no painel Next." : "Ajustes solicitados no painel Next." }) }), "training");
+  }
+
+  async function startExecution(workoutId: string) {
+    await runAction("Iniciar treino", () => api("/api/mvp-25/executions/start", { method: "POST", body: JSON.stringify({ workout_id: workoutId }) }), "execution");
+  }
+
+  async function markExerciseDone(executionId: string, index: number) {
+    await runAction("Marcar exercício", () => api(`/api/mvp-25/executions/${encodeURIComponent(executionId)}/exercises/${index}/done`, { method: "POST", body: JSON.stringify({ observacao: "Marcado no painel Next." }) }), "execution");
+  }
+
+  async function finishExecution(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = formPayload(event.currentTarget);
+    const id = String(payload.execution_id || "");
+    await runAction("Concluir treino", () => api(`/api/mvp-25/executions/${encodeURIComponent(id)}/finish`, { method: "POST", body: JSON.stringify(payload) }), "execution");
+  }
+
+  async function loadStudentEvolution(studentId: string) {
+    await runAction("Detalhe de evolução", () => api(`/api/mvp-26/students/${encodeURIComponent(studentId)}/evolution?limit=80`), "evolution");
+  }
 
   return (
-    <section className="route-page">
+    <section className="route-page" data-mode={mode}>
       <div className="route-hero">
-        <div><p className="eyebrow">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.text}</p></div>
-        <SessionCard session={session} message={message} />
+        <div>
+          <p className="eyebrow">{copy.eyebrow}</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.text}</p>
+        </div>
+        <SessionPanel session={session} state={state} error={error} onRefresh={() => loadRouteData(mode)} />
       </div>
-      {mode === "home" && <HomeGrid />}
-      {mode === "login" && <LoginPanel onSubmit={submitLogin} />}
-      {mode === "onboarding" && <OnboardingPanel onSubmit={submitOnboarding} data={data} />}
-      {mode === "team" && <TeamPanel onSubmit={submitUser} data={data} detail={detail} refresh={() => refresh("team")} />}
-      {mode === "students" && <StudentsPanel onSubmit={submitStudent} data={data} detail={detail} refresh={() => refresh("students")} />}
-      {mode === "training" && <TrainingPanel onSubmit={submitPrescription} data={data} detail={detail} review={reviewPrescription} />}
-      {mode === "execution" && <ExecutionPanel data={data} detail={detail} start={startExecution} finish={finishExecution} />}
-      {mode === "evolution" && <EvolutionPanel data={data} detail={detail} loadStudent={async (id) => setDetail(await api(`/api/mvp-26/students/${encodeURIComponent(id)}/evolution?limit=80`))} />}
+
+      <RoleDashboard session={session} navigation={navigation} />
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
+      {mode === "home" && <HomePanel session={session} />}
+      {mode === "login" && <LoginPanel onSubmit={submitLogin} onLogout={logout} state={state} />}
+      {mode === "onboarding" && <OnboardingPanel onSubmit={submitOnboarding} state={state} />}
+      {mode === "team" && <TeamPanel data={team} detail={detail} state={state} error={error} onCreate={submitUser} onInvite={submitInvite} onRefresh={() => loadRouteData("team")} />}
+      {mode === "students" && <StudentsPanel data={students} detail={detail} state={state} error={error} onSubmit={submitStudent} onRefresh={() => loadRouteData("students")} />}
+      {mode === "training" && <TrainingPanel students={students?.students || []} data={prescriptions} detail={detail} state={state} error={error} firstStudentId={firstStudentId} onSubmit={submitPrescription} onReview={reviewPrescription} onRefresh={() => loadRouteData("training")} />}
+      {mode === "execution" && <ExecutionPanel role={role} workouts={prescriptions} executions={executions} detail={detail} state={state} error={error} firstPrescriptionId={firstPrescriptionId} firstExecutionId={firstExecutionId} onStart={startExecution} onMarkDone={markExerciseDone} onFinish={finishExecution} onRefresh={() => loadRouteData("execution")} />}
+      {mode === "evolution" && <EvolutionPanel data={evolution} detail={detail} state={state} error={error} isStaff={isStaff} onStudent={loadStudentEvolution} onRefresh={() => loadRouteData("evolution")} />}
     </section>
   );
 }
 
-function SessionCard({ session, message }: { session: Json | null; message: string }) {
-  return <aside className="session-card"><small>Sessão</small><strong>{safe(session?.tenant_slug || "Acesso")}</strong><span>{message}</span></aside>;
-}
-function HomeGrid() { return <div className="module-grid">{[["/onboarding","Criar negócio","Crie a operação e o gestor proprietário."],["/equipe","Equipe","Usuários, papéis e credenciais."],["/alunos","Alunos","Cadastro, vínculo e objetivos."],["/treinos","Treinos","Prescrição e revisão."],["/execucao","Execução","Treino do aluno em andamento."],["/evolucao","Evolução","Histórico, frequência e progresso."]].map(([href,title,text])=><a className="module-card" href={href} key={href}><strong>{title}</strong><span>{text}</span></a>)}</div>; }
-
-function LoginPanel({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
-  return <div className="split-grid"><form className="panel" onSubmit={onSubmit}><h2>Login</h2><label>Slug do negócio<input name="tenant_slug" placeholder="ex: academia-centro" /></label><label>Identificador<input name="login_identifier" required /></label><label>Senha ou código<input name="secret" type="password" required /></label><button>Entrar</button></form><article className="panel"><h2>Acesso seguro</h2><p>O papel e a unidade são resolvidos pela sessão assinada. As rotas operacionais respeitam o acesso do usuário logado.</p></article></div>;
+function SessionPanel({ session, state, error, onRefresh }: { session: Json | null; state: LoadState; error: string; onRefresh: () => void }) {
+  const logged = Boolean(session);
+  return <aside className={`session-card ${logged ? "is-online" : "is-offline"}`}><small>{state === "loading" ? "Carregando" : logged ? "Sessão ativa" : "Entrada"}</small><strong>{logged ? safe(session?.actor_name) : "Acesso necessário"}</strong><span>{logged ? `${safe(session?.actor_role)} · ${safe(session?.tenant_slug)}` : statusText(error, "Entre ou crie uma unidade.")}</span><button type="button" className="secondary mini" onClick={onRefresh}>Atualizar</button></aside>;
 }
 
-function OnboardingPanel({ onSubmit, data }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; data: Json }) {
-  return <div className="split-grid"><form className="panel" onSubmit={onSubmit}><h2>Criar operação</h2><label>Nome do negócio<input name="business_name" required defaultValue="Academia FitCore" /></label><label>Tipo<select name="business_type" defaultValue="academia"><option value="academia">Academia</option><option value="estudio">Estúdio</option><option value="box">Box</option><option value="personal">Personal trainer</option></select></label><label>Slug<input name="slug" placeholder="opcional" /></label><label>Gestor proprietário<input name="owner_name" required defaultValue="Gestor Proprietário" /></label><label>Identificador<input name="login_identifier" required defaultValue="gestor.fitcore" /></label><label>Senha/código<input name="secret" type="password" required defaultValue="FitCore#2026" /></label><label>Primeiro professor<input name="professor_nome" defaultValue="Professor Inicial" /></label><label>Primeiro aluno<input name="aluno_nome" defaultValue="Aluno Inicial" /></label><button>Criar e entrar</button></form><ResultPanel title="Resultado" data={data} /></div>;
+function Toast({ toast, onClose }: { toast: Json | null; onClose: () => void }) {
+  if (!toast) return null;
+  return <div className={`toast toast-${toast.type || "info"}`}><div><strong>{safe(toast.title)}</strong><span>{safe(toast.message)}</span></div><button type="button" className="secondary mini" onClick={onClose}>Fechar</button></div>;
 }
 
-function TeamPanel({ onSubmit, data, detail, refresh }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; data: Json; detail: Json | null; refresh: () => void }) {
-  const users = data.users || data.items || [];
-  return <div className="split-grid"><form className="panel" onSubmit={onSubmit}><h2>Novo usuário</h2><label>Nome<input name="nome" required defaultValue="Professor Equipe" /></label><label>Papel<select name="papel" defaultValue="professor"><option value="professor">Professor</option><option value="aluno">Aluno</option></select></label><label>Identificador<input name="login_identifier" required defaultValue="professor.equipe" /></label><label>Senha/código<input name="secret" type="password" required defaultValue="FitCore#Equipe27" /></label><button>Criar usuário</button></form><article className="panel"><HeaderAction title="Equipe" action="Atualizar" onClick={refresh} /><List items={users} pick={(u) => [u.nome, u.papel, u.login_identifier || u.status]} />{detail && <MiniResult data={detail} />}</article></div>;
+function RoleDashboard({ session, navigation }: { session: Json | null; navigation: Json | null }) {
+  const role = String(session?.actor_role || "visitante");
+  const items = role === "gestor" ? ["Equipe", "Alunos", "Treinos", "Execução", "Evolução"] : role === "professor" ? ["Alunos", "Treinos", "Execução", "Evolução"] : role === "aluno" ? ["Treinos", "Execução", "Evolução"] : ["Criar negócio", "Login"];
+  return <section className="role-dashboard"><div><span>Painel por papel</span><strong>{role === "visitante" ? "Visitante" : role}</strong><p>{session ? "Menu e dados carregam conforme o acesso da sessão." : "Entre para carregar seu painel."}</p></div><div className="role-pills">{items.map((item) => <span key={item}>{item}</span>)}</div>{navigation?.menu?.length ? <small>{navigation.menu.length} áreas liberadas</small> : null}</section>;
 }
 
-function StudentsPanel({ onSubmit, data, detail, refresh }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; data: Json; detail: Json | null; refresh: () => void }) {
-  const items = data.students || data.items || [];
-  return <div className="split-grid"><form className="panel" onSubmit={onSubmit}><h2>Novo aluno</h2><label>Nome público<input name="nome_publico" required defaultValue="Aluno Operacional" /></label><label>Código interno<input name="codigo_publico" placeholder="opcional" /></label><label>Nível<select name="nivel" defaultValue="iniciante"><option value="iniciante">Iniciante</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></label><label>Objetivo<input name="objetivo" defaultValue="força e evolução" /></label><label>Modalidade<input name="modalidade_preferida" defaultValue="academia" /></label><label>Frequência semanal<input name="frequencia_semana" type="number" min="1" max="7" defaultValue="3" /></label><button>Cadastrar aluno</button></form><article className="panel"><HeaderAction title="Alunos" action="Atualizar" onClick={refresh} /><List items={items} pick={(s) => [s.nome_publico, s.nivel, s.objetivo || s.status]} />{detail && <MiniResult data={detail} />}</article></div>;
+function HomePanel({ session }: { session: Json | null }) {
+  const modules = [
+    ["/onboarding", "Criar negócio", "Abra uma unidade fitness com gestor proprietário e equipe inicial."],
+    ["/equipe", "Equipe", "Crie usuários, defina papéis e mantenha acessos organizados."],
+    ["/alunos", "Alunos", "Cadastre alunos, objetivos, nível e frequência semanal."],
+    ["/treinos", "Treinos", "Prescreva treinos e libere após revisão responsável."],
+    ["/execucao", "Execução", "Acompanhe treinos em andamento, esforço e conclusão."],
+    ["/evolucao", "Evolução", "Veja histórico, frequência e progresso por aluno."],
+  ];
+  return <div className="module-grid">{modules.map(([href, title, text]) => <Link className="module-card" href={href} key={href}><small>{session ? "Operação" : "Comece"}</small><strong>{title}</strong><span>{text}</span></Link>)}</div>;
 }
 
-function TrainingPanel({ onSubmit, data, detail, review }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; data: Json; detail: Json | null; review: (id: string, status: string) => void }) {
-  const items = data.prescriptions || data.items || [];
-  return <div className="split-grid"><form className="panel" onSubmit={onSubmit}><h2>Prescrever treino</h2><label>ID do aluno<input name="student_id" required placeholder="cole o ID do aluno" /></label><label>Nome do treino<input name="nome_treino" required defaultValue="Treino base semanal" /></label><label>Objetivo<input name="objetivo" defaultValue="força e condicionamento" /></label><label>Modalidade<input name="modalidade" defaultValue="academia" /></label><label>Foco<input name="foco" defaultValue="corpo inteiro" /></label><label>Dias por semana<input name="dias_semana" type="number" min="1" max="7" defaultValue="3" /></label><label>Exercícios<textarea name="exercicios" defaultValue={"Agachamento técnico\nSupino guiado\nRemada controlada"} /></label><button>Criar prescrição</button></form><article className="panel"><h2>Treinos</h2><div className="item-list">{items.map((p: Json) => <div className="item" key={p.id}><strong>{safe(p.nome_treino || p.workout_name || p.id)}</strong><span>{safe(p.student_name || p.aluno_nome)} · {safe(p.status)}</span><div className="row-actions"><button type="button" onClick={() => review(String(p.id), "aprovado")}>Aprovar</button><button type="button" className="secondary" onClick={() => review(String(p.id), "ajustes_solicitados")}>Ajustes</button></div></div>)}</div>{detail && <MiniResult data={detail} />}</article></div>;
+function LoginPanel({ onSubmit, onLogout, state }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; onLogout: () => void; state: LoadState }) {
+  return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Acesso" title="Entrar com credencial" text="Informe a unidade, identificador e senha ou código." /><label>Slug da unidade<input name="tenant_slug" placeholder="ex: academia-centro" autoComplete="organization" /></label><label>Identificador<input name="login_identifier" required placeholder="ex: professor.maria" autoComplete="username" /></label><label>Senha ou código<input name="secret" required type="password" autoComplete="current-password" /></label><div className="form-actions"><button type="submit" disabled={state === "loading"}>Entrar</button><button type="button" className="secondary" onClick={onLogout}>Sair</button></div></form><article className="panel guidance-panel"><h2>Entrada profissional</h2><p>O sistema abre a área correta pelo papel do usuário. Gestor, professor e aluno veem rotinas diferentes na mesma base operacional.</p><div className="mini-grid"><Metric label="Sessão" value="Assinada" /><Metric label="Acesso" value="Por papel" /></div></article></div>;
 }
 
-function ExecutionPanel({ data, detail, start, finish }: { data: Json; detail: Json | null; start: (id: string) => void; finish: (event: FormEvent<HTMLFormElement>) => void }) {
-  const items = data.executions || data.items || [];
-  return <div className="split-grid"><article className="panel"><h2>Execuções</h2><div className="item-list">{items.map((x: Json) => <div className="item" key={x.id}><strong>{safe(x.nome_treino || x.workout_id)}</strong><span>{safe(x.student_name)} · {safe(x.status)} · {safe(x.progresso_percentual)}%</span></div>)}</div><form className="inline-form" onSubmit={finish}><label>ID da execução<input name="execution_id" required /></label><label>Esforço<input name="percepcao_esforco" type="number" min="1" max="10" defaultValue="7" /></label><label>Duração<input name="duracao_minutos" type="number" min="1" max="480" defaultValue="45" /></label><button>Concluir</button></form></article><article className="panel"><h2>Iniciar treino</h2><p>Use o ID de um treino aprovado do aluno logado.</p><form className="inline-form" onSubmit={(e) => { e.preventDefault(); start(rows(e.currentTarget).workout_id); }}><label>ID do treino<input name="workout_id" required /></label><button>Iniciar</button></form>{detail && <MiniResult data={detail} />}</article></div>;
+function OnboardingPanel({ onSubmit, state }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; state: LoadState }) {
+  return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Novo negócio" title="Criar operação fitness" text="Configure a unidade e o gestor proprietário." /><label>Nome do negócio<input name="business_name" required minLength={3} placeholder="ex: Academia Centro" /></label><label>Tipo<select name="business_type" defaultValue="academia"><option value="academia">Academia</option><option value="estudio">Estúdio</option><option value="box">Box</option><option value="personal">Personal trainer</option></select></label><label>Slug desejado<input name="slug" placeholder="academia-centro" /></label><label>Gestor proprietário<input name="owner_name" required placeholder="nome do gestor" /></label><label>Identificador de login<input name="login_identifier" required placeholder="gestor.academia" /></label><label>Senha ou código<input name="secret" required type="password" placeholder="mínimo 8 caracteres" /></label><label>Primeiro professor<input name="professor_nome" placeholder="opcional" /></label><label>Primeiro aluno<input name="aluno_nome" placeholder="opcional" /></label><button type="submit" disabled={state === "loading"}>Criar e entrar</button></form><article className="panel flow-panel"><h2>Fluxo criado</h2><Process steps={["Unidade", "Gestor", "Equipe", "Aluno", "Treino", "Evolução"]} /></article></div>;
 }
 
-function EvolutionPanel({ data, detail, loadStudent }: { data: Json; detail: Json | null; loadStudent: (id: string) => void }) {
-  const summary = data.summary || {};
+function TeamPanel({ data, detail, state, error, onCreate, onInvite, onRefresh }: { data: Json; detail: Json | null; state: LoadState; error: string; onCreate: (event: FormEvent<HTMLFormElement>) => void; onInvite: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void }) {
+  const users = data.users || [];
+  const invites = data.invites || [];
+  return <div className="dashboard-grid"><form className="panel operational-form" onSubmit={onCreate}><FormHeader label="Equipe" title="Criar usuário" text="Adicione professor ou aluno diretamente à unidade." /><label>Nome<input name="nome" required placeholder="nome do usuário" /></label><label>Papel<select name="papel" defaultValue="professor"><option value="professor">Professor</option><option value="aluno">Aluno</option></select></label><label>Identificador<input name="login_identifier" required placeholder="professor.maria" /></label><label>Senha/código<input name="secret" required type="password" placeholder="mínimo 8 caracteres" /></label><button disabled={state === "loading"}>Criar usuário</button></form><section className="panel"><PanelTitle title="Usuários da unidade" action="Atualizar" onClick={onRefresh} /><List empty={statusText(error, "Nenhum usuário carregado.")} items={users} pick={(user) => [user.nome, user.papel, user.login_identifier || user.status]} /></section><form className="panel operational-form" onSubmit={onInvite}><FormHeader label="Convite" title="Gerar link de acesso" text="Use para enviar entrada ao professor ou aluno." /><label>Nome<input name="nome" required placeholder="nome do convidado" /></label><label>Papel<select name="papel" defaultValue="aluno"><option value="aluno">Aluno</option><option value="professor">Professor</option></select></label><label>Identificador sugerido<input name="login_identifier" placeholder="aluno.joao" /></label><button>Gerar convite</button></form><section className="panel"><h2>Convites recentes</h2><List empty="Nenhum convite recente." items={invites} pick={(invite) => [invite.nome_convidado || invite.nome, invite.papel, invite.status]} />{detail ? <MiniResult data={detail} /> : null}</section></div>;
+}
+
+function StudentsPanel({ data, detail, state, error, onSubmit, onRefresh }: { data: Json; detail: Json | null; state: LoadState; error: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void }) {
+  const students = data.students || [];
+  return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Alunos" title="Cadastrar aluno" text="Crie o registro operacional que será usado em treinos e evolução." /><label>Nome público<input name="nome_publico" required defaultValue="Aluno Operacional" /></label><label>Código interno<input name="codigo_publico" placeholder="opcional" /></label><label>Nível<select name="nivel" defaultValue="iniciante"><option value="iniciante">Iniciante</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></label><label>Objetivo<input name="objetivo" defaultValue="força e evolução" /></label><label>Modalidade<input name="modalidade_preferida" defaultValue="academia" /></label><label>Frequência semanal<input name="frequencia_semana" type="number" min="1" max="7" defaultValue="3" /></label><label>Etiquetas<input name="etiquetas" placeholder="ex: manhã, iniciante" /></label><button disabled={state === "loading"}>Cadastrar aluno</button></form><section className="panel"><PanelTitle title="Alunos ativos" action="Atualizar" onClick={onRefresh} /><List empty={statusText(error, "Nenhum aluno carregado.")} items={students} pick={(student) => [student.nome_publico, student.nivel, `${student.objetivo || "objetivo"} · ${student.frequencia_semana || 0}x/semana`]} />{detail ? <MiniResult data={detail} /> : null}</section></div>;
+}
+
+function TrainingPanel({ students, data, detail, state, error, firstStudentId, onSubmit, onReview, onRefresh }: { students: Json[]; data: Json; detail: Json | null; state: LoadState; error: string; firstStudentId: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onReview: (id: string, status: "aprovado" | "ajustes_solicitados") => void; onRefresh: () => void }) {
+  const prescriptions = data.prescriptions || data.workouts || [];
+  return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Treinos" title="Nova prescrição" text="Selecione um aluno real e monte o treino para revisão." /><label>Aluno<select name="student_id" required defaultValue={firstStudentId}>{students.length ? students.map((student) => <option key={student.id} value={student.id}>{student.nome_publico}</option>) : <option value="">Entre como gestor/professor e cadastre um aluno</option>}</select></label><label>Nome do treino<input name="nome_treino" required defaultValue="Treino base semanal" /></label><label>Objetivo<input name="objetivo" defaultValue="força e condicionamento" /></label><label>Modalidade<input name="modalidade" defaultValue="academia" /></label><label>Foco<input name="foco" defaultValue="corpo inteiro" /></label><label>Dias por semana<input name="dias_semana" type="number" min="1" max="7" defaultValue="3" /></label><label>Exercícios<textarea name="exercicios" defaultValue={"Agachamento técnico\nRemada controlada\nPrancha"} /></label><label>Orientações<textarea name="orientacoes" defaultValue="Executar com controle, registrar esforço e avisar desconforto." /></label><button disabled={state === "loading"}>Criar prescrição</button></form><section className="panel"><PanelTitle title="Treinos da unidade" action="Atualizar" onClick={onRefresh} /><div className="item-list">{prescriptions.length ? prescriptions.map((item: Json) => <article className="item" key={item.id}><strong>{safe(item.nome_treino || item.workout_name || item.id)}</strong><span>{safe(item.student_name || item.aluno_nome)} · {safe(item.status)}</span><div className="row-actions"><button type="button" onClick={() => onReview(String(item.id), "aprovado")}>Aprovar</button><button type="button" className="secondary" onClick={() => onReview(String(item.id), "ajustes_solicitados")}>Pedir ajuste</button></div></article>) : <article className="item"><strong>Nenhum treino carregado</strong><span>{statusText(error, "Cadastre aluno e crie uma prescrição.")}</span></article>}</div>{detail ? <MiniResult data={detail} /> : null}</section></div>;
+}
+
+function ExecutionPanel({ role, workouts, executions, detail, state, error, firstPrescriptionId, firstExecutionId, onStart, onMarkDone, onFinish, onRefresh }: { role: string; workouts: Json; executions: Json; detail: Json | null; state: LoadState; error: string; firstPrescriptionId: string; firstExecutionId: string; onStart: (workoutId: string) => void; onMarkDone: (executionId: string, index: number) => void; onFinish: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void }) {
+  const approved = workouts.prescriptions || workouts.workouts || [];
+  const items = executions.executions || [];
+  return <div className="dashboard-grid"><section className="panel"><PanelTitle title={role === "aluno" ? "Meus treinos liberados" : "Execuções da unidade"} action="Atualizar" onClick={onRefresh} /><div className="item-list">{role === "aluno" && approved.length ? approved.map((workout: Json) => <article className="item" key={workout.id}><strong>{safe(workout.nome_treino || workout.workout_name)}</strong><span>{safe(workout.objetivo)} · {safe(workout.status)}</span><button type="button" onClick={() => onStart(String(workout.id))}>Iniciar treino</button></article>) : items.length ? items.map((item: Json) => <article className="item" key={item.id}><strong>{safe(item.nome_treino || item.workout_id)}</strong><span>{safe(item.student_name)} · {safe(item.status)} · {safe(item.progresso_percentual)}%</span></article>) : <article className="item"><strong>Nada carregado</strong><span>{statusText(error, "Entre como aluno para iniciar ou como equipe para acompanhar.")}</span></article>}</div></section><form className="panel operational-form" onSubmit={onFinish}><FormHeader label="Aluno" title="Finalizar execução" text="Registre esforço e duração do treino em andamento." /><label>ID da execução<input name="execution_id" required defaultValue={firstExecutionId} /></label><label>Esforço percebido<input name="percepcao_esforco" type="number" min="1" max="10" defaultValue="7" /></label><label>Duração em minutos<input name="duracao_minutos" type="number" min="1" max="480" defaultValue="45" /></label><label>Observações<textarea name="observacoes" defaultValue="Treino concluído com boa técnica." /></label><button disabled={state === "loading"}>Concluir treino</button></form><section className="panel wide"><h2>Ações rápidas</h2><div className="row-actions"><button type="button" onClick={() => onStart(firstPrescriptionId)} disabled={!firstPrescriptionId}>Iniciar primeiro treino</button><button type="button" className="secondary" onClick={() => onMarkDone(firstExecutionId, 0)} disabled={!firstExecutionId}>Marcar exercício 1</button><button type="button" className="secondary" onClick={onRefresh}>Recarregar painel</button></div>{detail ? <MiniResult data={detail} /> : null}</section></div>;
+}
+
+function EvolutionPanel({ data, detail, state, error, isStaff, onStudent, onRefresh }: { data: Json; detail: Json | null; state: LoadState; error: string; isStaff: boolean; onStudent: (studentId: string) => void; onRefresh: () => void }) {
+  const summary = data.summary || data.student || {};
   const students = data.students || [];
   const weekly = data.weekly || [];
-  return <div className="dashboard-grid"><section className="panel wide"><div className="metric-grid"><Metric label="Alunos" value={summary.students} /><Metric label="Execuções" value={summary.executions} /><Metric label="Concluídos" value={summary.completed} /><Metric label="Esforço médio" value={summary.average_effort} /></div><Chart weekly={weekly} /></section><section className="panel"><h2>Progresso por aluno</h2><div className="item-list">{students.map((s: Json) => <button type="button" className="student-row" key={s.student_id} onClick={() => loadStudent(String(s.student_id))}><strong>{safe(s.student_name)}</strong><span>{safe(s.completed_executions)} treinos · esforço {safe(s.average_effort)} · {safe(s.progress_percent)}%</span></button>)}</div></section>{detail && <section className="panel wide"><h2>Detalhe do aluno</h2><MetricTable data={detail} /></section>}</div>;
+  const history = data.history || [];
+  return <div className="dashboard-grid"><section className="panel wide"><PanelTitle title="Resumo de evolução" action="Atualizar" onClick={onRefresh} /><div className="metric-grid"><Metric label="Alunos" value={summary.students || (data.student ? 1 : 0)} /><Metric label="Execuções" value={summary.executions || summary.total_executions} /><Metric label="Concluídos" value={summary.completed || summary.completed_executions} /><Metric label="Esforço médio" value={summary.average_effort} /></div><Chart weekly={weekly} history={history} /></section>{isStaff ? <section className="panel"><h2>Progresso dos alunos</h2><div className="item-list">{students.length ? students.map((student: Json) => <button type="button" className="student-row" key={student.student_id} onClick={() => onStudent(String(student.student_id))}><strong>{safe(student.student_name)}</strong><span>{safe(student.completed_executions)} concluídos · esforço {safe(student.average_effort)} · {safe(student.progress_percent)}%</span></button>) : <article className="item"><strong>Nenhum progresso carregado</strong><span>{statusText(error, "Execute treinos para gerar histórico.")}</span></article>}</div></section> : <section className="panel"><h2>Minha evolução</h2><MiniResult data={data.student ? { student: data.student, history } : { status: state, erro: error || "Sem histórico carregado" }} /></section>}{detail ? <section className="panel wide"><h2>Detalhe do aluno</h2><MetricTable data={detail} /></section> : null}</div>;
 }
 
-function HeaderAction({ title, action, onClick }: { title: string; action: string; onClick: () => void }) { return <div className="panel-title"><h2>{title}</h2><button type="button" className="secondary" onClick={onClick}>{action}</button></div>; }
-function List({ items, pick }: { items: Json[]; pick: (item: Json) => any[] }) { return <div className="item-list">{items.length ? items.map((item) => { const row = pick(item); return <div className="item" key={safe(item.id || row.join("-"))}><strong>{safe(row[0])}</strong><span>{safe(row[1])} · {safe(row[2])}</span></div>; }) : <div className="item"><strong>Nenhum registro carregado</strong><span>Entre no painel ou atualize a listagem.</span></div>}</div>; }
-function ResultPanel({ title, data }: { title: string; data: Json }) { return <article className="panel"><h2>{title}</h2><MiniResult data={data} /></article>; }
-function MiniResult({ data }: { data: Json }) { return <pre className="result-box">{JSON.stringify(data, null, 2).slice(0, 1600)}</pre>; }
-function Metric({ label, value }: { label: string; value: any }) { return <div className="metric"><span>{label}</span><strong>{n(value)}</strong></div>; }
-function Chart({ weekly }: { weekly: Json[] }) { const max = Math.max(1, ...weekly.map((w) => Number(w.completed || w.executions || 0))); return <div className="chart">{weekly.length ? weekly.map((w) => { const v = Number(w.completed || w.executions || 0); return <div className="bar" key={safe(w.week)} style={{ height: `${Math.max(10, (v / max) * 100)}%` }}><span>{v}</span></div>; }) : <div className="empty-chart">Sem histórico carregado</div>}</div>; }
-function MetricTable({ data }: { data: Json }) { const student = data.student || {}; const history = data.history || []; return <><div className="metric-grid"><Metric label="Execuções" value={student.total_executions} /><Metric label="Frequência" value={student.weekly_frequency} /><Metric label="Esforço" value={student.average_effort} /><Metric label="Progresso" value={student.progress_percent} /></div><div className="table"><div><strong>Treino</strong><strong>Status</strong><strong>Duração</strong></div>{history.map((h: Json) => <div key={h.id}><span>{safe(h.nome_treino)}</span><span>{safe(h.status)}</span><span>{safe(h.duracao_minutos)} min</span></div>)}</div></>; }
+function FormHeader({ label, title, text }: { label: string; title: string; text: string }) { return <div className="form-head"><span className="label">{label}</span><h2>{title}</h2><p>{text}</p></div>; }
+function PanelTitle({ title, action, onClick }: { title: string; action: string; onClick: () => void }) { return <div className="panel-title"><h2>{title}</h2><button type="button" className="secondary" onClick={onClick}>{action}</button></div>; }
+function Process({ steps }: { steps: string[] }) { return <div className="process-list">{steps.map((step, index) => <div key={step}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step}</strong></div>)}</div>; }
+function List({ items, pick, empty }: { items: Json[]; pick: (item: Json) => any[]; empty: string }) { return <div className="item-list">{items.length ? items.map((item, index) => { const row = pick(item); return <article className="item" key={safe(item.id || `${row[0]}-${index}`)}><strong>{safe(row[0])}</strong><span>{safe(row[1])} · {safe(row[2])}</span></article>; }) : <article className="item"><strong>Sem dados</strong><span>{empty}</span></article>}</div>; }
+function MiniResult({ data }: { data: Json | null }) { if (!data) return null; return <pre className="result-box">{JSON.stringify(data, null, 2).slice(0, 1800)}</pre>; }
+function Metric({ label, value }: { label: string; value: any }) { return <div className="metric"><span>{label}</span><strong>{numberText(value)}</strong></div>; }
+function Chart({ weekly, history }: { weekly: Json[]; history: Json[] }) { const source: Json[] = weekly.length ? weekly : history.slice(0, 8).map((item, index) => ({ week: `#${index + 1}`, completed: item.status === "concluido" ? 1 : 0 })); const max = Math.max(1, ...source.map((item) => Number(item.completed || item.executions || 0))); return <div className="chart">{source.length ? source.map((item) => { const value = Number(item.completed || item.executions || 0); return <div className="bar" key={safe(item.week || item.id)} style={{ height: `${Math.max(10, (value / max) * 100)}%` }}><span>{value}</span><small>{safe(item.week || "exec")}</small></div>; }) : <div className="empty-chart">Histórico aparece após execuções concluídas.</div>}</div>; }
+function MetricTable({ data }: { data: Json }) { const student = data.student || {}; const history = data.history || []; return <><div className="metric-grid"><Metric label="Execuções" value={student.total_executions} /><Metric label="Frequência" value={student.weekly_frequency} /><Metric label="Esforço" value={student.average_effort} /><Metric label="Progresso" value={student.progress_percent} /></div><div className="table"><div><strong>Treino</strong><strong>Status</strong><strong>Duração</strong></div>{history.length ? history.map((item: Json) => <div key={item.id}><span>{safe(item.nome_treino || item.workout_id)}</span><span>{safe(item.status)}</span><span>{safe(item.duracao_minutos)} min</span></div>) : <div><span>Sem histórico</span><span>—</span><span>—</span></div>}</div></>; }

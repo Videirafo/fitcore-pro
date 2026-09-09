@@ -59,6 +59,8 @@
     "mvp26:verify": "bash infra/scripts/verify-mvp-26-student-evolution.sh",
     "mvp26:rollback": "bash infra/scripts/rollback-mvp-26-student-evolution.sh",
     "mvp27:deploy": "bash infra/scripts/switch-fitcore-to-next-shell.sh",
-    "mvp27:verify": "bash infra/scripts/verify-mvp-27-next-shell.sh"
+    "mvp27:verify": "bash infra/scripts/verify-mvp-27-next-shell.sh",
+    "mvp28:check": "node tools/check-mvp-28-next-operational-ui.mjs",
+    "mvp28:verify": "bash infra/scripts/verify-mvp-28-next-operational-ui.sh"
   }
 }
