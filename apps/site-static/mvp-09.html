@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MVP-09 do FitCore Pro: server.mjs conectado ao PersistenceAdapter com fallback JSON seguro." />
+  <title>MVP-09 Adapter no Servidor | FitCore Pro</title>
+  <link rel="stylesheet" href="/mvp-09.css?v=fitcore-mvp09-1" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span>F</span>
+      <strong>FitCore Pro</strong>
+    </a>
+    <nav>
+      <a href="/mvp-07.html">Banco</a>
+      <a href="/mvp-08.html">Persistência</a>
+      <a class="active" href="/mvp-09.html">Adapter</a>
+      <a href="/mvp-05.html">Papéis</a>
+      <a href="/legal/privacy">LGPD</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="kicker">MVP-09 · Adapter no servidor</p>
+        <h1>O servidor passa a usar uma camada única de persistência.</h1>
+        <p>
+          Esta fase conecta o <strong>server.mjs</strong> ao <strong>PersistenceAdapter</strong>.
+          A gravação continua em JSON local por segurança, mas a API já fica preparada para trocar para PostgreSQL no próximo gate.
+        </p>
+      </div>
+      <aside class="status-card">
+        <span>Status</span>
+        <strong id="status-label">Carregando</strong>
+        <small id="status-detail">verificando API</small>
+      </aside>
+    </section>
+
+    <section class="metrics">
+      <article>
+        <span>Adapter</span>
+        <strong id="adapter-name">--</strong>
+        <small>contrato usado pelo server.mjs</small>
+      </article>
+      <article>
+        <span>Store ativo</span>
+        <strong id="active-store">--</strong>
+        <small>fallback seguro nesta fase</small>
+      </article>
+      <article>
+        <span>Banco</span>
+        <strong id="database-state">--</strong>
+        <small>preparado para MVP-10</small>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <p class="kicker">Fluxo validado</p>
+        <h2>server.mjs → PersistenceAdapter → JsonFileStore</h2>
+        <div class="flow">
+          <div><strong>server.mjs</strong><span>recebe chamadas dos MVPs.</span></div>
+          <div><strong>PersistenceAdapter</strong><span>decide o store ativo.</span></div>
+          <div><strong>JsonFileStore</strong><span>mantém o fallback atual sem quebrar nada.</span></div>
+          <div><strong>PostgresStore</strong><span>fica reservado para ativação controlada no MVP-10.</span></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <p class="kicker">Diagnóstico</p>
+        <h2>Resposta da API</h2>
+        <pre id="api-output">Aguardando resposta de /api/mvp-09/persistence</pre>
+      </article>
+    </section>
+
+    <section class="panel checklist">
+      <p class="kicker">Critério de pronto</p>
+      <h2>O que precisa estar verde</h2>
+      <ul>
+        <li>Servidor importa o adapter.</li>
+        <li>Leituras e gravações passam por <code>persistenceAdapter</code>.</li>
+        <li>Fallback JSON continua ativo.</li>
+        <li><code>/api/mvp-09/persistence</code> responde.</li>
+        <li><code>/api/health</code> expõe <code>mvp_09</code>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/mvp-09.js?v=fitcore-mvp09-1"></script>
+</body>
+</html>
