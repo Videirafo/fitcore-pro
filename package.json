@@ -9,6 +9,8 @@
     "doctor": "cd services/orchestrator && npm run doctor",
     "exercises:sync": "bash infra/scripts/exercises-dataset-sync.sh",
     "exercises:normalize": "node tools/normalize-exercises.mjs",
-    "mvp08:verify": "bash infra/scripts/verify-mvp-08-adapter.sh"
+    "mvp08:verify": "bash infra/scripts/verify-mvp-08-adapter.sh",
+    "mvp09:apply": "bash infra/scripts/apply-mvp-09-adapter.sh",
+    "mvp09:verify": "bash infra/scripts/verify-mvp-09-adapter.sh"
   }
 }
