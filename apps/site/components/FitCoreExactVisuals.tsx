@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FitCoreThemeToggle } from "./FitCoreThemeToggle";
+import { FitCoreBrandSymbol } from "./FitCoreBrandSymbol";
 
 type IconName = "home" | "grid" | "users" | "user" | "dumbbell" | "clipboard" | "play" | "chart" | "shield" | "gear" | "bell" | "bot" | "calendar" | "wallet" | "search" | "logout" | "building" | "spark";
 
@@ -43,7 +44,7 @@ const exercises = [["0026-barbell-bench-squat", "Agachamento livre", "Pernas · 
 const pending = ["Carlos Almeida|Treino sem execução há 5 dias|Atenção", "Mariana Costa|Solicitou revisão de treino|Revisar", "Pedro Santos|Evolução abaixo do esperado|Atenção", "Juliana Ribeiro|Avaliação física pendente|Pendente", "Lucas Ferreira|Nova mensagem do aluno|Verificar"];
 
 export function FitCoreExactLogo({ compact = false }: { compact?: boolean }) {
-  return <span className={compact ? "fcx-logo is-compact" : "fcx-logo"}><b>FC</b></span>;
+  return <FitCoreBrandSymbol compact={compact} className="fcx-logo" />;
 }
 
 export function FitCoreExactLanding() {
@@ -51,7 +52,7 @@ export function FitCoreExactLanding() {
     <header className="fcx-public-nav">
       <Link href="/" className="fcx-brand"><FitCoreExactLogo /><span><strong>FitCore Pro</strong><small>Mais que treinos. Resultados.</small></span></Link>
       <nav><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><a href="/dashboard">Demo</a></nav>
-      <div className="fcx-nav-actions"><FitCoreThemeToggle /><Link href="/login">Entrar</Link><Link className="fcx-cta" href="/onboarding">Começar agora <span>→</span></Link></div>
+      <div className="fcx-nav-actions"><FitCoreThemeToggle /><Link href="/login">Entrar</Link><Link className="fcx-cta" href="/onboarding">Começar agora <span>→</span></Link><details className="fcx-mobile-menu"><summary aria-label="Abrir menu"><span /><span /><span /></summary><div><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><Link href="/dashboard">Demo</Link><Link href="/login">Entrar</Link><Link className="fcx-mobile-menu-cta" href="/onboarding">Começar agora →</Link></div></details></div>
     </header>
     <section className="fcx-hero" id="inicio">
       <div className="fcx-hero-copy">

@@ -23,5 +23,5 @@ for (const pattern of ["MVP-38", "overflow: visible", "entry-route", "shell-arro
 }
 if (!shell.includes("shell-arrow")) throw new Error("Seta do shell ausente.");
 if (!layout.includes("/icon.svg")) throw new Error("Favicon FC não registrado no metadata.");
-if (!icon.includes("<svg") || !icon.includes("FC")) throw new Error("Ícone FC inválido.");
+if (!icon.includes("<svg") || !icon.includes("FitCore Pro") || !icon.includes("fitcoreBlue")) throw new Error("Ícone FitCore inválido.");
 console.log("OK: MVP-38 shell visual, login, favicon e overflow validados.");
