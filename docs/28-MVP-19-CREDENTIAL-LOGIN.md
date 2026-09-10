@@ -68,3 +68,16 @@ Hardening de autenticação
 → política de senha/código
 → logs de segurança por tenant
 ```
+
+## Operação segura do login do gestor
+
+O gestor bootstrap mantém uma única identidade e uma única credencial. Para trocar o identificador de acesso por um e-mail, preserve o hash existente em vez de criar um segundo usuário gestor.
+
+```bash
+FITCORE_GESTOR_EMAIL='gestor@empresa.com' npm run gestor:login-email -- --check
+FITCORE_GESTOR_EMAIL='gestor@empresa.com' npm run gestor:login-email -- --apply
+```
+
+O script `infra/scripts/set-gestor-login-email.sh` valida tenant, papel, credencial ativa e usuário bootstrap antes da alteração. O `--apply` muda apenas `login_identifier`, registra auditoria e mantém o segredo/hash existente. Quando presente, o arquivo local de bootstrap também recebe o novo identificador para evitar regressão em uma futura execução do seed.
+
+Na interface principal, o campo de unidade é opcional quando o tenant padrão atende o usuário. O campo de autenticação deve ser apresentado como **E-mail ou identificador**, evitando que o navegador ou o usuário confundam e-mail com slug técnico.
