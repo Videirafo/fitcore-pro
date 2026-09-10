@@ -22,5 +22,5 @@ if (!visuals.includes("ProductShot") || !visuals.includes("fitcore-brand-mark-pr
 if (!modules.includes("ProductShot") || modules.includes("<svg")) throw new Error("Módulos ainda usam SVG genérico em vez de telas do produto.");
 for (const pattern of ["MVP-41", "enterprise product shots", "fitcore-brand-mark-premium", "object-fit: contain", "enterprise-modules-grid"])
   if (!css.includes(pattern)) throw new Error(`CSS MVP-41 ausente: ${pattern}`);
-if (!icon.includes("FitCore Pro FC") || !icon.includes(">FC<")) throw new Error("Ícone FC premium inválido.");
+if (!icon.includes("<svg") || !icon.includes("FitCore Pro") || !icon.includes("fitcoreBlue")) throw new Error("Ícone FitCore premium inválido.");
 console.log("OK: MVP-41 assets reais, product shots e logo premium validados por contrato.");

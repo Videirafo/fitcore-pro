@@ -1,9 +1,10 @@
+import { FitCoreBrandSymbol } from "./FitCoreBrandSymbol";
 import { ProductShot } from "./FitCoreProductShots";
 
 type FitCoreVisualProps = { label?: string };
 
 export function FitCoreBrandMark() {
-  return <span className="fitcore-brand-mark fitcore-brand-mark-premium" aria-label="FitCore Pro"><i>FC</i><b /></span>;
+  return <FitCoreBrandSymbol className="fitcore-brand-mark fitcore-brand-mark-premium" />;
 }
 
 export function BusinessVisual(_: FitCoreVisualProps) { return <ProductShot kind="business" title="Unidade fitness" />; }
