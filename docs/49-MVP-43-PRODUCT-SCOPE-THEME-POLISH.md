@@ -1,0 +1,32 @@
+# MVP-43 — Escopo profissional, contraste e copy limpa
+
+## Objetivo
+
+Refinar o FitCore Pro para representar uma plataforma profissional ampla para operação fitness, educação física, nutrição esportiva, cross training, studios, academias e personal trainers.
+
+## Entregas
+
+- Landing reposicionada para operação fitness completa.
+- Navegação pública limpa, sem texto fora de contexto.
+- Cards de solução com agenda, aulas, equipe, alunos, anamnese, treinos, nutrição, execução e evolução.
+- Assistente IA reposicionado para prescrição, evolução e retenção.
+- Bloco LGPD reescrito com linhas profissionais, sem textos colados.
+- Alternância de contraste claro/escuro com persistência local.
+- Sidebar interna ampliada com agenda, IA, financeiro, relatórios e auditoria.
+
+## Critérios de aceite
+
+- A página pública mantém o visual aprovado.
+- O dashboard mantém o console premium com GIFs internos.
+- O tema claro/escuro funciona sem quebrar layout.
+- O bloco de segurança não mostra `LGPDEm`, `DadosTLS` ou `Infra Anexo`.
+- O escopo do produto inclui fitness, educação física, nutrição esportiva e cross training.
+
+## Gates
+
+Executar:
+
+```bash
+npm run all:ui-gates
+npm --prefix apps/site run build
+```
