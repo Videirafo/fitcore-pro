@@ -25,6 +25,7 @@ import { createWorkoutPrescriptionManager } from "./security/workout-prescriptio
 import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
+import { createOpenSourceCapabilityManager } from "./security/open-source-capabilities.mjs";
 import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
 import { createGuidedSetupManager } from "./security/guided-setup.mjs";
 import { createRoleDashboardManager } from "./security/role-dashboard.mjs";
@@ -62,6 +63,7 @@ const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env)
 const workoutExecutionManager = createWorkoutExecutionManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
+const openSourceCapabilityManager = createOpenSourceCapabilityManager(process.env);
 const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager);
 const guidedSetupManager = createGuidedSetupManager(process.env);
 const roleDashboardManager = createRoleDashboardManager(process.env, { tenantUserManagement, studentManagement, workoutPrescriptionManager, workoutExecutionManager, studentEvolutionManager, agentAssistantManager, guidedSetupManager });
@@ -1568,6 +1570,24 @@ const server = createServer(async (req, res) => {
       const result = agentAssistantManager.ask(accessContext, input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-32/capabilities") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, openSourceCapabilityManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-32/knowledge/preview") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      try {
+        const result = await openSourceCapabilityManager.previewWebKnowledge(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      } catch (error) {
+        console.error("fitcore_capability_preview_failed", error instanceof Error ? error.message : String(error));
+        return sendJson(res, 502, { erro: "web_knowledge_unavailable" });
+      }
     }
 
     if (url.pathname === "/api/mvp-33/status") {

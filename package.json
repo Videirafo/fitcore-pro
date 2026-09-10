@@ -96,6 +96,7 @@
     "mobile:analyze": "cd apps/mobile && /root/flutter/bin/flutter analyze",
     "mobile:test": "cd apps/mobile && /root/flutter/bin/flutter test",
     "mobile:build:apk": "cd apps/mobile && /root/flutter/bin/flutter build apk --release --dart-define=FITCORE_API_URL=https://fitcore.marcaia.app",
-    "mobile:verify": "npm run mvp44:check && npm run mobile:analyze && npm run mobile:test"
+    "mobile:verify": "npm run mvp44:check && npm run mobile:analyze && npm run mobile:test",
+    "capability:check": "node tools/check-open-source-capability-layer.mjs && npm --prefix services/orchestrator run capability:check"
   }
 }
