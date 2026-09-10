@@ -45,6 +45,8 @@ catálogo amplo
 
 O limite canônico é de **7 agentes ativos por ciclo**, e tarefas menores devem usar menos. O runtime materializa somente o contrato do agente atual para evitar desperdício de contexto e sobreposição de instruções.
 
+**Default seguro:** sem seleção explícita, o ciclo contém somente `agents-orchestrator`. O número 7 é o teto permitido, não o número desejado de agentes. Especialistas adicionais só entram quando a tarefa justificar sua responsabilidade.
+
 ### Papéis curados
 
 1. `agents-orchestrator` — seleciona o conjunto mínimo e coordena a sequência.
@@ -67,6 +69,7 @@ Cada definição contém:
 
 ### Invariantes
 
+- default de um agente coordenador (`agents-orchestrator`);
 - nunca carregar o catálogo externo completo no contexto;
 - máximo de sete agentes selecionados;
 - nenhuma duplicata;
