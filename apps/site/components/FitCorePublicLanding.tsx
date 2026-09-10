@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FitCoreProductModules } from "./FitCoreProductModules";
 import { BusinessVisual, EvolutionVisual, ExecutionVisual, FitCoreBrandMark, StudentsVisual, TeamVisual, WorkoutsVisual } from "./FitCoreVisuals";
 
 const features = [
@@ -20,7 +21,7 @@ export function FitCorePublicLanding() {
   return <main className="landing-shell">
     <header className="landing-nav">
       <Link href="/" className="landing-brand"><FitCoreBrandMark /><div><strong>FitCore Pro</strong><small>Mais que treinos. Resultados.</small></div></Link>
-      <nav><a href="#funcionalidades">Funcionalidades</a><a href="#ia">IA</a><a href="#seguranca">Segurança</a><a href="#demo">Demo</a></nav>
+      <nav><a href="#funcionalidades">Funcionalidades</a><a href="#operacao">Operação</a><a href="#ia">IA</a><a href="#seguranca">Segurança</a><a href="#demo">Demo</a></nav>
       <div><Link className="button secondary" href="/login">Entrar</Link><Link className="primary-pill" href="/onboarding">Começar agora</Link></div>
     </header>
 
@@ -42,6 +43,8 @@ export function FitCorePublicLanding() {
     </section>
 
     <section className="landing-feature-grid professional-feature-grid" id="funcionalidades">{features.map(({ title, text, Visual }) => <article key={title} className="professional-feature-card"><Visual /><div><strong>{title}</strong><p>{text}</p></div><span>→</span></article>)}</section>
+
+    <FitCoreProductModules />
 
     <section className="landing-split" id="ia">
       <article className="landing-ai-card"><span>Novo</span><h2>Assistente IA para prescrição e acompanhamento</h2><p>Ajude profissionais a criar treinos, ajustar carga, revisar evolução, explicar exercícios e orientar alunos com base no contexto da unidade.</p><div className="agent-answer"><strong>Olá, sou o assistente FitCore.</strong><p>Posso criar um treino para hipertrofia, ajustar carga do aluno ou analisar a evolução. O que você precisa?</p></div></article>
