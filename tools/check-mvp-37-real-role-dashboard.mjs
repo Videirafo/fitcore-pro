@@ -1,0 +1,15 @@
+import { existsSync, readFileSync } from "node:fs";
+let failed = false;
+const check = (condition, message) => { if (!condition) { failed = true; console.error(`ERRO: ${message}`); } };
+const read = (path) => readFileSync(path, "utf8");
+for (const path of ["services/api/security/role-dashboard.mjs", "services/api/server.mjs", "apps/site/components/FitCoreRouteClient.tsx", "apps/site/app/globals.css"]) check(existsSync(path), `arquivo ausente: ${path}`);
+const manager = read("services/api/security/role-dashboard.mjs");
+const server = read("services/api/server.mjs");
+const client = read("apps/site/components/FitCoreRouteClient.tsx");
+const css = read("apps/site/app/globals.css");
+for (const token of ["MVP-37 Role Dashboard", "consolidated_endpoint", "buildKpis", "buildWorkoutToday", "buildAgentContext"]) check(manager.includes(token), `manager sem ${token}`);
+for (const token of ["createRoleDashboardManager", "/api/mvp-37/dashboard", "/api/mvp-37/status", "mvp_37"]) check(server.includes(token), `server sem ${token}`);
+for (const token of ["setDashboard(consolidated)", "RoleConsole37", "DashboardMainList37", "WorkoutToday37", "AgentContext37", "/api/mvp-37/dashboard"]) check(client.includes(token), `client sem ${token}`);
+for (const token of ["MVP-37", "role-console37", "console37-hero", "workout37", "agent-context37"]) check(css.includes(token), `CSS sem ${token}`);
+if (failed) process.exit(1);
+console.log("OK: MVP-37 dashboard real por perfil validado por contrato.");

@@ -79,6 +79,8 @@
     "mvp35:check": "node tools/check-mvp-35-public-landing-shell.mjs",
     "mvp35:verify": "bash infra/scripts/verify-mvp-35-public-landing-shell.sh",
     "mvp36:check": "node tools/check-mvp-36-role-console.mjs",
-    "mvp36:verify": "bash infra/scripts/verify-mvp-36-role-console.sh"
+    "mvp36:verify": "bash infra/scripts/verify-mvp-36-role-console.sh",
+    "mvp37:check": "node tools/check-mvp-37-real-role-dashboard.mjs",
+    "mvp37:verify": "bash infra/scripts/verify-mvp-37-real-role-dashboard.sh"
   }
 }

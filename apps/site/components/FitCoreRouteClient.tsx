@@ -71,6 +71,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
   const [setup, setSetup] = useState<Json>({ steps: [], progress_percent: 0 });
   const [detail, setDetail] = useState<Json | null>(null);
   const [agentAnswer, setAgentAnswer] = useState<Json | null>(null);
+  const [dashboard, setDashboard] = useState<Json | null>(null);
   const [studentQuery, setStudentQuery] = useState("");
   const role = roleOf(session);
   const isStaff = isStaffRole(role);
@@ -92,6 +93,20 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
     try {
       const current = await loadSession(); const currentRole = roleOf(current); const staff = isStaffRole(currentRole);
       const broad = ["setup", "home", "team", "students", "training", "execution", "evolution", "agents", "library", "security", "audit", "settings", "agenda", "reports", "finance"].includes(target);
+      if (target === "home" && currentRole !== "visitante") {
+        const consolidated = await api(`/api/mvp-37/dashboard?v=${Date.now()}`).catch(() => null);
+        if (consolidated?.ok) {
+          setDashboard(consolidated);
+          if (consolidated.data?.setup) setSetup(consolidated.data.setup);
+          if (consolidated.data?.team) setTeam(consolidated.data.team);
+          if (consolidated.data?.students) setStudents(consolidated.data.students);
+          if (consolidated.data?.prescriptions) setPrescriptions(consolidated.data.prescriptions);
+          if (consolidated.data?.executions) setExecutions(consolidated.data.executions);
+          if (consolidated.data?.evolution) setEvolution(consolidated.data.evolution);
+          setState("success");
+          return;
+        }
+      }
       if (currentRole === "gestor" && broad) setSetup(await api(`/api/mvp-31/setup?v=${Date.now()}`).catch(() => ({ steps: [], progress_percent: 0 })));
       if (currentRole === "gestor" && broad) setTeam(await api(`/api/mvp-22/users?v=${Date.now()}`).catch(() => ({ users: [], invites: [] })));
       if (staff && ["students", "training", "home", "agents", "library", "reports", "agenda", "execution", "evolution"].includes(target)) setStudents(await api(`/api/mvp-23/students?limit=100&v=${Date.now()}`));
@@ -131,7 +146,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
 
   const publicHome = mode === "home" && !session;
   return <section className="route-page premium-workspace" data-mode={mode}><TopSearch session={session} /><div className={`route-hero ${publicHome ? "public-hero" : ""}`}><div><p className="eyebrow">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.text}</p><div className="hero-actions-inline"><Link className="primary-pill" href="/onboarding">Começar agora</Link><Link className="button secondary" href="/login">Entrar</Link></div></div>{publicHome ? <LandingPreviewCard /> : <SessionPanel session={session} state={state} error={error} onRefresh={() => loadRouteData(mode)} />}</div>{publicHome ? null : <RoleDashboard session={session} navigation={navigation} team={team} students={students} prescriptions={prescriptions} executions={executions} evolution={evolution} setup={setup} />}<Toast toast={toast} onClose={() => setToast(null)} />
-    {mode === "home" && <HomePanel session={session} role={role} setup={setup} team={team} students={students} prescriptions={prescriptions} executions={executions} evolution={evolution} agentAnswer={agentAnswer} onAskAgent={askAgent} />}
+    {mode === "home" && <HomePanel session={session} role={role} setup={setup} team={team} students={students} prescriptions={prescriptions} executions={executions} evolution={evolution} agentAnswer={agentAnswer} onAskAgent={askAgent} dashboard={dashboard} />}
     {mode === "login" && <LoginPanel onSubmit={submitLogin} onLogout={logout} state={state} />}
     {mode === "onboarding" && <OnboardingPanel onSubmit={submitOnboarding} state={state} />}
     {mode === "setup" && <SetupPanel setup={setup} session={session} state={state} error={error} onRefresh={() => loadRouteData("setup")} />}
@@ -152,12 +167,61 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
   </section>;
 }
 
+
+function RoleConsole37({ dashboard, agentAnswer, onAskAgent }: { dashboard: Json; agentAnswer: Json | null; onAskAgent: (prompt: string) => void }) {
+  const role = String(dashboard.actor_role || "aluno");
+  const data = dashboard.data || {};
+  const kpis = dashboard.kpis || [];
+  const actions = dashboard.actions || [];
+  const profile = dashboard.profile || {};
+  const students = data.students?.students || [];
+  const prescriptions = data.prescriptions?.prescriptions || [];
+  const executions = data.executions?.executions || [];
+  const evolutionStudents = data.evolution?.students || [];
+  const workout = dashboard.workout_today;
+  const title = profile.title || "Dashboard real";
+  return <div className={`role-console37 role-${role}`}>
+    <section className="panel console37-hero wide">
+      <div><span className="eyebrow">MVP-37 · dados reais por perfil</span><h2>{safe(title)}</h2><p>{safe(profile.summary || "Dados consolidados do tenant, sessão e papel logado.")}</p><div className="role-next-actions">{actions.map((item: Json) => <Link className="primary-pill" key={item.href} href={item.href}>{safe(item.label)}</Link>)}</div></div>
+      <aside className="console37-source"><small>Fonte de confiança</small><strong>API consolidada</strong><span>/api/mvp-37/dashboard</span><em>{safe(dashboard.tenant_slug)} · {safe(dashboard.actor_role)}</em></aside>
+    </section>
+    <section className="console-kpi-grid">{kpis.map((item: Json) => <Metric key={item.label} label={safe(item.label)} value={safe(item.value)} hint={safe(item.hint)} />)}</section>
+    <div className="console-main-grid">
+      <section className="panel console-primary-panel"><PanelTitle title={role === "aluno" ? "Treino aprovado automaticamente" : role === "professor" ? "Fila real de alunos e treinos" : "Operação real do tenant"} action="Atualizar" /><DashboardMainList37 role={role} students={students} prescriptions={prescriptions} executions={executions} evolutionStudents={evolutionStudents} /></section>
+      <aside className="console-side-stack"><WorkoutToday37 workout={workout} /><AgentContext37 role={role} dashboard={dashboard} answer={agentAnswer} onAsk={onAskAgent} /><SecurityMini37 /></aside>
+    </div>
+  </div>;
+}
+
+function DashboardMainList37({ role, students, prescriptions, executions, evolutionStudents }: { role: string; students: Json[]; prescriptions: Json[]; executions: Json[]; evolutionStudents: Json[] }) {
+  if (role === "aluno") return <div className="rich-list37">{prescriptions.length ? prescriptions.slice(0, 4).map((item) => <article key={item.id}><b>{safe(item.nome_treino || item.objetivo)}</b><span>{safe(item.status)} · {safe(item.student_name)}</span><small>{safe(item.orientacoes || "Treino liberado para execução com GIFs e registro de esforço.")}</small></article>) : <EmptyState37 title="Nenhum treino liberado" text="Quando o professor aprovar um treino, ele aparece aqui automaticamente." />}</div>;
+  if (role === "professor") return <div className="rich-list37">{[...prescriptions.slice(0, 3), ...students.slice(0, 3)].map((item: Json, index: number) => <article key={item.id || index}><b>{safe(item.nome_treino || item.nome_publico || item.student_name || item.name)}</b><span>{safe(item.status || item.objetivo || "aluno ativo")}</span><small>{safe(item.professor_name || item.nivel || "Acompanhamento disponível por tenant.")}</small></article>)}{!prescriptions.length && !students.length ? <EmptyState37 title="Sem fila crítica" text="Crie alunos ou prescrições para alimentar o painel do professor." /> : null}</div>;
+  return <div className="rich-list37">{[...evolutionStudents.slice(0, 4), ...executions.slice(0, 2)].map((item: Json, index: number) => <article key={item.student_id || item.id || index}><b>{safe(item.student_name || item.nome_treino || item.objetivo)}</b><span>{item.progress_percent !== undefined ? `${item.progress_percent}% de progresso` : safe(item.status || "operação")}</span><small>{item.average_effort ? `Esforço médio ${item.average_effort}` : safe(item.professor_name || "dados reais do tenant")}</small></article>)}{!evolutionStudents.length && !executions.length ? <EmptyState37 title="Dados operacionais em formação" text="Execute o primeiro treino para preencher evolução, frequência e histórico." /> : null}</div>;
+}
+
+function EmptyState37({ title, text }: { title: string; text: string }) { return <article className="empty-state37"><b>{title}</b><span>{text}</span></article>; }
+
+function WorkoutToday37({ workout }: { workout: Json | null }) {
+  if (!workout) return <section className="panel"><h2>Treino do dia</h2><EmptyState37 title="Aguardando treino aprovado" text="O treino aparece aqui quando estiver liberado para o aluno logado." /></section>;
+  const exercises = workout.exercises || [];
+  return <section className="panel workout37"><h2>{safe(workout.title)}</h2><p>{safe(workout.status)} · {safe(workout.student_name || "aluno logado")}</p><div>{exercises.slice(0, 3).map((item: Json) => <article key={item.ordem}><img src={item.gif_url} alt={`Demonstração de ${safe(item.nome || item.name)}`} /><span>{item.ordem}</span><strong>{safe(item.nome || item.name || "Exercício")}</strong></article>)}</div><Link className="button secondary full" href="/execucao">Abrir execução</Link></section>;
+}
+
+function AgentContext37({ role, dashboard, answer, onAsk }: { role: string; dashboard: Json; answer: Json | null; onAsk: (prompt: string) => void }) {
+  const facts = dashboard.agent_context?.facts || [];
+  const prompt = role === "aluno" ? "Explique meu treino do dia e cuidados de execução" : role === "professor" ? "Analise meus alunos e treinos pendentes" : "Resuma a operação do tenant e prioridades de hoje";
+  return <section className="panel agent-context37"><h2>IA contextual</h2><p>Contexto enviado pela API consolidada, filtrado por tenant e papel.</p><div>{facts.slice(0, 4).map((fact: string) => <span key={fact}>{fact}</span>)}</div><button type="button" onClick={() => onAsk(prompt)}>Usar IA com este contexto</button>{answer?.reply ? <article className="agent-answer"><strong>Resposta</strong><p>{safe(answer.reply)}</p></article> : null}</section>;
+}
+
+function SecurityMini37() { return <section className="panel security-mini37"><h2>Segurança ativa</h2><span>Sessão assinada</span><span>Tenant isolado</span><span>RBAC por papel</span><span>LGPD e auditoria</span></section>; }
+
 function TopSearch({ session }: { session: Json | null }) { return <div className="workspace-top"><div className="global-search"><span>⌕</span><input aria-label="Busca" placeholder="Buscar alunos, treinos ou exercícios..." /></div><div className="top-tenant"><strong>{session?.tenant_slug || "FitCore Pro"}</strong><span>{session ? safe(session.actor_role) : "Acesso público"}</span></div></div>; }
 function LandingPreviewCard() { return <aside className="landing-preview-card" aria-label="Prévia do FitCore Pro"><div className="preview-top"><span>Plataforma ativa</span><strong>FitCore Pro</strong></div><div className="preview-metrics"><Metric label="Alunos" value="124" /><Metric label="Execuções" value="892" /><Metric label="Evolução" value="+28%" /></div><div className="preview-chart"><i style={{height:"38%"}} /><i style={{height:"52%"}} /><i style={{height:"61%"}} /><i style={{height:"78%"}} /><i style={{height:"88%"}} /></div><p>Gestão completa para dono, professor e aluno: treinos, GIFs, IA, evolução, segurança e auditoria.</p></aside>; }
 function SessionPanel({ session, state, error, onRefresh }: { session: Json | null; state: LoadState; error: string; onRefresh: () => void }) { const logged = Boolean(session); return <aside className={`session-card ${logged ? "is-online" : "is-offline"}`}><small>{state === "loading" ? "Carregando" : logged ? "Sessão ativa" : "Entrada"}</small><strong>{logged ? safe(session?.actor_name) : "Acesso necessário"}</strong><span>{logged ? `${safe(session?.actor_role)} · ${safe(session?.tenant_slug)}` : statusText(error, "Entre ou crie uma unidade.")}</span><button type="button" className="secondary mini" onClick={onRefresh}>Atualizar</button></aside>; }
 function Toast({ toast, onClose }: { toast: Json | null; onClose: () => void }) { if (!toast) return null; return <div className={`toast toast-${toast.type || "info"}`}><div><strong>{safe(toast.title)}</strong><span>{safe(toast.message)}</span></div><button type="button" className="secondary mini" onClick={onClose}>Fechar</button></div>; }
 function RoleDashboard({ session, navigation, team, students, prescriptions, executions, evolution, setup }: { session: Json | null; navigation: Json | null; team: Json; students: Json; prescriptions: Json; executions: Json; evolution: Json; setup: Json }) { const role = roleOf(session); const kpis = role === "gestor" ? [["Setup", `${setup?.progress_percent || 0}%`], ["Alunos", students?.total || students?.students?.length || 0], ["Treinos", prescriptions?.total || 0], ["Execuções", executions?.total || 0], ["LGPD", "OK"]] : role === "professor" ? [["Alunos", students?.total || students?.students?.length || 0], ["Treinos", prescriptions?.total || 0], ["Pendentes", prescriptions?.em_revisao || 0], ["Evolução", evolution?.students?.length || 0]] : role === "aluno" ? [["Treinos", prescriptions?.total || prescriptions?.prescriptions?.length || 0], ["Execuções", executions?.total || 0], ["Concluídos", executions?.concluidos || 0], ["Frequência", evolution?.student?.weekly_frequency || 0]] : [["Comece", 1], ["Login", 1], ["Unidade", 0], ["Fluxo", 6]]; const hrefs = role === "gestor" ? [["/setup", "Setup"], ["/agents", "IA & Agents"], ["/equipe", "Equipe"], ["/alunos", "Alunos"], ["/relatorios", "Relatórios"]] : role === "professor" ? [["/agents", "IA do Professor"], ["/alunos", "Alunos"], ["/treinos", "Treinos pendentes"], ["/evolucao", "Progresso"]] : role === "aluno" ? [["/execucao", "Treino do dia"], ["/biblioteca", "Ver execução"], ["/evolucao", "Minha evolução"]] : [["/onboarding", "Criar negócio"], ["/login", "Login"]]; const title = role === "gestor" ? "Dashboard executivo" : role === "professor" ? "Painel do professor" : role === "aluno" ? "Painel do aluno" : "Visitante"; const note = role === "visitante" ? "Crie uma unidade ou entre para carregar o painel." : `${navigation?.menu?.length || hrefs.length} áreas disponíveis para esta sessão.`; return <section className={`role-dashboard role-dashboard-${role}`}><div className="role-copy"><span>Painel por papel</span><strong>{title}</strong><p>{note}</p></div><div className="role-metrics">{kpis.map(([label, value]) => <Metric label={String(label)} value={value} key={String(label)} />)}</div><div className="role-actions">{hrefs.map(([href, label]) => <Link key={href} className="primary-pill" href={href}>{label}</Link>)}</div></section>; }
-function HomePanel({ session, role, setup, team, students, prescriptions, executions, evolution, agentAnswer, onAskAgent }: { session: Json | null; role: string; setup: Json; team: Json; students: Json; prescriptions: Json; executions: Json; evolution: Json; agentAnswer: Json | null; onAskAgent: (prompt: string) => void }) {
+function HomePanel({ session, role, setup, team, students, prescriptions, executions, evolution, agentAnswer, onAskAgent, dashboard }: { session: Json | null; role: string; setup: Json; team: Json; students: Json; prescriptions: Json; executions: Json; evolution: Json; agentAnswer: Json | null; onAskAgent: (prompt: string) => void; dashboard?: Json | null }) {
+  if (dashboard?.ok) return <RoleConsole37 dashboard={dashboard} agentAnswer={agentAnswer} onAskAgent={onAskAgent} />;
   const studentList = students?.students || [];
   const prescriptionList = prescriptions?.prescriptions || prescriptions?.workouts || [];
   const executionList = executions?.executions || [];
@@ -245,12 +309,12 @@ function FinancePanel({ students }: { students: Json }) { return <div className=
 function ProgressRing({ done, total }: { done: number; total: number }) { const pct = Math.round(Math.min(100, Math.max(0, (done / total) * 100))); return <section className="panel progress-panel"><h2>Seu progresso hoje</h2><div className="progress-ring" style={{ ["--progress" as any]: `${pct}%` }}><strong>{pct}%</strong><span>{done} de {total} exercícios</span></div><p>{pct ? "Continue até concluir a sessão." : "Inicie o primeiro exercício para começar."}</p></section>; }
 function PermissionPanel({ title, text }: { title: string; text: string }) { return <article className="panel permission-panel"><span className="label">Acesso por papel</span><h2>{title}</h2><p>{text}</p><Link className="button secondary" href="/">Voltar para visão geral</Link></article>; }
 function FormHeader({ label, title, text }: { label: string; title: string; text: string }) { return <div className="form-head"><span className="label">{label}</span><h2>{title}</h2><p>{text}</p></div>; }
-function PanelTitle({ title, action, onClick }: { title: string; action: string; onClick: () => void }) { return <div className="panel-title"><h2>{title}</h2><button type="button" className="secondary" onClick={onClick}>{action}</button></div>; }
+function PanelTitle({ title, action, onClick }: { title: string; action?: string; onClick?: () => void }) { return <div className="panel-title"><h2>{title}</h2>{action ? <button type="button" className="secondary" onClick={onClick}>{action}</button> : null}</div>; }
 function FlowHeader({ current, next, href }: { current: string; next: string; href: string }) { return <div className="flow-header"><span>Setup guiado</span><strong>{current}</strong><Link className="primary-pill" href={href}>Próximo: {next}</Link></div>; }
 function FlowCard({ title, text }: { title: string; text: string }) { return <article className="flow-card"><strong>{title}</strong><span>{text}</span></article>; }
 function Process({ steps }: { steps: string[] }) { return <div className="process-list">{steps.map((step, index) => <div key={step}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step}</strong></div>)}</div>; }
 function List({ items, pick, empty }: { items: Json[]; pick: (item: Json) => any[]; empty: string }) { return <div className="item-list">{items.length ? items.map((item, index) => { const row = pick(item); return <article className="item" key={safe(item.id || `${row[0]}-${index}`)}><strong>{safe(row[0])}</strong><span>{safe(row[1])} · {safe(row[2])}</span></article>; }) : <article className="item"><strong>Sem dados</strong><span>{empty}</span></article>}</div>; }
 function ActionSummary({ data }: { data: Json | null }) { if (!data) return null; const entity = data.user || data.student || data.prescription || data.execution || data.invite || data.session || {}; const title = entity.nome || entity.nome_publico || entity.nome_treino || entity.nome_convidado || entity.actor_name || data.mvp || "Ação concluída"; const subtitle = entity.papel || entity.status || entity.tenant_slug || data.tenant_slug || (data.ok ? "Concluído" : "Atualizado"); const url = data.invite?.public_url || data.invite?.full_invite_url || data.public_url || ""; return <article className="action-summary"><span>Última ação</span><strong>{safe(title)}</strong><small>{safe(subtitle)}</small>{url ? <a href={url}>Abrir convite</a> : null}</article>; }
-function Metric({ label, value }: { label: string; value: any }) { return <div className="metric"><span>{label}</span><strong>{typeof value === "string" ? value : numberText(value)}</strong></div>; }
+function Metric({ label, value, hint }: { label: string; value: any; hint?: string }) { return <div className="metric"><span>{label}</span><strong>{typeof value === "string" ? value : numberText(value)}</strong>{hint ? <small>{hint}</small> : null}</div>; }
 function Chart({ weekly, history }: { weekly: Json[]; history: Json[] }) { const source: Json[] = weekly.length ? weekly : history.slice(0, 8).map((item, index) => ({ week: `#${index + 1}`, completed: item.status === "concluido" ? 1 : 0 })); const max = Math.max(1, ...source.map((item) => Number(item.completed || item.executions || 0))); return <div className="chart">{source.length ? source.map((item) => { const value = Number(item.completed || item.executions || 0); return <div className="bar" key={safe(item.week || item.id)} style={{ height: `${Math.max(10, (value / max) * 100)}%` }}><span>{value}</span><small>{safe(item.week || "exec")}</small></div>; }) : <div className="empty-chart">Histórico aparece após execuções concluídas.</div>}</div>; }
 function MetricTable({ data }: { data: Json }) { const student = data.student || {}; const history = data.history || []; const byWorkout = data.by_workout || []; return <><div className="metric-grid"><Metric label="Execuções" value={student.total_executions} /><Metric label="Frequência" value={student.weekly_frequency} /><Metric label="Esforço" value={student.average_effort} /><Metric label="Progresso" value={student.progress_percent} /></div><div className="table"><div><strong>Treino</strong><strong>Status</strong><strong>Duração</strong></div>{history.length ? history.map((item: Json) => <div key={item.id}><span>{safe(item.nome_treino || item.workout_id)}</span><span>{safe(item.status)}</span><span>{safe(item.duracao_minutos)} min</span></div>) : byWorkout.length ? byWorkout.map((item: Json) => <div key={item.workout_id || item.nome_treino}><span>{safe(item.nome_treino || item.workout_id)}</span><span>{safe(item.completed_executions)} concluídos</span><span>{safe(item.average_duration)} min</span></div>) : <div><span>Sem histórico</span><span>—</span><span>—</span></div>}</div></>; }

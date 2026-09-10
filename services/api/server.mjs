@@ -27,6 +27,7 @@ import { createStudentEvolutionManager } from "./security/student-evolution.mjs"
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
 import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
 import { createGuidedSetupManager } from "./security/guided-setup.mjs";
+import { createRoleDashboardManager } from "./security/role-dashboard.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -63,6 +64,7 @@ const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
 const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager);
 const guidedSetupManager = createGuidedSetupManager(process.env);
+const roleDashboardManager = createRoleDashboardManager(process.env, { tenantUserManagement, studentManagement, workoutPrescriptionManager, workoutExecutionManager, studentEvolutionManager, agentAssistantManager, guidedSetupManager });
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1105,6 +1107,7 @@ const server = createServer(async (req, res) => {
         mvp_26: { student_evolution: studentEvolutionManager.enabled, history: true, average_effort: true, weekly_frequency: true, professor_dashboard: true },
         mvp_32: { agent_assistant: agentAssistantManager.enabled, exercise_media_cards: true, premium_workspace: true, tenant_scoped: true },
         mvp_33: { evidence_first_coach: evidenceCoachManager.enabled, evidence_only: true, human_review: true, medical_autonomy: false, next_route: "/coach" },
+        mvp_37: { role_dashboard: roleDashboardManager.enabled, consolidated_endpoint: true, next_route: "/dashboard" },
         mvp_31: { guided_setup: guidedSetupManager.enabled, progress_saved_by_tenant: true, next_route: "/setup" },
         mvp_24: {
           workout_prescription: workoutPrescriptionManager.enabled,
@@ -1617,6 +1620,18 @@ const server = createServer(async (req, res) => {
     if (mvp26StudentEvolutionMatch) {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = studentEvolutionManager.studentEvolution(accessContext, decodeURIComponent(mvp26StudentEvolutionMatch[1]), url, false);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-37/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, roleDashboardManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/mvp-37/dashboard") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = roleDashboardManager.dashboard(accessContext, url);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

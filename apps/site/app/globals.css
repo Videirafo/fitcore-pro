@@ -900,3 +900,26 @@ body::before { opacity: .28; }
 .compact-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 1280px) { .console-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .console-main-grid, .console-main-grid.bottom, .console-hero { grid-template-columns: 1fr; } .console-side-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .console-hero { padding: 20px; } .console-hero h2 { font-size: clamp(34px, 12vw, 54px); } .console-kpi-grid, .console-side-stack, .library-toolbar { grid-template-columns: 1fr; } .library-toolbar > div { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; } .role-next-actions .primary-pill { width: 100%; } }
+
+
+/* MVP-37 — real consolidated dashboard by role */
+.role-console37 { display:grid; gap:18px; }
+.console37-hero { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:stretch; padding:30px; }
+.console37-hero h2 { margin:10px 0 12px; font-size:clamp(34px,5vw,72px); line-height:.94; letter-spacing:-.075em; }
+.console37-source { display:grid; align-content:center; gap:8px; padding:20px; border:1px solid rgba(71,240,106,.25); border-radius:22px; background:linear-gradient(150deg,rgba(71,240,106,.14),rgba(255,255,255,.045)); }
+.console37-source small, .console37-source em { color:var(--muted); font-style:normal; overflow-wrap:anywhere; }
+.console37-source strong { color:#fff; font-size:28px; letter-spacing:-.05em; }
+.rich-list37 { display:grid; gap:12px; margin-top:14px; }
+.rich-list37 article, .empty-state37 { display:grid; gap:6px; padding:16px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.045); }
+.rich-list37 b, .empty-state37 b { color:#fff; font-size:18px; }
+.rich-list37 span, .empty-state37 span { color:#dce8ff; }
+.rich-list37 small { color:#a8ffbf; font-weight:800; }
+.workout37 div { display:grid; gap:10px; margin:14px 0; }
+.workout37 article { display:grid; grid-template-columns:72px min-content 1fr; gap:10px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.045); }
+.workout37 img { width:72px; height:58px; object-fit:cover; border-radius:12px; background:#fff; }
+.workout37 span { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; color:#07120b; background:var(--neon); font-weight:950; }
+.workout37 strong { color:#fff; }
+.agent-context37 div, .security-mini37 { display:grid; gap:10px; }
+.agent-context37 span, .security-mini37 span { padding:10px 12px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.05); color:#dce8ff; }
+@media (max-width: 1180px) { .console37-hero { grid-template-columns:1fr; } }
+@media (max-width: 760px) { .console37-hero { padding:20px; } .workout37 article { grid-template-columns:64px min-content 1fr; } }
