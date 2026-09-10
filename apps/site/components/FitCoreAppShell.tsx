@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { FitCoreNavClient } from "./FitCoreNavClient";
 import { FitCoreHeaderActionsClient } from "./FitCoreHeaderActionsClient";
+import { FitCoreBrandMark } from "./FitCoreVisuals";
 
 type FitCoreAppShellProps = {
   children: ReactNode;
@@ -17,7 +18,7 @@ export function FitCoreAppShell({ children, section = "Operação", eyebrow, tit
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegação do FitCore">
         <Link className="brand" href="/">
-          <span className="brand-mark">FC</span>
+          <FitCoreBrandMark />
           <span><strong>FitCore Pro</strong><small>Gestão fitness</small></span>
         </Link>
         <FitCoreNavClient />
