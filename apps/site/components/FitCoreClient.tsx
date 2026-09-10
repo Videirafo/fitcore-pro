@@ -83,7 +83,7 @@ export function LoginPanel() {
     catch (error: any) { setOut({ ok: false, erro: error.message }); }
   };
   const logout = async () => { try { setOut(await api("/api/mvp-15/session/logout", { method: "POST", body: "{}" })); } catch (error: any) { setOut({ ok: false, erro: error.message }); } };
-  return <div className="two-col"><form className="panel" onSubmit={submit}><span className="label">Acesso</span><h2>Entrar com senha ou código</h2><label>Unidade (opcional)<input name="tenant_slug" placeholder="ex: demo" autoComplete="off" /></label><label>E-mail ou identificador<input name="identifier" required placeholder="seu@email.com" autoComplete="username" /></label><label>Senha/código<input name="secret" required type="password" /></label><button type="submit">Entrar</button><button className="secondary" type="button" onClick={logout}>Sair</button></form><SessionCard /><JsonBlock data={out} /></div>;
+  return <div className="two-col"><form className="panel" onSubmit={submit}><span className="label">Acesso</span><h2>Entrar com senha ou código</h2><label>E-mail ou identificador<input name="identifier" required placeholder="seu@email.com" autoComplete="username" /></label><label>Senha/código<input name="secret" required type="password" autoComplete="current-password" /></label><label>Unidade (opcional)<input name="tenant_slug" placeholder="ex: demo" autoComplete="off" /></label><button type="submit">Entrar</button><button className="secondary" type="button" onClick={logout}>Sair</button></form><SessionCard /><JsonBlock data={out} /></div>;
 }
 
 export function OnboardingPanel() {

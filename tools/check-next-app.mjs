@@ -79,5 +79,16 @@ if (loginPanel.includes("Slug da unidade")) {
   console.error("ERRO: login principal ainda expõe slug técnico ao usuário.");
   failed = true;
 }
+const emailIndex = loginPanel.indexOf("E-mail ou identificador");
+const unitIndex = loginPanel.indexOf("Unidade (opcional)");
+if (emailIndex < 0 || unitIndex < 0 || emailIndex > unitIndex) {
+  console.error("ERRO: login deve priorizar e-mail antes da unidade opcional.");
+  failed = true;
+}
+const seedAdmin = readFileSync(resolve(root, "infra/scripts/seed-mvp-20-admin-credential.sh"), "utf8");
+if (seedAdmin.includes("true, 'gestor.fitcore', 'password'")) {
+  console.error("ERRO: seed MVP-20 ainda hardcodeia o identificador do gestor no SQL.");
+  failed = true;
+}
 if (failed) process.exit(1);
 console.log("OK: contrato Next validado em apps/site com rotas limpas.");
