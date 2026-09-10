@@ -24,7 +24,7 @@ export function FitCoreAppShell({ children, section = "Operação", eyebrow, tit
       </aside>
       <div className="workspace">
         <header className="workspace-topbar app-header">
-          <div><small>FitCore Pro</small><strong>{section}</strong></div>
+          <div className="topbar-title"><Link className="shell-arrow" href="/dashboard" aria-label="Voltar para o dashboard">←</Link><div><small>FitCore Pro</small><strong>{section}</strong></div></div>
           <FitCoreHeaderActionsClient />
         </header>
         <main className="workspace-main">

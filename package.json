@@ -81,6 +81,8 @@
     "mvp36:check": "node tools/check-mvp-36-role-console.mjs",
     "mvp36:verify": "bash infra/scripts/verify-mvp-36-role-console.sh",
     "mvp37:check": "node tools/check-mvp-37-real-role-dashboard.mjs",
-    "mvp37:verify": "bash infra/scripts/verify-mvp-37-real-role-dashboard.sh"
+    "mvp37:verify": "bash infra/scripts/verify-mvp-37-real-role-dashboard.sh",
+    "mvp38:check": "node tools/check-mvp-38-shell-polish.mjs",
+    "all:ui-gates": "npm run site:next:check && npm run mvp28:check && npm run mvp29:check && npm run mvp30:check && npm run mvp31:check && npm run mvp32:check && npm run mvp33:check && npm run mvp34:check && npm run mvp35:check && npm run mvp36:check && npm run mvp37:check && npm run mvp38:check"
   }
 }

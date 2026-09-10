@@ -923,3 +923,30 @@ body::before { opacity: .28; }
 .agent-context37 span, .security-mini37 span { padding:10px 12px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.05); color:#dce8ff; }
 @media (max-width: 1180px) { .console37-hero { grid-template-columns:1fr; } }
 @media (max-width: 760px) { .console37-hero { padding:20px; } .workout37 article { grid-template-columns:64px min-content 1fr; } }
+
+
+/* MVP-38 — shell polish, favicon FC and overflow fixes */
+:root { --font-sans: "Inter Tight", "Manrope", "Segoe UI Variable", "Aptos", system-ui, sans-serif; }
+html, body { scrollbar-gutter: stable; }
+.app-shell { overflow: visible; }
+.sidebar { height: auto !important; min-height: 100vh; overflow: visible !important; align-self: stretch; }
+.topbar-title { display:flex; align-items:center; gap:12px; min-width:0; }
+.shell-arrow { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border:1px solid var(--line); border-radius:12px; color:#dce8ff; text-decoration:none; background:rgba(255,255,255,.06); font-weight:1000; }
+.shell-arrow:hover { color:#07120b; background:linear-gradient(135deg,var(--neon),var(--lime)); border-color:rgba(71,240,106,.42); transform:translateY(-1px); }
+.brand-mark, .brand-logo, .landing-brand > span { font-family: "Segoe UI Variable", system-ui, sans-serif; letter-spacing:-.08em; }
+.entry-route { width:min(calc(100% - 56px), 1120px); padding-top:30px; }
+.entry-route .split-grid { grid-template-columns:minmax(320px, 480px) minmax(0, 1fr); align-items:stretch; }
+.entry-route .operational-form, .entry-route .guidance-panel, .entry-route .flow-panel { min-height:auto; }
+.entry-route .guidance-panel .mini-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.entry-route .metric { min-height:96px; }
+
+.metric span, .metric strong, .metric small, .role-copy strong, .panel h2, .side-nav a span, .top-tenant strong { min-width:0; max-width:100%; overflow-wrap:normal; word-break:normal; hyphens:none; }
+.metric strong { font-size:clamp(22px, 2vw, 31px) !important; line-height:1.02; }
+.mini-grid .metric strong, .role-metrics .metric strong, .preview-metrics .metric strong { font-size:clamp(20px, 1.65vw, 27px) !important; }
+.metric small { display:block; color:var(--muted); font-size:12px; line-height:1.35; }
+.role-dashboard { overflow:visible; }
+.role-dashboard .metric, .entry-route .metric { padding:16px; }
+.agent-actions button, .media-actions button, .primary-pill, .button, button { white-space:normal; text-align:center; }
+.console37-source span { color:#dce8ff; overflow-wrap:normal; }
+@media (max-width:1200px) { .sidebar { min-height:auto; } .entry-route { width:min(calc(100% - 32px), 960px); } }
+@media (max-width:760px) { .entry-route { width:100%; padding-top:16px; } .entry-route .split-grid, .entry-route .guidance-panel .mini-grid { grid-template-columns:1fr; } .shell-arrow { display:none; } .metric strong { font-size:26px !important; } }
