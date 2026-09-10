@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import "./premium-stabilization.css";
 import "./professional-visuals.css";
+import "./exact-preview.css";
 
 export const metadata: Metadata = {
   title: "FitCore Pro | Gestão fitness",
