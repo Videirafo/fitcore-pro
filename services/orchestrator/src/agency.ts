@@ -159,14 +159,9 @@ export const fitcoreAgencyCatalog = {
 
 export const FITCORE_AGENCY_MAX_ACTIVE = 7;
 
+// Safe default: start with coordination only. Seven is the ceiling, not the target.
 export const fitcoreDefaultAgencyCycle = [
   "agents-orchestrator",
-  "frontend-developer",
-  "ui-designer",
-  "reality-checker",
-  "ai-code-auditor",
-  "community-builder",
-  "creative-strategist",
 ] as const satisfies readonly FitCoreAgencyAgentId[];
 
 export type FitCoreAgencyPlanStep = Readonly<{
