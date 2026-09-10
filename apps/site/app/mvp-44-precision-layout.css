@@ -1,0 +1,180 @@
+/* MVP-44 — precisão visual do console aprovado */
+.fcx-console {
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  overflow-x: hidden;
+}
+
+.fcx-sidebar {
+  width: 230px !important;
+  height: 100svh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none;
+  padding: 14px 12px !important;
+}
+
+.fcx-sidebar::-webkit-scrollbar { display: none; }
+.fcx-main {
+  min-width: 0;
+  overflow-x: hidden;
+  padding: 14px 18px 40px !important;
+}
+.fcx-top {
+  display: grid !important;
+  grid-template-columns: minmax(190px, 240px) minmax(280px, 1fr) minmax(300px, auto) !important;
+  align-items: center !important;
+  gap: 14px !important;
+  min-height: 64px !important;
+  margin: 0 0 20px !important;
+}
+
+.fcx-top form,
+.fcx-top .fcx-unit,
+.fcx-user,
+.fcx-bell { min-width: 0; }
+
+.fcx-top form input { text-overflow: ellipsis; }
+.fcx-top > div:last-child {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.fcx-welcome {
+  display: grid !important;
+  grid-template-columns: minmax(300px, 1fr) minmax(330px, 460px) minmax(220px, 300px) !important;
+  gap: 16px !important;
+  align-items: center !important;
+  margin: 0 0 18px !important;
+}
+.fcx-welcome h1 {
+  max-width: 520px;
+  font-size: clamp(38px, 4.3vw, 62px) !important;
+  line-height: .92 !important;
+  letter-spacing: -.075em !important;
+}
+
+.fcx-welcome p {
+  max-width: 470px;
+  line-height: 1.42 !important;
+}
+
+.fcx-tabs {
+  justify-self: center;
+  width: 100%;
+  max-width: 460px;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.fcx-welcome aside {
+  justify-self: end;
+  max-width: 300px;
+  overflow-wrap: normal;
+}
+
+.fcx-kpis {
+  grid-template-columns: repeat(6, minmax(128px, 1fr)) !important;
+  gap: 10px !important;
+}
+.fcx-kpis a {
+  min-width: 0;
+  min-height: 134px !important;
+  padding: 14px !important;
+}
+
+.fcx-kpis strong {
+  font-size: clamp(26px, 2.2vw, 34px) !important;
+  line-height: 1 !important;
+  max-width: 100%;
+  overflow-wrap: normal;
+}
+
+.fcx-kpis a:last-child strong {
+  font-size: clamp(18px, 1.45vw, 23px) !important;
+  line-height: 1.08 !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.fcx-kpis a:last-child small {
+  max-width: 120px;
+}
+
+.fcx-grid-one {
+  grid-template-columns: minmax(0, 1.42fr) minmax(340px, .9fr) !important;
+  gap: 12px !important;
+}
+.fcx-flow > div {
+  grid-template-columns: repeat(6, minmax(86px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.fcx-flow > div > a {
+  min-width: 0;
+  padding: 14px 10px !important;
+}
+
+.fcx-flow > div > a strong,
+.fcx-flow > div > a span {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.fcx-agents .fcx-agent-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(168px, 210px) !important;
+  gap: 12px !important;
+}
+
+.fcx-agents li a {
+  min-width: 0;
+  padding: 10px 12px !important;
+}
+.fcx-feature-row {
+  grid-template-columns: repeat(6, minmax(150px, 1fr)) !important;
+  align-items: stretch !important;
+}
+
+.fcx-mini-card {
+  min-height: 210px !important;
+  padding: 14px !important;
+}
+
+.fcx-mini-card .product-shot {
+  width: 100%;
+  height: 96px;
+  margin: 0 0 12px;
+  border-radius: 16px;
+  transform: none !important;
+}
+
+.fcx-mini-card > i { display: none !important; }
+.fcx-mini-card strong { margin-top: 0 !important; }
+.fcx-mini-card p { font-size: 14px !important; }
+
+.fcx-security-panel li {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, max-content) !important;
+}
+@media (max-width: 1280px) {
+  .fcx-console { grid-template-columns: 214px minmax(0, 1fr); }
+  .fcx-sidebar { width: 214px !important; }
+  .fcx-top { grid-template-columns: minmax(180px, 220px) minmax(240px, 1fr) minmax(260px, auto) !important; }
+  .fcx-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .fcx-grid-one { grid-template-columns: 1fr !important; }
+  .fcx-feature-row { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 920px) {
+  .fcx-console { display: block; }
+  .fcx-sidebar { width: auto !important; height: auto !important; position: relative !important; }
+  .fcx-top,
+  .fcx-welcome { grid-template-columns: 1fr !important; }
+  .fcx-welcome h1 { font-size: clamp(34px, 12vw, 54px) !important; }
+  .fcx-tabs { max-width: none; }
+  .fcx-kpis,
+  .fcx-feature-row { grid-template-columns: 1fr !important; }
+}

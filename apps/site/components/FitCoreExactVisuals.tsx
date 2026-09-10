@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FitCoreThemeToggle } from "./FitCoreThemeToggle";
+import { ProductShot } from "./FitCoreProductShots";
 
 type IconName = "home" | "grid" | "users" | "user" | "dumbbell" | "clipboard" | "play" | "chart" | "shield" | "gear" | "bell" | "bot" | "calendar" | "wallet" | "search" | "logout" | "building" | "spark";
 
@@ -28,16 +29,16 @@ function Icon({ name }: { name: IconName }) {
   return <svg className="fcx-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">{iconPaths[name].map((d, i) => <path key={i} d={d} />)}</svg>;
 }
 
-const features: Array<[string, string, IconName, string]> = [
-  ["Criar negócio", "Configure academia, studio, box, personal ou consultório.", "chart", "/onboarding"],
-  ["Agenda e aulas", "Organize aulas, avaliações, retornos e capacidade.", "calendar", "/agenda"],
-  ["Equipe", "Gerencie dono, professores, nutri e permissões.", "users", "/equipe"],
-  ["Alunos e anamnese", "Cadastre objetivos, restrições, medidas e evolução.", "user", "/alunos"],
-  ["Treinos e nutrição", "Prescreva treinos, hábitos e orientação profissional.", "dumbbell", "/treinos"],
-  ["Execução e evolução", "Acompanhe GIFs, check-ins, progresso e retenção.", "play", "/execucao"],
+const features: Array<[string, string, IconName, string, "business" | "team" | "students" | "workouts" | "execution" | "evolution"]> = [
+  ["Criar negócio", "Configure academia, studio, box, personal ou consultório.", "chart", "/onboarding", "business"],
+  ["Agenda e aulas", "Organize aulas, avaliações, retornos e capacidade.", "calendar", "/agenda", "evolution"],
+  ["Equipe", "Gerencie dono, professores, nutri e permissões.", "users", "/equipe", "team"],
+  ["Alunos e anamnese", "Cadastre objetivos, restrições, medidas e evolução.", "user", "/alunos", "students"],
+  ["Treinos e nutrição", "Prescreva treinos, hábitos e orientação profissional.", "dumbbell", "/treinos", "workouts"],
+  ["Execução e evolução", "Acompanhe GIFs, check-ins, progresso e retenção.", "play", "/execucao", "execution"],
 ];
 const kpis = [["Alunos ativos", "124", "↑ 12%", "em relação ao mês anterior", "users"], ["Treinos executados", "892", "↑ 18%", "em relação ao mês anterior", "dumbbell"], ["Evolução média", "+28%", "", "nos últimos 3 meses", "chart"], ["Alunos em dia", "92%", "", "frequência nas últimas 4 semanas", "calendar"]] as const;
-const dashboardKpis = [["Total de alunos", "248", "↑ 12%", "vs. mês anterior", "users"], ["Professores", "12", "↑ 20%", "vs. mês anterior", "users"], ["Treinos ativos", "892", "↑ 8%", "vs. mês anterior", "dumbbell"], ["Execuções hoje", "326", "↑ 18%", "vs. ontem", "play"], ["Frequência semanal", "78%", "↑ 6%", "vs. semana anterior", "chart"], ["LGPD & Segurança", "Em conformidade", "", "Seus dados protegidos", "shield"]] as const;
+const dashboardKpis = [["Total de alunos", "248", "↑ 12%", "vs. mês anterior", "users"], ["Professores", "12", "↑ 20%", "vs. mês anterior", "users"], ["Treinos ativos", "892", "↑ 8%", "vs. mês anterior", "dumbbell"], ["Execuções hoje", "326", "↑ 18%", "vs. ontem", "play"], ["Frequência semanal", "78%", "↑ 6%", "vs. semana anterior", "chart"], ["Privacidade", "OK", "", "Acesso e auditoria", "shield"]] as const;
 const flow = [["Negócio", "Configure e cresça seu negócio", "chart", "/onboarding"], ["Equipe", "Gerencie sua equipe", "users", "/equipe"], ["Alunos", "Cadastre e acompanhe", "user", "/alunos"], ["Prescrição", "Crie treinos personalizados", "clipboard", "/treinos"], ["Execução", "Acompanhe a realização", "play", "/execucao"], ["Evolução", "Analise resultados", "chart", "/evolucao"]] as const;
 const exercises = [["0026-barbell-bench-squat", "Agachamento livre", "Pernas · Glúteos"], ["0289-dumbbell-bench-press", "Supino reto", "Peito · Tríceps"], ["0159-cable-decline-seated-wide-grip-row", "Remada sentada", "Costas · Bíceps"]] as const;
 const pending = ["Carlos Almeida|Treino sem execução há 5 dias|Atenção", "Mariana Costa|Solicitou revisão de treino|Revisar", "Pedro Santos|Evolução abaixo do esperado|Atenção", "Juliana Ribeiro|Avaliação física pendente|Pendente", "Lucas Ferreira|Nova mensagem do aluno|Verificar"];
@@ -63,7 +64,7 @@ export function FitCoreExactLanding() {
       </div>
       <FitCoreExactPreview />
     </section>
-    <section className="fcx-feature-row" id="funcionalidades">{features.map(([title, text, icon, href]) => <Link href={href} className="fcx-mini-card" key={title}><i><Icon name={icon} /></i><strong>{title}</strong><p>{text}</p><span>→</span></Link>)}</section>
+    <section className="fcx-feature-row" id="funcionalidades">{features.map(([title, text, icon, href, shot]) => <Link href={href} className="fcx-mini-card" key={title}><ProductShot kind={shot} title={title} /><i><Icon name={icon} /></i><strong>{title}</strong><p>{text}</p><span>→</span></Link>)}</section>
     <section className="fcx-lower-grid" id="planos"><article className="fcx-ai-banner"><span>NOVO</span><h2>Assistente IA para prescrição, evolução e retenção</h2><p>Crie treinos, ajuste cargas, acompanhe adesão, organize retornos e gere orientações com contexto do aluno, do professor e da unidade.</p><div className="fcx-agent-input"><div><b>✦</b><p>Olá, sou o assistente FitCore. Posso apoiar treino, nutrição esportiva, avaliação física, retenção e acompanhamento profissional.</p></div><form action="/agents"><input name="q" placeholder="Digite sua solicitação..."/><button>➤</button></form></div></article><article className="fcx-security-panel" id="seguranca"><i><Icon name="shield" /></i><h2>Seus dados, sempre protegidos</h2><p>Privacidade, controle de acesso por papel, registro de auditoria e operação preparada para LGPD em cada unidade.</p><ul><li><strong>LGPD</strong><span>Conformidade operacional</span></li><li><strong>Criptografia</strong><span>TLS 1.3</span></li><li><strong>Ambiente seguro</strong><span>Sessão, logs e backups</span></li></ul></article></section>
     <footer className="fcx-footer"><Link href="/" className="fcx-brand"><FitCoreExactLogo compact /><span><strong>FitCore Pro</strong><small>Operação fitness mais forte. Pessoas mais saudáveis.</small></span></Link><nav><a>Sobre</a><a>Soluções</a><a>Planos</a><a>Segurança</a><a>Contato</a></nav><span>Feito para quem transforma vidas. ♥</span></footer>
   </main>;
