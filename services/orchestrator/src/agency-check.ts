@@ -1,6 +1,7 @@
 import {
   FITCORE_AGENCY_MAX_ACTIVE,
   buildFitCoreAgencyPlan,
+  fitcoreAgencyAgentIds,
   fitcoreDefaultAgencyCycle,
   hasFitCoreEngineeringGates,
   materializeFitCoreAgentContext,
@@ -23,17 +24,24 @@ function expectFailure(run: () => unknown, expectedCode: string) {
   throw new Error(`agency_check_expected_failure:${expectedCode}`);
 }
 
-const plan = buildFitCoreAgencyPlan();
+const defaultPlan = buildFitCoreAgencyPlan();
+const engineeringPlan = buildFitCoreAgencyPlan([
+  "agents-orchestrator",
+  "frontend-developer",
+  "reality-checker",
+  "ai-code-auditor",
+]);
 
 assert(FITCORE_AGENCY_MAX_ACTIVE === 7, "agency_check_max_active_changed");
-assert(plan.length === 7, "agency_check_default_cycle_size");
-assert(plan[0]?.agent === "agents-orchestrator", "agency_check_orchestrator_must_coordinate_first");
+assert(fitcoreDefaultAgencyCycle.length === 1, "agency_check_default_cycle_must_be_minimal");
+assert(defaultPlan.length === 1, "agency_check_default_plan_size");
+assert(defaultPlan[0]?.agent === "agents-orchestrator", "agency_check_orchestrator_must_coordinate_first");
 assert(
-  plan.find((step) => step.agent === "reality-checker")?.gate === "reality",
+  engineeringPlan.find((step) => step.agent === "reality-checker")?.gate === "reality",
   "agency_check_missing_reality_gate",
 );
 assert(
-  plan.find((step) => step.agent === "ai-code-auditor")?.gate === "security",
+  engineeringPlan.find((step) => step.agent === "ai-code-auditor")?.gate === "security",
   "agency_check_missing_security_gate",
 );
 assert(
@@ -50,7 +58,7 @@ assert(
 );
 
 expectFailure(
-  () => validateFitCoreAgencySelection([...fitcoreDefaultAgencyCycle, "frontend-developer"]),
+  () => validateFitCoreAgencySelection([...fitcoreAgencyAgentIds, "frontend-developer"]),
   "fitcore_agency_context_budget_exceeded",
 );
 expectFailure(
@@ -64,5 +72,5 @@ expectFailure(
 
 console.log("FITCORE AGENCY CHECK: PASS");
 console.log(`active_limit=${FITCORE_AGENCY_MAX_ACTIVE}`);
-console.log(`default_cycle=${plan.map((step) => step.agent).join(" -> ")}`);
+console.log(`default_cycle=${defaultPlan.map((step) => step.agent).join(" -> ")}`);
 console.log("engineering_gates=reality+security");
