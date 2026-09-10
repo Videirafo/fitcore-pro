@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="FitCore Pro">
-  <title>FitCore Pro</title>
   <defs>
-    <linearGradient id="fitcoreBlue" x1="14" y1="10" x2="82" y2="88" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#60A5FA"/>
-      <stop offset="0.38" stop-color="#2563EB"/>
-      <stop offset="0.72" stop-color="#0EA5E9"/>
-      <stop offset="1" stop-color="#22D3EE"/>
+    <linearGradient id="fitcoreMesh" x1="12" y1="10" x2="86" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3DF36D"/>
+      <stop offset="0.46" stop-color="#20D6A1"/>
+      <stop offset="0.72" stop-color="#119B91"/>
+      <stop offset="1" stop-color="#6D5DFC"/>
     </linearGradient>
-    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#0B4CC9" flood-opacity=".34"/>
-    </filter>
+    <radialGradient id="fitcoreGlow" cx="0" cy="0" r="1" gradientTransform="translate(25 18) rotate(45) scale(56)">
+      <stop stop-color="#C7FFD2" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#C7FFD2" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect x="8" y="8" width="80" height="80" rx="25" fill="url(#fitcoreBlue)" filter="url(#shadow)"/>
-  <rect x="17" y="17" width="62" height="62" rx="19" fill="none" stroke="#fff" stroke-opacity=".24" stroke-width="2"/>
-  <path d="M28 27h29v9H38v10h15v9H38v17H28V27Z" fill="#fff"/>
-  <path d="M67 34c-3.3-4-7.7-6-12.5-6C44.8 28 37 36 37 46s7.8 18 17.5 18c5.2 0 9.5-2 12.8-6" fill="none" stroke="#DDF7FF" stroke-width="6" stroke-linecap="round"/>
+  <rect x="4" y="4" width="88" height="88" rx="27" fill="url(#fitcoreMesh)"/>
+  <rect x="4.8" y="4.8" width="86.4" height="86.4" rx="26.2" fill="url(#fitcoreGlow)" stroke="#FFFFFF" stroke-opacity=".22" stroke-width="1.6"/>
+  <path d="M72 28A33 33 0 1 0 72 68" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M28 25h42l-8.2 10.5H41v11.3h17.2l-7.5 9.7H41V72H28V25Z" fill="#FFFFFF"/>
+  <circle cx="72" cy="48" r="5.1" fill="#FFFFFF"/>
 </svg>
