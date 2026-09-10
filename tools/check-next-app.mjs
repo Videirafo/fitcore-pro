@@ -68,5 +68,16 @@ for (const endpoint of ["/api/mvp-19/login", "/api/mvp-21/onboarding", "/api/mvp
     failed = true;
   }
 }
+const loginPanel = client.slice(client.indexOf("function LoginPanel"), client.indexOf("function OnboardingPanel"));
+for (const term of ["E-mail ou identificador", "Unidade (opcional)", 'autoComplete="username"']) {
+  if (!loginPanel.includes(term)) {
+    console.error(`ERRO: login Next sem contrato de acesso por e-mail: ${term}.`);
+    failed = true;
+  }
+}
+if (loginPanel.includes("Slug da unidade")) {
+  console.error("ERRO: login principal ainda expõe slug técnico ao usuário.");
+  failed = true;
+}
 if (failed) process.exit(1);
 console.log("OK: contrato Next validado em apps/site com rotas limpas.");
