@@ -30,3 +30,12 @@ storage/
 # Upstream local clones
 upstream/wger-docker/
 upstream/exercises-dataset/
+
+# Local/generated fitness media - keep repository light
+apps/site-static/media/imported/
+apps/site-static/media/exercises/*.gif
+apps/site-static/media/exercises/*.mp4
+apps/site-static/media/exercises/*.webm
+
+# Local wger/runtime backups
+infra/backups/wger/
