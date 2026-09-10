@@ -9,23 +9,23 @@ type NavItem = { href: string; label: string; roles: string[]; hint: string; ico
 
 const nav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["gestor", "professor", "aluno"], hint: "Visão geral", icon: "⌂", group: "gestao" },
-  { href: "/", label: "Início", roles: ["visitante"], hint: "Landing", icon: "⌂", group: "gestao" },
-  { href: "/agents", label: "IA & Agents", roles: ["visitante", "gestor", "professor"], hint: "Assistente", icon: "✦", group: "gestao" },
-  { href: "/onboarding", label: "Onboarding", roles: ["visitante"], hint: "Criar negócio", icon: "+", group: "gestao" },
+  { href: "/", label: "Início", roles: ["visitante"], hint: "Página inicial", icon: "⌂", group: "gestao" },
+  { href: "/agents", label: "Assistente IA", roles: ["visitante", "gestor", "professor"], hint: "IA prática", icon: "✦", group: "gestao" },
+  { href: "/onboarding", label: "Criar negócio", roles: ["visitante"], hint: "Nova unidade", icon: "+", group: "gestao" },
   { href: "/setup", label: "Setup", roles: ["gestor"], hint: "Checklist", icon: "✓", group: "gestao" },
   { href: "/equipe", label: "Equipe", roles: ["gestor"], hint: "Permissões", icon: "◇", group: "gestao" },
   { href: "/alunos", label: "Alunos", roles: ["gestor", "professor"], hint: "Cadastro", icon: "●", group: "gestao" },
-  { href: "/biblioteca", label: "Biblioteca", roles: ["visitante", "gestor", "professor", "aluno"], hint: "GIFs", icon: "▣", group: "treinos" },
+  { href: "/biblioteca", label: "Biblioteca", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Demonstrações", icon: "▣", group: "treinos" },
   { href: "/treinos", label: "Treinos", roles: ["gestor", "professor", "aluno"], hint: "Prescrição", icon: "▤", group: "treinos" },
   { href: "/execucao", label: "Execução", roles: ["gestor", "professor", "aluno"], hint: "Treino do dia", icon: "▶", group: "treinos" },
   { href: "/evolucao", label: "Evolução", roles: ["gestor", "professor", "aluno"], hint: "Progresso", icon: "▥", group: "treinos" },
   { href: "/agenda", label: "Agenda", roles: ["gestor", "professor"], hint: "Aulas", icon: "□", group: "plataforma" },
   { href: "/relatorios", label: "Relatórios", roles: ["visitante", "gestor", "professor"], hint: "Indicadores", icon: "▧", group: "plataforma" },
-  { href: "/financeiro", label: "Financeiro", roles: ["gestor"], hint: "Receita", icon: "$", group: "plataforma" },
-  { href: "/seguranca", label: "Segurança & LGPD", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Proteção", icon: "◈", group: "plataforma" },
-  { href: "/auditoria", label: "Auditoria", roles: ["gestor"], hint: "Eventos", icon: "◎", group: "plataforma" },
-  { href: "/configuracoes", label: "Configurações", roles: ["gestor"], hint: "Sistema", icon: "⚙", group: "plataforma" },
-  { href: "/login", label: "Login", roles: ["visitante"], hint: "Acesso", icon: "↳", group: "plataforma" },
+  { href: "/financeiro", label: "Financeiro", roles: ["gestor"], hint: "Planos", icon: "$", group: "plataforma" },
+  { href: "/seguranca", label: "Privacidade e LGPD", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Privacidade", icon: "◈", group: "plataforma" },
+  { href: "/auditoria", label: "Auditoria", roles: ["gestor"], hint: "Histórico", icon: "◎", group: "plataforma" },
+  { href: "/configuracoes", label: "Configurações", roles: ["gestor"], hint: "Ajustes", icon: "⚙", group: "plataforma" },
+  { href: "/login", label: "Entrar", roles: ["visitante"], hint: "Conta", icon: "↳", group: "plataforma" },
 ];
 
 async function loadSession(): Promise<Session> {

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { FitCoreNavClient } from "./FitCoreNavClient";
 import { FitCoreHeaderActionsClient } from "./FitCoreHeaderActionsClient";
 import { FitCoreBrandMark } from "./FitCoreVisuals";
+import { FitCoreThemeToggle } from "./FitCoreThemeToggle";
 
 type FitCoreAppShellProps = {
   children: ReactNode;
@@ -19,14 +20,14 @@ export function FitCoreAppShell({ children, section = "Operação", eyebrow, tit
       <aside className="sidebar" aria-label="Navegação do FitCore">
         <Link className="brand" href="/">
           <FitCoreBrandMark />
-          <span><strong>FitCore Pro</strong><small>Gestão fitness</small></span>
+          <span><strong>FitCore Pro</strong><small>Operação fitness premium</small></span>
         </Link>
         <FitCoreNavClient />
       </aside>
       <div className="workspace">
         <header className="workspace-topbar app-header">
           <div className="topbar-title"><Link className="shell-arrow" href="/dashboard" aria-label="Voltar para o dashboard">←</Link><div><small>FitCore Pro</small><strong>{section}</strong></div></div>
-          <FitCoreHeaderActionsClient />
+          <div className="workspace-actions"><FitCoreThemeToggle compact /><FitCoreHeaderActionsClient /></div>
         </header>
         <main className="workspace-main">
           {title ? <section className="page-hero"><p className="eyebrow">{eyebrow || section}</p><h1>{headerTitle}</h1>{description ? <p>{description}</p> : null}</section> : null}

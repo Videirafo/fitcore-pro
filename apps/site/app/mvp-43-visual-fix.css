@@ -1,0 +1,163 @@
+/* MVP-43.1 — visual correction after screenshot review */
+.fcx-logo b,
+.fitcore-brand-mark-premium i {
+  letter-spacing: -.035em !important;
+}
+
+html[data-fc-theme="light"] .fcx-ai-banner h2,
+html[data-fc-theme="light"] .fcx-security-panel h2 {
+  color: #101827 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html[data-fc-theme="light"] .fcx-agent-input > div {
+  background: linear-gradient(145deg, #142238, #25364d) !important;
+  border-color: rgba(61, 243, 109, .38) !important;
+}
+
+html[data-fc-theme="light"] .fcx-agent-input > div p,
+html[data-fc-theme="light"] .fcx-agent-input > div b {
+  color: #f8fbff !important;
+  opacity: 1 !important;
+}
+html[data-fc-theme="light"] .fcx-security-panel li span {
+  color: #31415e !important;
+  font-weight: 900 !important;
+  opacity: 1 !important;
+}
+
+html[data-fc-theme="light"] .fcx-preview-kpis article,
+html[data-fc-theme="light"] .fcx-preview-body section,
+html[data-fc-theme="light"] .fcx-preview-body aside {
+  background: linear-gradient(145deg, #18263a, #2c394d) !important;
+  border-color: rgba(15, 33, 56, .22) !important;
+  color: #f8fbff !important;
+}
+
+html[data-fc-theme="light"] .fcx-preview-kpis article small,
+html[data-fc-theme="light"] .fcx-preview-kpis article span,
+html[data-fc-theme="light"] .fcx-preview-kpis article b,
+html[data-fc-theme="light"] .fcx-preview-body b,
+html[data-fc-theme="light"] .fcx-preview-body span {
+  color: #f8fbff !important;
+  opacity: 1 !important;
+}
+.app-shell .sidebar {
+  background:
+    radial-gradient(circle at 25% 0, rgba(61, 243, 109, .16), transparent 15rem),
+    linear-gradient(180deg, rgba(8, 18, 32, .98), rgba(5, 10, 18, .98)) !important;
+  border-right: 1px solid rgba(152, 174, 214, .14) !important;
+  box-shadow: 22px 0 70px rgba(0, 0, 0, .20) !important;
+}
+
+.app-shell .brand {
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.app-shell .brand strong {
+  letter-spacing: -.045em;
+}
+
+.app-shell .brand small {
+  color: #9fb0cc !important;
+}
+.side-nav,
+.premium-side-nav {
+  gap: 12px !important;
+}
+
+.nav-group > span {
+  color: #8fa1bf !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: .14em !important;
+}
+
+.side-nav a {
+  min-height: 58px !important;
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  column-gap: 13px !important;
+  padding: 10px 12px !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, .035) !important;
+  border: 1px solid rgba(255, 255, 255, .075) !important;
+}
+
+.side-nav a b {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 14px !important;
+  background: linear-gradient(145deg, rgba(61,243,109,.16), rgba(255,255,255,.04)) !important;
+  color: #53ff7c !important;
+  border-color: rgba(61,243,109,.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08) !important;
+  font-size: 0 !important;
+}
+
+.side-nav a b::before {
+  content: "•";
+  font-size: 18px;
+  line-height: 1;
+}
+
+.side-nav a[href="/"] b::before,
+.side-nav a[href="/dashboard"] b::before { content: "FC"; font-size: 12px; font-weight: 1000; letter-spacing: -.03em; }
+.side-nav a[href="/agents"] b::before { content: "IA"; font-size: 12px; font-weight: 1000; }
+.side-nav a[href="/biblioteca"] b::before { content: "EX"; font-size: 11px; font-weight: 1000; }
+.side-nav a[href="/seguranca"] b::before { content: "LG"; font-size: 11px; font-weight: 1000; }
+.side-nav a[href="/login"] b::before { content: "→"; font-size: 18px; }
+.side-nav a span {
+  color: #f5f8ff !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+}
+
+.side-nav a small {
+  color: #8fa1bd !important;
+  font-weight: 800 !important;
+}
+
+.side-nav a.active,
+.side-nav a[aria-current="page"] {
+  color: #06130b !important;
+  background: linear-gradient(135deg, #3df36d, #a1ff58) !important;
+  border-color: rgba(61,243,109,.50) !important;
+  box-shadow: 0 18px 46px rgba(61,243,109,.24) !important;
+}
+
+.side-nav a.active span,
+.side-nav a.active small,
+.side-nav a[aria-current="page"] span,
+.side-nav a[aria-current="page"] small {
+  color: #06130b !important;
+}
+
+.side-nav a.active b,
+.side-nav a[aria-current="page"] b {
+  background: rgba(6,19,11,.10) !important;
+  color: #06130b !important;
+  border-color: rgba(6,19,11,.14) !important;
+}
+
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-actions .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-user {
+  border-radius: 22px !important;
+  background: linear-gradient(145deg, rgba(61,243,109,.10), rgba(255,255,255,.045)) !important;
+}

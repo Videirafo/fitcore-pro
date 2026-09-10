@@ -30,3 +30,16 @@ Executar:
 npm run all:ui-gates
 npm --prefix apps/site run build
 ```
+
+## Correção visual 43.1
+
+Após revisão por captura de tela, foram corrigidos pontos visuais ainda fracos:
+
+- contraste do tema claro nos blocos de IA, segurança e preview;
+- leitura dos cards escuros dentro do modo claro;
+- navegação lateral herdada do shell antigo;
+- rótulos técnicos removidos da UI pública e lateral;
+- marca lateral reforçada com acabamento premium;
+- botão de contraste também no workspace interno.
+
+A regra permanece: visual aprovado não deve ser trocado, apenas estabilizado e refinado.

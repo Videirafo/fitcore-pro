@@ -12,7 +12,7 @@ const exact = read("apps/site/components/FitCoreExactVisuals.tsx");
 const css = read("apps/site/app/exact-preview.css");
 const page = read("apps/site/app/page.tsx");
 const dashboard = read("apps/site/app/dashboard/page.tsx");
-for (const token of ["FitCoreExactLanding", "FitCoreExactDashboard", "Olá, Fernando", "Academia Movimento", "Fluxo completo da sua operação", "Agentes IA", "Treino do dia", "Biblioteca de exercícios", "Segurança & LGPD", "/media/exercises/"]) check(exact.includes(token), `visual aprovado sem ${token}`);
+for (const token of ["FitCoreExactLanding", "FitCoreExactDashboard", "Olá, Fernando", "Academia Movimento", "Fluxo completo da sua operação", "Agentes IA", "Treino do dia", "Biblioteca de exercícios", "Privacidade e LGPD", "/media/exercises/"]) check(exact.includes(token), `visual aprovado sem ${token}`);
 for (const token of ["fcx-public", "fcx-console", "fcx-sidebar", "fcx-preview", "fcx-kpis", "fcx-workout", "fcx-agents", "@media(max-width:760px)"]) check(css.includes(token), `CSS exato sem ${token}`);
 check(page.includes("FitCorePublicLanding"), "/ deve continuar usando landing pública.");
 check(dashboard.includes("FitCoreExactDashboard"), "/dashboard deve usar console visual aprovado.");

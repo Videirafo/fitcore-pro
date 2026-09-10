@@ -4,6 +4,7 @@ import "./globals.css";
 import "./premium-stabilization.css";
 import "./professional-visuals.css";
 import "./exact-preview.css";
+import "./mvp-43-visual-fix.css";
 
 export const metadata: Metadata = {
   title: "FitCore Pro | Gestão fitness",
