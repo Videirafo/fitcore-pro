@@ -1,0 +1,164 @@
+/* MVP-40 — Professional visual assets
+   Troca ícones genéricos por ilustrações SVG próprias, sérias e alinhadas ao nicho fitness. */
+
+.fitcore-brand-mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 17px;
+  overflow: hidden;
+  color: #041109;
+  background: linear-gradient(135deg, #4df36d 0%, #b9ff61 100%);
+  box-shadow: 0 18px 52px rgba(77, 243, 109, .26), inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.fitcore-brand-mark::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(4, 17, 9, .2);
+  border-radius: 12px;
+}
+
+.fitcore-brand-mark i {
+  position: relative;
+  z-index: 2;
+  font-style: normal;
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing: -.08em;
+}
+
+.fitcore-brand-mark b {
+  position: absolute;
+  right: -10px;
+  bottom: -12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(4, 17, 9, .14);
+}
+
+.landing-brand > span:not(.fitcore-brand-mark),
+.brand-mark:not(.fitcore-brand-mark) {
+  display: none !important;
+}
+
+.professional-feature-grid {
+  align-items: stretch;
+}
+
+.professional-feature-card {
+  display: grid !important;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  min-height: 360px !important;
+  padding: 20px !important;
+}
+
+.professional-feature-card > b:first-child {
+  display: none !important;
+}
+
+.professional-feature-card > div:not(.feature-visual) {
+  display: grid;
+  gap: 7px;
+}
+
+.professional-feature-card > div:not(.feature-visual) strong {
+  font-size: 22px;
+  line-height: 1.05;
+}
+
+.professional-feature-card p {
+  margin: 0;
+  color: #bcc7db;
+  line-height: 1.55;
+}
+
+.feature-visual {
+  position: relative;
+  min-height: 190px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 22px;
+  background: radial-gradient(circle at 25% 0%, rgba(77, 243, 109, .16), transparent 16rem), linear-gradient(145deg, rgba(16, 28, 46, .92), rgba(9, 14, 26, .88));
+  overflow: hidden;
+}
+
+.feature-visual svg {
+  display: block;
+  width: 100%;
+  height: 136px;
+  margin-bottom: 12px;
+}
+
+.feature-visual svg rect,
+.feature-visual svg circle,
+.feature-visual svg path:not(.accent) {
+  fill: rgba(255,255,255,.06);
+  stroke: rgba(226, 232, 240, .20);
+  stroke-width: 3;
+}
+
+.feature-visual svg .accent {
+  fill: none;
+  stroke: #4df36d;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 18px rgba(77, 243, 109, .35));
+}
+
+.feature-visual strong {
+  display: block;
+  color: #ffffff;
+  font-size: 15px;
+  letter-spacing: -.02em;
+}
+
+.feature-visual span {
+  display: block;
+  margin-top: 3px;
+  color: #9fb0ca;
+  font-size: 12px;
+}
+
+.landing-product-preview,
+.preview-kpis article,
+.preview-list,
+.landing-feature-grid article,
+.landing-ai-card,
+.landing-security,
+.landing-exercises {
+  border-color: rgba(148,163,184,.20) !important;
+}
+
+.landing-feature-grid article > span:last-child {
+  justify-self: end;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #061109;
+  background: #4df36d;
+  font-weight: 1000;
+}
+
+@media (max-width: 720px) {
+  .professional-feature-card {
+    min-height: auto !important;
+  }
+
+  .feature-visual {
+    min-height: 176px;
+  }
+
+  .feature-visual svg {
+    height: 126px;
+  }
+}
