@@ -133,20 +133,162 @@
 .landing-feature-grid article,
 .landing-ai-card,
 .landing-security,
-.landing-exercises {
+.landing-exercises,
+.product-module-card {
   border-color: rgba(148,163,184,.20) !important;
 }
 
-.landing-feature-grid article > span:last-child {
+.landing-feature-grid article > span:last-child,
+.product-module-card small {
   justify-self: end;
-  width: 34px;
-  height: 34px;
-  display: grid;
+  min-width: 34px;
+  min-height: 34px;
+  display: inline-grid;
   place-items: center;
   border-radius: 999px;
   color: #061109;
   background: #4df36d;
   font-weight: 1000;
+}
+
+.product-modules {
+  display: grid;
+  gap: 26px;
+  margin: 28px 0;
+  padding: clamp(24px, 3vw, 42px);
+  border: 1px solid rgba(148,163,184,.18);
+  border-radius: 34px;
+  background: radial-gradient(circle at 75% 0%, rgba(77,243,109,.13), transparent 26rem), linear-gradient(145deg, rgba(10, 19, 34, .88), rgba(5, 8, 16, .88));
+  box-shadow: 0 30px 100px rgba(0,0,0,.28);
+}
+
+.product-modules-head {
+  display: grid;
+  gap: 12px;
+  max-width: 900px;
+}
+
+.product-modules-head h2 {
+  max-width: 900px;
+  margin: 0;
+}
+
+.product-modules-head p {
+  max-width: 760px;
+  margin: 0;
+  color: #bac6dc;
+  font-size: clamp(16px, 1.4vw, 20px);
+  line-height: 1.55;
+}
+
+.product-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.product-module-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  min-height: 338px;
+  padding: 18px;
+  text-decoration: none;
+  color: #f8fafc;
+  overflow: hidden;
+  border-radius: 26px;
+  background: radial-gradient(circle at var(--card-x, 75%) var(--card-y, 0%), rgba(77,243,109,.16), transparent 16rem), linear-gradient(145deg, rgba(20, 31, 50, .86), rgba(8, 13, 24, .9));
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.product-module-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(77,243,109,.46) !important;
+  box-shadow: 0 32px 110px rgba(0,0,0,.35), 0 0 0 1px rgba(77,243,109,.08);
+}
+
+.product-module-card > div:not(.product-module-visual) {
+  display: grid;
+  gap: 8px;
+}
+
+.product-module-card span {
+  color: #9cff57;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.product-module-card strong {
+  font-size: 23px;
+  line-height: 1.05;
+  letter-spacing: -.035em;
+}
+
+.product-module-card p {
+  margin: 0;
+  color: #b9c5da;
+  line-height: 1.55;
+}
+
+.product-module-card small {
+  justify-self: start;
+  min-height: 30px;
+  padding: 0 13px;
+  font-size: 12px;
+}
+
+.product-module-visual {
+  position: relative;
+  min-height: 132px;
+  border: 1px solid rgba(148,163,184,.18);
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.025));
+}
+
+.product-module-visual .visual-frame {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+}
+
+.product-module-visual .visual-frame i {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  background: rgba(77,243,109,.22);
+}
+
+.product-module-visual .visual-frame i:nth-child(1) { width: 46px; height: 46px; top: 14px; left: 18px; }
+.product-module-visual .visual-frame i:nth-child(2) { width: 86px; height: 9px; top: 22px; right: 20px; }
+.product-module-visual .visual-frame i:nth-child(3) { width: 118px; height: 9px; top: 43px; right: 20px; opacity: .45; }
+
+.product-module-visual svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.product-module-visual svg rect,
+.product-module-visual svg circle,
+.product-module-visual svg path:not(.accent) {
+  fill: rgba(255,255,255,.05);
+  stroke: rgba(226,232,240,.18);
+  stroke-width: 4;
+}
+
+.product-module-visual svg .accent {
+  fill: none;
+  stroke: #4df36d;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 16px rgba(77,243,109,.35));
 }
 
 @media (max-width: 720px) {
@@ -160,5 +302,19 @@
 
   .feature-visual svg {
     height: 126px;
+  }
+
+  .product-modules {
+    margin: 18px 0;
+    padding: 20px;
+    border-radius: 26px;
+  }
+
+  .product-modules-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-module-card {
+    min-height: 300px;
   }
 }
