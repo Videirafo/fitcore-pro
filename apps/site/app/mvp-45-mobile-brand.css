@@ -1,4 +1,4 @@
-/* MVP-45 — FitCore blue identity + mobile-first public landing repair */
+/* MVP-45 — FitCore mesh identity + mobile-first public landing repair */
 .fitcore-symbol {
   position: relative;
   display: inline-grid;
@@ -7,52 +7,53 @@
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(circle at 24% 18%, rgba(112, 213, 255, .72), transparent 32%),
-    linear-gradient(145deg, #2563eb 0%, #1668ff 46%, #0ea5e9 76%, #22d3ee 100%) !important;
-  border: 1px solid rgba(140, 214, 255, .52) !important;
+    radial-gradient(circle at 22% 16%, rgba(203, 255, 215, .62), transparent 29%),
+    radial-gradient(circle at 86% 86%, rgba(109, 93, 252, .72), transparent 36%),
+    linear-gradient(145deg, #3df36d 0%, #20d6a1 46%, #119b91 70%, #6d5dfc 100%) !important;
+  border: 1px solid rgba(210, 255, 223, .30) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.42),
-    inset 0 -12px 26px rgba(8, 31, 83, .28),
-    0 14px 34px rgba(19, 111, 255, .28) !important;
+    inset 0 1px 0 rgba(255,255,255,.38),
+    inset 0 -14px 26px rgba(3, 28, 24, .20),
+    0 14px 34px rgba(24, 214, 140, .16),
+    0 8px 26px rgba(109, 93, 252, .10) !important;
 }
 .fitcore-symbol::before {
   content: "";
   position: absolute;
-  inset: 6px;
+  inset: 5px;
   z-index: -1;
-  border: 1px solid rgba(255,255,255,.24);
+  border: 1px solid rgba(255,255,255,.20);
   border-radius: inherit;
-  opacity: .8;
+  opacity: .74;
 }
 .fitcore-symbol::after { content: none !important; }
-.fitcore-symbol svg { width: 72%; height: 72%; overflow: visible; }
-.fitcore-symbol-f { fill: #fff; filter: drop-shadow(0 2px 8px rgba(2,16,48,.28)); }
-.fitcore-symbol-c { fill: none; stroke: #d8f5ff; stroke-width: 5.2; stroke-linecap: round; }
-.fcx-logo {
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
-}
+.fitcore-symbol svg { width: 74%; height: 74%; overflow: visible; }
+.fitcore-symbol-f { fill: #fff; filter: drop-shadow(0 2px 7px rgba(1,20,16,.22)); }
+.fitcore-symbol-ring { fill: none; stroke: rgba(255,255,255,.94); stroke-width: 5.6; stroke-linecap: round; }
+.fitcore-symbol-core { fill: #fff; }
+.fcx-logo { width: 54px; height: 54px; border-radius: 17px; }
 .fcx-logo.is-compact { width: 38px; height: 38px; border-radius: 12px; }
-.fitcore-brand-mark.fitcore-symbol {
-  width: 62px;
-  height: 62px;
-  border-radius: 20px;
-}
-.fitcore-brand-mark.fitcore-symbol::before { inset: 7px; }
+.fitcore-brand-mark.fitcore-symbol { width: 60px; height: 60px; border-radius: 19px; }
+.fitcore-brand-mark.fitcore-symbol::before { inset: 6px; }
 .fitcore-brand-mark.fitcore-symbol > i,
 .fitcore-brand-mark.fitcore-symbol > b { display: none !important; }
 .fcx-mobile-menu { display: none; }
 .fcx-theme-toggle {
-  color: #fff !important;
-  border-color: rgba(82, 160, 255, .42) !important;
-  background: linear-gradient(145deg, rgba(18, 44, 83, .94), rgba(10, 21, 41, .94)) !important;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 !important;
+  border-radius: 14px;
+  color: #cbd7e8 !important;
+  border-color: rgba(183, 201, 226, .18) !important;
+  background: rgba(255,255,255,.045) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 24px rgba(0,0,0,.14) !important;
 }
-.fcx-theme-toggle span {
-  color: #fff !important;
-  background: linear-gradient(145deg, #2563eb, #0ea5e9) !important;
-  box-shadow: 0 8px 22px rgba(37, 99, 235, .28);
-}
+.fcx-theme-toggle.is-compact { width: 44px; height: 44px; min-height: 44px; border-radius: 13px; }
+.fcx-theme-toggle:hover { border-color: rgba(61,243,109,.34) !important; background: rgba(61,243,109,.07) !important; }
+.fcx-theme-icon { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fcx-theme-toggle:hover .fcx-theme-icon { color: #5cf381; }
+html[data-fc-theme="light"] .fcx-theme-toggle { color: #24344c !important; border-color: rgba(15,33,56,.14) !important; background: rgba(255,255,255,.78) !important; box-shadow: 0 10px 24px rgba(15,33,56,.08) !important; }
 @media (max-width: 760px) {
   .fcx-public { padding: 0 18px !important; }
   .fcx-public::before { background-size: 34px 34px; opacity: .72; }
@@ -67,7 +68,7 @@
     position: sticky !important;
     top: 0;
     background: rgba(5, 13, 27, .90) !important;
-    border-bottom-color: rgba(101, 151, 228, .19) !important;
+    border-bottom-color: rgba(61, 243, 109, .14) !important;
     backdrop-filter: blur(22px) saturate(135%);
   }
   .fcx-public-nav > nav { display: none !important; }
@@ -89,7 +90,7 @@
     min-height: 38px !important;
     border-radius: 12px !important;
   }
-  .fcx-nav-actions .fcx-theme-toggle span { width: 22px; height: 22px; font-size: 12px; }
+  .fcx-nav-actions .fcx-theme-icon { width: 18px; height: 18px; }
   .fcx-nav-actions > a:not(.fcx-cta) {
     min-height: 38px !important;
     padding: 0 13px !important;
@@ -101,14 +102,14 @@
   .fcx-mobile-menu summary {
     width: 38px; height: 38px; display: grid; place-content: center; gap: 4px;
     list-style: none; cursor: pointer; border-radius: 12px;
-    border: 1px solid rgba(101,151,228,.28); background: rgba(16,30,53,.9);
+    border: 1px solid rgba(178,200,225,.18); background: rgba(14,26,43,.92);
   }
   .fcx-mobile-menu summary::-webkit-details-marker { display: none; }
   .fcx-mobile-menu summary span { width: 15px; height: 1.5px; border-radius: 99px; background: #eaf3ff; }
   .fcx-mobile-menu > div {
     position: absolute; top: 46px; right: 0; width: min(280px, calc(100vw - 32px));
     padding: 10px; display: grid; gap: 5px; border-radius: 18px;
-    border: 1px solid rgba(94,150,231,.24);
+    border: 1px solid rgba(180,200,226,.16);
     background: rgba(7,16,31,.98); box-shadow: 0 24px 70px rgba(0,0,0,.5);
     backdrop-filter: blur(24px); z-index: 40;
   }
@@ -116,10 +117,10 @@
     min-height: 42px; display: flex; align-items: center; padding: 0 12px;
     border-radius: 11px; color: #dbe8fb; font-size: 14px; font-weight: 850;
   }
-  .fcx-mobile-menu > div a:hover { background: rgba(61,116,216,.14); }
+  .fcx-mobile-menu > div a:hover { background: rgba(61,243,109,.08); }
   .fcx-mobile-menu .fcx-mobile-menu-cta {
-    justify-content: center; margin-top: 4px; color: #fff !important;
-    background: linear-gradient(135deg,#2563eb,#0ea5e9) !important;
+    justify-content: center; margin-top: 4px; color: #061109 !important;
+    background: linear-gradient(135deg,var(--fcx-green),var(--fcx-green2)) !important;
   }
   .fcx-hero {
     display: block !important;

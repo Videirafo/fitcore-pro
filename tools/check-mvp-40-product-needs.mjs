@@ -38,6 +38,6 @@ for (const pattern of ["product-modules", "product-module-card", "product-module
   if (!css.includes(pattern)) throw new Error(`CSS MVP-40 ausente: ${pattern}`);
 }
 
-if (!icon.includes("<svg") || !icon.includes("FitCore Pro") || !icon.includes("fitcoreBlue")) throw new Error("Logo/favicon FitCore não está profissionalmente identificado.");
+if (!icon.includes("<svg") || !icon.includes("FitCore Pro") || !icon.includes("fitcoreMesh")) throw new Error("Logo/favicon FitCore não está profissionalmente identificado.");
 
 console.log("OK: MVP-40 produto fitness completo por necessidade real validado por contrato.");

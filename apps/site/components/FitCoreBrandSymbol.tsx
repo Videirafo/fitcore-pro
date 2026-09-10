@@ -8,8 +8,9 @@ export function FitCoreBrandSymbol({ compact = false, className = "" }: FitCoreB
   return (
     <span className={classes} role="img" aria-label="FitCore Pro">
       <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <path className="fitcore-symbol-f" d="M17 17h23v7H25v8h12v7H25v14h-8V17Z" />
-        <path className="fitcore-symbol-c" d="M49 22.5c-2.8-3.1-6.5-4.8-10.8-4.8-8.7 0-15.7 6.9-15.7 15.4 0 8.6 7 15.6 15.7 15.6 4.4 0 8.2-1.7 11-5" />
+        <path className="fitcore-symbol-ring" d="M49 18.5A22 22 0 1 0 49 45.5" />
+        <path className="fitcore-symbol-f" d="M17 17h28l-5.5 7H26v7.5h11.5l-5 6.5H26v10h-9V17Z" />
+        <circle className="fitcore-symbol-core" cx="48" cy="32" r="3.4" />
       </svg>
     </span>
   );
