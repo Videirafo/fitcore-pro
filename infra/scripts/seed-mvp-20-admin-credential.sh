@@ -44,7 +44,7 @@ psql "$FITCORE_DATABASE_URL" -v ON_ERROR_STOP=1 -q <<SQL
 WITH tenant AS (SELECT id FROM fitcore_tenants WHERE slug='demo' LIMIT 1),
 scope AS (SELECT set_config('app.tenant_id', (SELECT id::text FROM tenant), true))
 INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, login_identifier, credential_kind, credential_hash, credential_set_at, credential_revoked_at, atualizado_em)
-SELECT tenant.id, 'Gestor FitCore', 'gestor', 'mvp20-bootstrap-gestor', true, 'gestor.fitcore', 'password', '$HASH', now(), NULL, now()
+SELECT tenant.id, 'Gestor FitCore', 'gestor', 'mvp20-bootstrap-gestor', true, '$FITCORE_LOGIN_IDENTIFIER', 'password', '$HASH', now(), NULL, now()
 FROM tenant, scope
 ON CONFLICT (tenant_id, externo_id) DO UPDATE SET
   nome = EXCLUDED.nome,
