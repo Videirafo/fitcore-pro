@@ -21,6 +21,7 @@ for (const file of required) {
 const api = readFileSync('apps/mobile/lib/src/data/fitcore_api.dart', 'utf8');
 const sync = readFileSync('apps/mobile/lib/src/data/sync_engine.dart', 'utf8');
 const shell = readFileSync('apps/mobile/lib/src/features/shell/app_shell.dart', 'utf8');
+const androidManifest = readFileSync('apps/mobile/android/app/src/main/AndroidManifest.xml', 'utf8');
 for (const endpoint of [
   '/api/mvp-19/login',
   '/api/mvp-24/my-workouts',
@@ -36,6 +37,10 @@ for (const token of ['startWorkout', 'completeExercise', 'finishWorkout', 'mapEx
 
 for (const label of ['Hoje', 'Treino', 'Corpo', 'Evolução', 'Perfil']) {
   if (!shell.includes(`label: '${label}'`)) throw new Error(`MVP-44 navegação ausente: ${label}`);
+}
+
+if (!androidManifest.includes('android.permission.INTERNET')) {
+  throw new Error('MVP-44 Android release sem permissão INTERNET.');
 }
 
 const forbidden = ['package:gymmane', 'Z-Anatomy', 'thebuggeddev/anatomy'];

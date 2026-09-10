@@ -13,7 +13,8 @@ class MemoryStore implements WorkoutStore {
   @override
   WorkoutSession? readActiveSession() => session;
   @override
-  Future<void> saveActiveSession(WorkoutSession? value) async => session = value;
+  Future<void> saveActiveSession(WorkoutSession? value) async =>
+      session = value;
   @override
   List<WorkoutPlan> readWorkoutPlans() => plans;
   @override
@@ -27,7 +28,8 @@ class MemoryStore implements WorkoutStore {
   @override
   String? resolveRemoteExecutionId(String localId) => ids[localId];
   @override
-  Future<void> mapExecutionId(String localId, String remoteId) async => ids[localId] = remoteId;
+  Future<void> mapExecutionId(String localId, String remoteId) async =>
+      ids[localId] = remoteId;
   @override
   Future<String?> readCookie() async => cookie;
   @override
@@ -52,21 +54,36 @@ class FakeRemote implements FitCoreRemote {
     calls.add('start:$workoutId');
     return 'remote-1';
   }
+
   @override
-  Future<void> completeExercise(String executionId, int index, {String? observation}) async {
+  Future<void> completeExercise(
+    String executionId,
+    int index, {
+    String? observation,
+  }) async {
     _maybeFail();
     calls.add('exercise:$executionId:$index');
   }
+
   @override
-  Future<void> finishWorkout(String executionId, {required int effort, required int durationMinutes}) async {
+  Future<void> finishWorkout(
+    String executionId, {
+    required int effort,
+    required int durationMinutes,
+  }) async {
     _maybeFail();
     calls.add('finish:$executionId:$effort:$durationMinutes');
   }
+
   @override
-  Future<FitCoreUser> login({required String identifier, required String secret, String? tenantSlug}) =>
+  Future<FitCoreUser> login({
+    required String identifier,
+    required String secret,
+    String? tenantSlug,
+  }) => Future.value(const FitCoreUser(id: 'u1', name: 'Aluno', role: 'aluno'));
+  @override
+  Future<FitCoreUser> profile() =>
       Future.value(const FitCoreUser(id: 'u1', name: 'Aluno', role: 'aluno'));
-  @override
-  Future<FitCoreUser> profile() => Future.value(const FitCoreUser(id: 'u1', name: 'Aluno', role: 'aluno'));
   @override
   Future<void> logout() async {}
   @override
@@ -75,7 +92,8 @@ class FakeRemote implements FitCoreRemote {
   Future<EvolutionSummary> myEvolution() async => const EvolutionSummary();
 }
 
-SyncOperation op(SyncOperationType type, Map<String, dynamic> payload) => SyncOperation(
+SyncOperation op(SyncOperationType type, Map<String, dynamic> payload) =>
+    SyncOperation(
       id: '${type.name}-${payload.hashCode}',
       type: type,
       localExecutionId: 'local-1',
@@ -89,23 +107,38 @@ void main() {
     store.queue = [
       op(SyncOperationType.startWorkout, {'workout_id': 'workout-1'}),
       op(SyncOperationType.completeExercise, {'index': 2}),
-      op(SyncOperationType.finishWorkout, {'effort': 7, 'duration_minutes': 48}),
+      op(SyncOperationType.finishWorkout, {
+        'effort': 7,
+        'duration_minutes': 48,
+      }),
     ];
 
-    final report = await WorkoutSyncEngine(store: store, remote: remote).flush();
+    final report = await WorkoutSyncEngine(
+      store: store,
+      remote: remote,
+    ).flush();
 
     expect(report.isComplete, isTrue);
     expect(store.queue, isEmpty);
     expect(store.ids['local-1'], 'remote-1');
-    expect(remote.calls, ['start:workout-1', 'exercise:remote-1:2', 'finish:remote-1:7:48']);
+    expect(remote.calls, [
+      'start:workout-1',
+      'exercise:remote-1:2',
+      'finish:remote-1:7:48',
+    ]);
   });
 
   test('sync keeps failed operation queued and increments attempts', () async {
     final store = MemoryStore();
     final remote = FakeRemote()..failNext = true;
-    store.queue = [op(SyncOperationType.startWorkout, {'workout_id': 'workout-1'})];
+    store.queue = [
+      op(SyncOperationType.startWorkout, {'workout_id': 'workout-1'}),
+    ];
 
-    final report = await WorkoutSyncEngine(store: store, remote: remote).flush();
+    final report = await WorkoutSyncEngine(
+      store: store,
+      remote: remote,
+    ).flush();
 
     expect(report.isComplete, isFalse);
     expect(report.pending, 1);
