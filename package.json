@@ -88,6 +88,13 @@
     "mvp41:check": "node tools/check-mvp-41-enterprise-assets.mjs",
     "mvp42:check": "node tools/check-mvp-42-exact-approved-preview.mjs",
     "mvp43:check": "node tools/check-mvp-43-product-scope-theme-polish.mjs",
-    "gestor:login-email": "bash infra/scripts/set-gestor-login-email.sh"
+    "gestor:login-email": "bash infra/scripts/set-gestor-login-email.sh",
+    "mvp44:check": "node tools/check-mvp-44-mobile-foundation.mjs",
+    "mobile:doctor": "/root/flutter/bin/flutter doctor",
+    "mobile:pubget": "cd apps/mobile && /root/flutter/bin/flutter pub get",
+    "mobile:analyze": "cd apps/mobile && /root/flutter/bin/flutter analyze",
+    "mobile:test": "cd apps/mobile && /root/flutter/bin/flutter test",
+    "mobile:build:apk": "cd apps/mobile && /root/flutter/bin/flutter build apk --release --dart-define=FITCORE_API_URL=https://fitcore.marcaia.app",
+    "mobile:verify": "npm run mvp44:check && npm run mobile:analyze && npm run mobile:test"
   }
 }
