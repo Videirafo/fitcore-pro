@@ -11,7 +11,7 @@ const nav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", roles: ["gestor", "professor", "aluno"], hint: "Visão geral", icon: "⌂", group: "gestao" },
   { href: "/", label: "Início", roles: ["visitante"], hint: "Página inicial", icon: "⌂", group: "gestao" },
   { href: "/agents", label: "Assistente IA", roles: ["visitante", "gestor", "professor"], hint: "IA prática", icon: "✦", group: "gestao" },
-  { href: "/onboarding", label: "Criar negócio", roles: ["visitante"], hint: "Nova unidade", icon: "+", group: "gestao" },
+  { href: "/cadastro", label: "Criar negócio", roles: ["visitante"], hint: "Nova unidade", icon: "+", group: "gestao" },
   { href: "/setup", label: "Setup", roles: ["gestor"], hint: "Checklist", icon: "✓", group: "gestao" },
   { href: "/equipe", label: "Equipe", roles: ["gestor"], hint: "Permissões", icon: "◇", group: "gestao" },
   { href: "/alunos", label: "Alunos", roles: ["gestor", "professor"], hint: "Cadastro", icon: "●", group: "gestao" },
