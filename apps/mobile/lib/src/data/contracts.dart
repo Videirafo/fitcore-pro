@@ -25,6 +25,13 @@ abstract class FitCoreRemote {
   Future<void> logout();
   Future<List<WorkoutPlan>> myWorkouts();
   Future<String> startWorkout(String workoutId);
+  Future<void> upsertSet(
+    String executionId,
+    int exerciseIndex,
+    int setIndex,
+    WorkoutSetLog log, {
+    String? clientOperationId,
+  });
   Future<void> completeExercise(
     String executionId,
     int index, {

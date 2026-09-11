@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/workout_repository.dart';
 import '../domain/models.dart';
+import '../services/rest_notification_service.dart';
 
 final workoutRepositoryProvider = Provider<WorkoutRepository>(
   (ref) => throw UnimplementedError(),
@@ -204,3 +205,7 @@ final fitCoreControllerProvider =
     AsyncNotifierProvider<FitCoreController, FitCoreState>(
       FitCoreController.new,
     );
+
+final restNotificationProvider = Provider<RestNotificationService>(
+  (ref) => RestNotificationService(),
+);

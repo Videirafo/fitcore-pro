@@ -39,3 +39,6 @@ apps/site-static/media/exercises/*.webm
 
 # Local wger/runtime backups
 infra/backups/wger/
+
+# Mobile signing material (never commit)
+apps/mobile/android/key.properties

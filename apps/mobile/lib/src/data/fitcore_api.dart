@@ -132,6 +132,26 @@ class FitCoreApi implements FitCoreRemote {
   }
 
   @override
+  Future<void> upsertSet(
+    String executionId,
+    int exerciseIndex,
+    int setIndex,
+    WorkoutSetLog log, {
+    String? clientOperationId,
+  }) async {
+    await _decode(
+      await _post(
+        '/api/mvp-46/executions/$executionId/exercises/$exerciseIndex/sets/$setIndex',
+        {
+          ...log.toJson(),
+          if (clientOperationId != null && clientOperationId.isNotEmpty)
+            'client_operation_id': clientOperationId,
+        },
+      ),
+    );
+  }
+
+  @override
   Future<void> completeExercise(
     String executionId,
     int index, {

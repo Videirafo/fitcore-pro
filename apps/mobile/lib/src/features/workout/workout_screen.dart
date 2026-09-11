@@ -21,6 +21,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    ref.read(restNotificationProvider).cancelRest();
     super.dispose();
   }
 
@@ -170,7 +171,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         .read(fitCoreControllerProvider.notifier)
         .addSet(exercise.index, result);
     if (!mounted) return;
-    _startTimer(exercise.restSeconds);
+    _startTimer(exercise.restSeconds, exercise.name);
   }
 
   String _numericHint(String target) =>
@@ -237,9 +238,16 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     await ref.read(fitCoreControllerProvider.notifier).finishWorkout(value);
   }
 
-  void _startTimer(int seconds) {
+  void _startTimer(int seconds, String exerciseName) {
     _timer?.cancel();
-    setState(() => _restSeconds = seconds.clamp(15, 600));
+    final rest = seconds.clamp(15, 600);
+    setState(() => _restSeconds = rest);
+    ref
+        .read(restNotificationProvider)
+        .scheduleRestComplete(
+          duration: Duration(seconds: rest),
+          exerciseName: exerciseName,
+        );
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return timer.cancel();
       if (_restSeconds <= 1) {
@@ -253,6 +261,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
 
   void _stopTimer() {
     _timer?.cancel();
+    ref.read(restNotificationProvider).cancelRest();
     setState(() => _restSeconds = 0);
   }
 }
