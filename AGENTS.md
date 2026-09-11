@@ -160,8 +160,8 @@ Issue records the reason. Branch isolates the work. Code implements it. Tests de
 
 The official FitCore Pro identity is a product invariant. Read `docs/brand/FITCORE_OFFICIAL_BRAND.md` before changing logos, favicons, launcher icons or brand marks.
 
-Canonical source assets live under `apps/site/public/brand/` and the primary mark is `fitcore-pro-official.svg`. Responsive/contrast variants must preserve the same symbol and geometry.
+Canonical source assets live under `apps/site/public/brand/` and the primary mark is the owner-approved raster artwork `fitcore-pro-official.png`. Use that file itself; do not redraw or reconstruct it. Compact variants must be direct crops/resizes of that same approved artwork and preserve its geometry.
 
-Do not replace the official brand with `FC` monograms, generic fitness symbols, arbitrary generated logos or a new palette unless the owner explicitly approves a rebrand. Product UI colors may evolve independently; brand assets may not silently drift with the UI palette.
+Do not replace or approximate the official brand with `FC` monograms, generic fitness symbols, hand-built SVG/CSS geometry, arbitrary generated logos or a new palette unless the owner explicitly approves a rebrand. Product UI colors may evolve independently; brand assets may not silently drift with the UI palette.
 
 Any intentional brand change requires its own Issue, owner approval, regression-gate update, PR/CI and deploy traceability.

@@ -3,48 +3,38 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 
 const paths = {
-  primary: "apps/site/public/brand/fitcore-pro-official.svg",
-  dark: "apps/site/public/brand/fitcore-pro-official-on-dark.svg",
-  symbol: "apps/site/public/brand/fitcore-pro-symbol.svg",
-  icon: "apps/site/app/icon.svg",
+  primary: "apps/site/public/brand/fitcore-pro-official.png",
+  symbol: "apps/site/public/brand/fitcore-pro-symbol.png",
+  icon: "apps/site/app/icon.png",
   component: "apps/site/components/FitCoreBrandSymbol.tsx",
+  exact: "apps/site/components/FitCoreExactVisuals.tsx",
   docs: "docs/brand/FITCORE_OFFICIAL_BRAND.md",
   agents: "AGENTS.md",
   mobileIcon: "apps/mobile/assets/branding/fitcore-app-icon.png",
   mobileForeground: "apps/mobile/assets/branding/fitcore-adaptive-foreground.png",
   mobileSplash: "apps/mobile/assets/branding/fitcore-splash.png",
 };
-for (const [name, file] of Object.entries(paths)) {
-  if (!existsSync(file)) throw new Error(`Official brand asset missing: ${name} -> ${file}`);
-}
+for (const [name, file] of Object.entries(paths)) if (!existsSync(file)) throw new Error(`Official brand asset missing: ${name} -> ${file}`);
 const read = (file) => readFileSync(file, "utf8");
 const sha = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
-const primary = read(paths.primary);
-const symbol = read(paths.symbol);
+const expected = {
+  primary: "614a083538f1d0259f8c16eae7d3c91e12e36f8cf109f032b7a2cea47f3f3569",
+  symbol: "f617907c9e289d10f1fa2b13749ea6a963baf01d5fb809bcac41b4db736eb3c9",
+  icon: "3a365ad2040fb6dd8722cd88daf2f9aeb1e8cfba547f127c48a3523e1b4d0b5c",
+  mobileIcon: "e753edb3de2641a4f8d951a083b20a6426d22e2a19343f4b5066fc6c46a17d3b",
+  mobileForeground: "c170e9840565d3aa49bc8c008b378fa1ea5a327a4a8fbf66d06d48b2e706b8b6",
+  mobileSplash: "3798048a1bad7d45fbdcb3ccdda0c3fce7bbb2454888abc53bbfdca8c7f980dc",
+};
+for (const [key, expectedSha] of Object.entries(expected)) {
+  if (sha(paths[key]) !== expectedSha) throw new Error(`Official FitCore artwork drifted: ${key}`);
+}
 const component = read(paths.component);
+const exact = read(paths.exact);
 const docs = read(paths.docs);
 const agents = read(paths.agents);
-
-if (!primary.includes("TREINO | GESTÃO | RESULTADOS")) throw new Error("Primary lockup tagline changed.");
-if (!primary.includes("#155EEF") || !primary.includes("#18C8FF")) throw new Error("Primary brand palette changed.");
-if (!symbol.includes("#155EEF") || !symbol.includes("#18C8FF") || !symbol.includes("#071426")) throw new Error("Official symbol palette changed.");
-if (!component.includes('/brand/fitcore-pro-symbol.svg')) throw new Error("UI is not using the canonical symbol asset.");
-if (component.includes("fitcore-symbol-f") || component.includes("fitcore-symbol-ring")) throw new Error("Legacy generated FC symbol returned.");
-if (!docs.includes("deve usar sempre esta identidade oficial")) throw new Error("Canonical brand rule missing from docs.");
-if (!agents.includes("FitCore Pro brand invariant")) throw new Error("Agent brand invariant missing.");
-if (sha(paths.icon) !== sha(paths.symbol)) throw new Error("Next favicon drifted from the official symbol.");
-
-const expectedSymbolSha = "a68ac905734a5433a49db8508d792fdcef9df64ed62c58ae0f18e2d0c7875c89";
-const expectedMobile = {
-  mobileIcon: "85527f41a5b257e554544ed579931ba3dceb6992afa554378ce00a81e8463d3d",
-  mobileForeground: "5e26553ae69944ba79f5eab875e3b7ea10f4561e437fb6fee766865fa5a2809e",
-  mobileSplash: "b08af0563c8872ccf9a99084065d142cefd95f99b57dd56dc462de4b409a6869",
-};
-if (sha(paths.symbol) !== expectedSymbolSha) {
-  throw new Error("Official FitCore Pro symbol changed without updating the approved brand gate.");
-}
-for (const [key, expected] of Object.entries(expectedMobile)) {
-  if (sha(paths[key]) !== expected) throw new Error(`Official mobile brand asset drifted: ${key}`);
-}
-
-console.log("OK: official FitCore Pro brand invariant validated.");
+if (!component.includes('/brand/fitcore-pro-official.png') || !component.includes('/brand/fitcore-pro-symbol.png')) throw new Error("Canonical artwork is not wired into the brand component.");
+if (!exact.includes('FitCoreBrandLockup') || exact.includes('fitcore-wordmark')) throw new Error("Public/dashboard brand is reconstructing the approved lockup instead of using it directly.");
+if (component.includes('fitcore-symbol-ring') || component.includes('fitcore-symbol-f')) throw new Error("Legacy reconstructed symbol returned.");
+if (!docs.includes(expected.primary) || !docs.includes('Não redesenhar')) throw new Error("Exact artwork rule/hash missing from brand docs.");
+if (!agents.includes('do not redraw or reconstruct it')) throw new Error("Agent exact-artwork invariant missing.");
+console.log("OK: exact owner-approved FitCore Pro artwork invariant validated.");

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FitCoreThemeToggle } from "./FitCoreThemeToggle";
-import { FitCoreBrandSymbol } from "./FitCoreBrandSymbol";
+import { FitCoreBrandLockup, FitCoreBrandSymbol } from "./FitCoreBrandSymbol";
 
 type IconName = "home" | "grid" | "users" | "user" | "dumbbell" | "clipboard" | "play" | "chart" | "shield" | "gear" | "bell" | "bot" | "calendar" | "wallet" | "search" | "logout" | "building" | "spark";
 
@@ -50,7 +50,7 @@ export function FitCoreExactLogo({ compact = false }: { compact?: boolean }) {
 export function FitCoreExactLanding() {
   return <main className="fcx-public">
     <header className="fcx-public-nav">
-      <Link href="/" className="fcx-brand"><FitCoreExactLogo /><span><strong className="fitcore-wordmark"><span>FitCore</span><b>Pro</b></strong><small>Mais que treinos. Resultados.</small></span></Link>
+      <Link href="/" className="fcx-brand fcx-brand-official"><FitCoreBrandLockup className="fcx-header-lockup" /></Link>
       <nav><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><a href="/dashboard">Demo</a></nav>
       <div className="fcx-nav-actions"><FitCoreThemeToggle /><Link href="/login">Entrar</Link><Link className="fcx-cta" href="/onboarding">Começar agora <span>→</span></Link><details className="fcx-mobile-menu"><summary aria-label="Abrir menu"><span /><span /><span /></summary><div><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><Link href="/dashboard">Demo</Link><Link href="/login">Entrar</Link><Link className="fcx-mobile-menu-cta" href="/onboarding">Começar agora →</Link></div></details></div>
     </header>
@@ -66,7 +66,7 @@ export function FitCoreExactLanding() {
     </section>
     <section className="fcx-feature-row" id="funcionalidades">{features.map(([title, text, icon, href]) => <Link href={href} className="fcx-mini-card" key={title}><i><Icon name={icon} /></i><strong>{title}</strong><p>{text}</p><span>→</span></Link>)}</section>
     <section className="fcx-lower-grid" id="planos"><article className="fcx-ai-banner"><span>NOVO</span><h2>Assistente IA para prescrição, evolução e retenção</h2><p>Crie treinos, ajuste cargas, acompanhe adesão, organize retornos e gere orientações com contexto do aluno, do professor e da unidade.</p><div className="fcx-agent-input"><div><b>✦</b><p>Olá, sou o assistente FitCore. Posso apoiar treino, nutrição esportiva, avaliação física, retenção e acompanhamento profissional.</p></div><form action="/agents"><input name="q" placeholder="Digite sua solicitação..."/><button>➤</button></form></div></article><article className="fcx-security-panel" id="seguranca"><i><Icon name="shield" /></i><h2>Seus dados, sempre protegidos</h2><p>Privacidade, controle de acesso por papel, registro de auditoria e operação preparada para LGPD em cada unidade.</p><ul><li><strong>LGPD</strong><span>Conformidade operacional</span></li><li><strong>Criptografia</strong><span>TLS 1.3</span></li><li><strong>Ambiente seguro</strong><span>Sessão, logs e backups</span></li></ul></article></section>
-    <footer className="fcx-footer"><Link href="/" className="fcx-brand"><FitCoreExactLogo compact /><span><strong className="fitcore-wordmark"><span>FitCore</span><b>Pro</b></strong><small>Operação fitness mais forte. Pessoas mais saudáveis.</small></span></Link><nav><a>Sobre</a><a>Soluções</a><a>Planos</a><a>Segurança</a><a>Contato</a></nav><span>Feito para quem transforma vidas. ♥</span></footer>
+    <footer className="fcx-footer"><Link href="/" className="fcx-brand fcx-brand-official"><FitCoreBrandLockup compact className="fcx-footer-lockup" /></Link><nav><a>Sobre</a><a>Soluções</a><a>Planos</a><a>Segurança</a><a>Contato</a></nav><span>Feito para quem transforma vidas. ♥</span></footer>
   </main>;
 }
 
@@ -78,7 +78,7 @@ const sidebar = [["Visão geral", "home", "/dashboard"], ["Agenda", "calendar", 
 
 export function FitCoreExactDashboard() {
   return <main className="fcx-console">
-    <aside className="fcx-sidebar"><Link href="/dashboard" className="fcx-side-brand"><FitCoreExactLogo /><span><strong className="fitcore-wordmark"><span>FitCore</span><b>Pro</b></strong><small>Gestão fitness inteligente</small></span></Link><nav>{sidebar.map(([name, icon, href], i) => <Link key={name} className={i === 0 ? "active" : ""} href={href}><Icon name={icon as IconName}/><span>{name}</span></Link>)}</nav><div className="fcx-upgrade"><Icon name="spark"/><strong>Seu negócio, mais forte</strong><p>Transforme vidas com tecnologia e dados.</p><Link href="/financeiro">Upgrade do plano →</Link></div><Link className="fcx-logout" href="/login"><Icon name="logout"/>Sair</Link></aside>
+    <aside className="fcx-sidebar"><Link href="/dashboard" className="fcx-side-brand fcx-side-brand-official"><FitCoreBrandLockup className="fcx-sidebar-lockup" /></Link><nav>{sidebar.map(([name, icon, href], i) => <Link key={name} className={i === 0 ? "active" : ""} href={href}><Icon name={icon as IconName}/><span>{name}</span></Link>)}</nav><div className="fcx-upgrade"><Icon name="spark"/><strong>Seu negócio, mais forte</strong><p>Transforme vidas com tecnologia e dados.</p><Link href="/financeiro">Upgrade do plano →</Link></div><Link className="fcx-logout" href="/login"><Icon name="logout"/>Sair</Link></aside>
     <section className="fcx-main"><header className="fcx-top"><Link href="/configuracoes" className="fcx-unit"><Icon name="building"/><strong>Academia Movimento</strong><small>Unidade Matriz</small></Link><form action="/biblioteca"><Icon name="search"/><input name="q" placeholder="Buscar alunos, treinos, exercícios ou recursos..."/><kbd>⌘ K</kbd></form><div><FitCoreThemeToggle compact /><Link className="fcx-bell" href="/auditoria"><Icon name="bell"/><b>3</b></Link><Link className="fcx-user" href="/configuracoes"><i>FL</i><strong>Fernando Lima<small>Gestor</small></strong></Link><em>Gestor</em></div></header>
       <section className="fcx-welcome"><div><h1>Olá, Fernando! 👋</h1><p>Aqui está o panorama da sua operação fitness hoje.</p></div><div className="fcx-tabs"><Link className="active" href="/dashboard"><Icon name="chart"/>Gestor</Link><Link href="/treinos"><Icon name="users"/>Professor</Link><Link href="/execucao"><Icon name="user"/>Aluno</Link></div><aside><span>Terça-feira, 9 de setembro de 2025</span><q>Gestão, treino, nutrição, evolução e retenção em um fluxo seguro.</q></aside></section>
       <section className="fcx-kpis">{dashboardKpis.map(([label, value, change, hint, icon]) => <Link href={label.includes("Segurança") ? "/seguranca" : "/relatorios"} key={label}><i><Icon name={icon as IconName}/></i><span>{label}</span><strong>{value}</strong>{change ? <b>{change}</b> : null}<small>{hint}</small><em /></Link>)}</section>
