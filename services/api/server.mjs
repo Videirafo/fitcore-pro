@@ -23,6 +23,7 @@ import { createTenantUserManagement } from "./security/tenant-user-management.mj
 import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
 import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
+import { createWorkoutSetSyncManager } from "./security/workout-set-sync.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
 import { createOpenSourceCapabilityManager } from "./security/open-source-capabilities.mjs";
@@ -61,6 +62,7 @@ const tenantUserManagement = createTenantUserManagement(process.env, sessionMana
 const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
 const workoutExecutionManager = createWorkoutExecutionManager(process.env);
+const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
 const openSourceCapabilityManager = createOpenSourceCapabilityManager(process.env);
@@ -1481,6 +1483,28 @@ const server = createServer(async (req, res) => {
     if (mvp24PrescriptionMatch) {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = workoutPrescriptionManager.getPrescription(accessContext, decodeURIComponent(mvp24PrescriptionMatch[1]));
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/mvp-46/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, workoutSetSyncManager.status(accessContext));
+    }
+
+    const mvp46SetMatch = url.pathname.match(/^\/api\/mvp-46\/executions\/([^/]+)\/exercises\/([0-9]+)\/sets\/([0-9]+)$/);
+    if (mvp46SetMatch) {
+      if (!["POST", "PUT", "PATCH"].includes(req.method || "")) return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutSetSyncManager.upsertSet(accessContext, decodeURIComponent(mvp46SetMatch[1]), mvp46SetMatch[2], mvp46SetMatch[3], input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const mvp46SetsMatch = url.pathname.match(/^\/api\/mvp-46\/executions\/([^/]+)\/sets$/);
+    if (mvp46SetsMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = workoutSetSyncManager.listSets(accessContext, decodeURIComponent(mvp46SetsMatch[1]));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

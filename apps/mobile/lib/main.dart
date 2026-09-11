@@ -6,15 +6,21 @@ import 'src/core/providers.dart';
 import 'src/data/fitcore_api.dart';
 import 'src/data/local_store.dart';
 import 'src/data/workout_repository.dart';
+import 'src/services/rest_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await LocalWorkoutStore.create();
   final api = FitCoreApi(store: store);
   final repository = WorkoutRepository(store: store, remote: api);
+  final notifications = RestNotificationService();
+  await notifications.initialize();
   runApp(
     ProviderScope(
-      overrides: [workoutRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        workoutRepositoryProvider.overrideWithValue(repository),
+        restNotificationProvider.overrideWithValue(notifications),
+      ],
       child: const FitCoreApp(),
     ),
   );

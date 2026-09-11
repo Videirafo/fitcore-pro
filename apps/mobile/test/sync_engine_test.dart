@@ -56,6 +56,20 @@ class FakeRemote implements FitCoreRemote {
   }
 
   @override
+  Future<void> upsertSet(
+    String executionId,
+    int exerciseIndex,
+    int setIndex,
+    WorkoutSetLog log, {
+    String? clientOperationId,
+  }) async {
+    _maybeFail();
+    calls.add(
+      'set:$executionId:$exerciseIndex:$setIndex:${log.reps}:${log.weightKg}:${log.rpe}',
+    );
+  }
+
+  @override
   Future<void> completeExercise(
     String executionId,
     int index, {
@@ -101,11 +115,18 @@ SyncOperation op(SyncOperationType type, Map<String, dynamic> payload) =>
       payload: payload,
     );
 void main() {
-  test('sync preserves start -> exercise -> finish order', () async {
+  test('sync preserves start -> set -> exercise -> finish order', () async {
     final store = MemoryStore();
     final remote = FakeRemote();
     store.queue = [
       op(SyncOperationType.startWorkout, {'workout_id': 'workout-1'}),
+      op(SyncOperationType.upsertSet, {
+        'exercise_index': 2,
+        'set_index': 0,
+        'reps': 10,
+        'weight_kg': 42.5,
+        'rpe': 8,
+      }),
       op(SyncOperationType.completeExercise, {'index': 2}),
       op(SyncOperationType.finishWorkout, {
         'effort': 7,
@@ -123,6 +144,7 @@ void main() {
     expect(store.ids['local-1'], 'remote-1');
     expect(remote.calls, [
       'start:workout-1',
+      'set:remote-1:2:0:10:42.5:8',
       'exercise:remote-1:2',
       'finish:remote-1:7:48',
     ]);

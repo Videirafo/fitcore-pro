@@ -1,4 +1,9 @@
-enum SyncOperationType { startWorkout, completeExercise, finishWorkout }
+enum SyncOperationType {
+  startWorkout,
+  upsertSet,
+  completeExercise,
+  finishWorkout,
+}
 
 class FitCoreUser {
   const FitCoreUser({

@@ -31,6 +31,8 @@ jobs:
         run: npm run all:ui-gates
       - name: Mobile foundation contract
         run: npm run mvp44:check
+      - name: Mobile release contract
+        run: npm run mvp46:check
       - name: Runtime dependency audit
         run: npm --prefix apps/site audit --omit=dev --audit-level=high
       - name: Production build

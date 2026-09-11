@@ -92,11 +92,27 @@ class WorkoutRepository {
     final session = _requiredSession();
     final exercises = [...session.exercises];
     final target = exercises.firstWhere((item) => item.index == exerciseIndex);
+    final setIndex = target.logs.length;
     final updated = target.copyWith(logs: [...target.logs, log]);
     exercises[exercises.indexOf(target)] = updated;
     final next = session.copyWith(exercises: exercises);
     await _store.saveActiveSession(next);
-    return next;
+    final now = DateTime.now();
+    await _store.enqueue(
+      SyncOperation(
+        id: 'set-${now.microsecondsSinceEpoch}',
+        type: SyncOperationType.upsertSet,
+        localExecutionId: session.localId,
+        createdAt: now,
+        payload: {
+          'exercise_index': exerciseIndex,
+          'set_index': setIndex,
+          ...log.toJson(),
+        },
+      ),
+    );
+    await _sync.flush();
+    return _store.readActiveSession() ?? next;
   }
 
   Future<WorkoutSession> completeExercise(int exerciseIndex) async {
