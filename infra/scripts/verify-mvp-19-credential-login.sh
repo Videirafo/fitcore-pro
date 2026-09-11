@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd /opt/fitcore-pro
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT"
 BASE="${FITCORE_PUBLIC_URL:-https://fitcore.marcaia.app}"
+source "$ROOT/infra/scripts/lib/require-safe-test-target.sh"
+fitcore_require_safe_test_target "$BASE"
 JAR_GESTOR=/tmp/fitcore-mvp19-gestor.cookie
 JAR_INVITED=/tmp/fitcore-mvp19-invited.cookie
 JAR_CRED=/tmp/fitcore-mvp19-credential.cookie

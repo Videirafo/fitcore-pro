@@ -30,7 +30,7 @@ function Icon({ name }: { name: IconName }) {
 }
 
 const features: Array<[string, string, IconName, string]> = [
-  ["Criar negócio", "Configure academia, studio, box, personal ou consultório.", "chart", "/onboarding"],
+  ["Criar negócio", "Configure academia, studio, box, personal ou consultório.", "chart", "/cadastro"],
   ["Agenda e aulas", "Organize aulas, avaliações, retornos e capacidade.", "calendar", "/agenda"],
   ["Equipe", "Gerencie dono, professores, nutri e permissões.", "users", "/equipe"],
   ["Alunos e anamnese", "Cadastre objetivos, restrições, medidas e evolução.", "user", "/alunos"],
@@ -39,7 +39,7 @@ const features: Array<[string, string, IconName, string]> = [
 ];
 const kpis = [["Alunos ativos", "124", "↑ 12%", "em relação ao mês anterior", "users"], ["Treinos executados", "892", "↑ 18%", "em relação ao mês anterior", "dumbbell"], ["Evolução média", "+28%", "", "nos últimos 3 meses", "chart"], ["Alunos em dia", "92%", "", "frequência nas últimas 4 semanas", "calendar"]] as const;
 const dashboardKpis = [["Total de alunos", "248", "↑ 12%", "vs. mês anterior", "users"], ["Professores", "12", "↑ 20%", "vs. mês anterior", "users"], ["Treinos ativos", "892", "↑ 8%", "vs. mês anterior", "dumbbell"], ["Execuções hoje", "326", "↑ 18%", "vs. ontem", "play"], ["Frequência semanal", "78%", "↑ 6%", "vs. semana anterior", "chart"], ["Privacidade", "OK", "", "Acesso e auditoria", "shield"]] as const;
-const flow = [["Negócio", "Configure e cresça seu negócio", "chart", "/onboarding"], ["Equipe", "Gerencie sua equipe", "users", "/equipe"], ["Alunos", "Cadastre e acompanhe", "user", "/alunos"], ["Prescrição", "Crie treinos personalizados", "clipboard", "/treinos"], ["Execução", "Acompanhe a realização", "play", "/execucao"], ["Evolução", "Analise resultados", "chart", "/evolucao"]] as const;
+const flow = [["Negócio", "Configure e cresça seu negócio", "chart", "/cadastro"], ["Equipe", "Gerencie sua equipe", "users", "/equipe"], ["Alunos", "Cadastre e acompanhe", "user", "/alunos"], ["Prescrição", "Crie treinos personalizados", "clipboard", "/treinos"], ["Execução", "Acompanhe a realização", "play", "/execucao"], ["Evolução", "Analise resultados", "chart", "/evolucao"]] as const;
 const exercises = [["0026-barbell-bench-squat", "Agachamento livre", "Pernas · Glúteos"], ["0289-dumbbell-bench-press", "Supino reto", "Peito · Tríceps"], ["0159-cable-decline-seated-wide-grip-row", "Remada sentada", "Costas · Bíceps"]] as const;
 const pending = ["Carlos Almeida|Treino sem execução há 5 dias|Atenção", "Mariana Costa|Solicitou revisão de treino|Revisar", "Pedro Santos|Evolução abaixo do esperado|Atenção", "Juliana Ribeiro|Avaliação física pendente|Pendente", "Lucas Ferreira|Nova mensagem do aluno|Verificar"];
 
@@ -52,14 +52,14 @@ export function FitCoreExactLanding() {
     <header className="fcx-public-nav">
       <Link href="/" className="fcx-brand fcx-brand-official"><FitCoreBrandLockup className="fcx-header-lockup" /></Link>
       <nav><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><a href="/dashboard">Demo</a></nav>
-      <div className="fcx-nav-actions"><FitCoreThemeToggle /><Link href="/login">Entrar</Link><Link className="fcx-cta" href="/onboarding">Começar agora <span>→</span></Link><details className="fcx-mobile-menu"><summary aria-label="Abrir menu"><span /><span /><span /></summary><div><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><Link href="/dashboard">Demo</Link><Link href="/login">Entrar</Link><Link className="fcx-mobile-menu-cta" href="/onboarding">Começar agora →</Link></div></details></div>
+      <div className="fcx-nav-actions"><FitCoreThemeToggle /><Link href="/login">Entrar</Link><Link className="fcx-cta" href="/cadastro">Começar agora <span>→</span></Link><details className="fcx-mobile-menu"><summary aria-label="Abrir menu"><span /><span /><span /></summary><div><a href="#inicio">Início</a><a href="#funcionalidades">Soluções</a><a href="#planos">IA</a><a href="#seguranca">Segurança</a><Link href="/dashboard">Demo</Link><Link href="/login">Entrar</Link><Link className="fcx-mobile-menu-cta" href="/cadastro">Começar agora →</Link></div></details></div>
     </header>
     <section className="fcx-hero" id="inicio">
       <div className="fcx-hero-copy">
         <span className="fcx-badge"><i />Fitness, educação física, nutrição esportiva e cross training</span>
         <h1>Gerencie sua operação fitness, <em>treinos, nutrição e evolução</em> em um só lugar.</h1>
         <p>Uma plataforma premium para academias, studios, boxes de cross training, personal trainers, nutrição esportiva e profissionais de educação física operarem com dados, IA e segurança.</p>
-        <div className="fcx-actions"><Link className="fcx-cta" href="/onboarding">Começar gratuitamente <span>→</span></Link><Link className="fcx-secondary" href="/dashboard"><b>▶</b> Ver demonstração</Link></div>
+        <div className="fcx-actions"><Link className="fcx-cta" href="/cadastro">Começar gratuitamente <span>→</span></Link><Link className="fcx-secondary" href="/dashboard"><b>▶</b> Ver demonstração</Link></div>
         <div className="fcx-checks"><span>Agenda, aulas e avaliações</span><span>Treinos, nutrição e retenção</span><span>LGPD e acesso por perfil</span></div>
       </div>
       <FitCoreExactPreview />
@@ -74,7 +74,7 @@ function FitCoreExactPreview() {
   return <aside className="fcx-preview"><div className="fcx-preview-inner"><div className="fcx-preview-side"><FitCoreExactLogo compact /><nav>{["Visão geral", "Alunos", "Treinos", "Execução", "Evolução", "Financeiro", "Equipe", "Relatórios"].map((item, index) => <span className={index === 0 ? "active" : ""} key={item}>{item}</span>)}</nav></div><div className="fcx-preview-main"><div className="fcx-preview-head"><div><strong>👋 Olá, Fernando</strong><small>Aqui está o resumo do seu negócio hoje.</small></div><span>Seg, 9 de set de 2026</span></div><div className="fcx-preview-kpis">{kpis.map(([label, value, change, hint, icon]) => <article key={label}><i><Icon name={icon} /></i><small>{label}</small><b>{value}</b>{change ? <em>{change}</em> : null}<span>{hint}</span></article>)}</div><div className="fcx-preview-body"><section><header><b>Evolução dos alunos</b><span>Últimos 8 meses⌄</span></header><div className="fcx-line"><i/><i/><i/><i/><i/><i/><i/></div></section><aside><b>Alunos em destaque</b>{["Camila Rocha  ↑ 32%", "Bruno Almeida  ↑ 28%", "Letícia Santos  ↑ 41%"].map(x => <span key={x}>{x}</span>)}</aside></div></div></div></aside>;
 }
 
-const sidebar = [["Visão geral", "home", "/dashboard"], ["Agenda", "calendar", "/agenda"], ["Assistente IA", "spark", "/agents"], ["Criar negócio", "spark", "/onboarding"], ["Equipe", "users", "/equipe"], ["Professores", "users", "/equipe"], ["Alunos", "users", "/alunos"], ["Biblioteca de exercícios", "grid", "/biblioteca"], ["Treinos", "dumbbell", "/treinos"], ["Prescrição", "clipboard", "/treinos"], ["Execução", "play", "/execucao"], ["Evolução", "chart", "/evolucao"], ["Financeiro", "wallet", "/financeiro"], ["Relatórios", "chart", "/relatorios"], ["Auditoria", "shield", "/auditoria"], ["Privacidade e LGPD", "shield", "/seguranca"], ["Configurações", "gear", "/configuracoes"]] as const;
+const sidebar = [["Visão geral", "home", "/dashboard"], ["Agenda", "calendar", "/agenda"], ["Assistente IA", "spark", "/agents"], ["Criar negócio", "spark", "/cadastro"], ["Equipe", "users", "/equipe"], ["Professores", "users", "/equipe"], ["Alunos", "users", "/alunos"], ["Biblioteca de exercícios", "grid", "/biblioteca"], ["Treinos", "dumbbell", "/treinos"], ["Prescrição", "clipboard", "/treinos"], ["Execução", "play", "/execucao"], ["Evolução", "chart", "/evolucao"], ["Financeiro", "wallet", "/financeiro"], ["Relatórios", "chart", "/relatorios"], ["Auditoria", "shield", "/auditoria"], ["Privacidade e LGPD", "shield", "/seguranca"], ["Configurações", "gear", "/configuracoes"]] as const;
 
 export function FitCoreExactDashboard() {
   return <main className="fcx-console">
