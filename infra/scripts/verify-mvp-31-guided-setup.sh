@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-cd /opt/fitcore-pro
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT"
 BASE="${FITCORE_PUBLIC_URL:-https://fitcore.marcaia.app}"
+source "$ROOT/infra/scripts/lib/require-safe-test-target.sh"
+fitcore_require_safe_test_target "$BASE"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
 
 echo "MVP-31 — verificando setup guiado pós-criação do negócio"

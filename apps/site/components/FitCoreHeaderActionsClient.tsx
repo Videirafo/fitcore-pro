@@ -17,7 +17,7 @@ export function FitCoreHeaderActionsClient() {
   const [session, setSession] = useState<Session>(null);
   useEffect(() => { loadSession().then(setSession); }, []);
   const role = String(session?.actor_role || "visitante").toLowerCase();
-  if (role === "visitante") return <div className="header-actions"><Link href="/login">Entrar</Link><Link className="primary-pill topbar-cta" href="/onboarding">Criar negócio</Link></div>;
+  if (role === "visitante") return <div className="header-actions"><Link href="/login">Entrar</Link><Link className="primary-pill topbar-cta" href="/cadastro">Criar negócio</Link></div>;
   if (role === "aluno") return <div className="header-actions"><Link href="/biblioteca">Biblioteca</Link><Link href="/seguranca">LGPD</Link><Link className="primary-pill topbar-cta" href="/execucao">Treino do dia</Link></div>;
   if (role === "professor") return <div className="header-actions"><Link href="/agents">IA do Professor</Link><Link href="/alunos">Alunos</Link><Link className="primary-pill topbar-cta" href="/treinos">Treinos pendentes</Link></div>;
   return <div className="header-actions"><Link href="/agents">Assistente IA</Link><Link href="/setup">Configurar</Link><Link className="primary-pill topbar-cta" href="/dashboard">Dashboard</Link></div>;

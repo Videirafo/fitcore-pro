@@ -1,6 +1,5 @@
-import { FitCoreAppShell } from "../../components/FitCoreAppShell";
-import { FitCoreRouteClient } from "../../components/FitCoreRouteClient";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <FitCoreAppShell section="Criar negócio"><FitCoreRouteClient mode="onboarding" /></FitCoreAppShell>;
+  redirect("/cadastro");
 }

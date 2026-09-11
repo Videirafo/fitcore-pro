@@ -64,7 +64,7 @@ export function HomeDashboard() {
         <span className="eyebrow">Sistema fitness profissional</span>
         <h1>Gestão fitness com rotas reais, dados reais e operação conectada.</h1>
         <p>Crie a unidade, configure equipe, cadastre alunos, prescreva treinos, registre execuções e acompanhe evolução em um shell único.</p>
-        <div className="actions"><Link className="button" href="/onboarding">Criar negócio</Link><Link className="button secondary" href="/login">Entrar no painel</Link></div>
+        <div className="actions"><Link className="button" href="/cadastro">Criar negócio</Link><Link className="button secondary" href="/login">Entrar no painel</Link></div>
       </section>
       <SessionCard />
       <section className="kpi-row">
@@ -94,7 +94,7 @@ export function OnboardingPanel() {
     try { setOut(await api("/api/mvp-21/onboarding", { method: "POST", body: JSON.stringify(payload) })); }
     catch (error: any) { setOut({ ok: false, erro: error.message }); }
   };
-  return <div className="two-col"><form className="panel" onSubmit={submit}><span className="label">Novo negócio</span><h2>Criar unidade</h2><label>Nome do negócio<input name="business_name" required defaultValue="Academia FitCore" /></label><label>Tipo<select name="business_type"><option value="academia">Academia</option><option value="estudio">Estúdio</option><option value="box">Box</option><option value="personal">Personal trainer</option></select></label><label>Slug<input name="slug" placeholder="academia-centro" /></label><label>Gestor<input name="owner_name" required defaultValue="Gestor Proprietário" /></label><label>Login<input name="login_identifier" required defaultValue="gestor.fitcore" /></label><label>Senha/código<input name="secret" required type="password" defaultValue="FitCore#2026" /></label><label>Primeiro professor<input name="professor_nome" defaultValue="Professor Inicial" /></label><label>Primeiro aluno<input name="aluno_nome" defaultValue="Aluno Inicial" /></label><button type="submit">Criar operação</button></form><JsonBlock data={out} /></div>;
+  return <div className="two-col"><form className="panel" onSubmit={submit}><span className="label">Novo negócio</span><h2>Criar unidade</h2><label>Nome do negócio<input name="business_name" required placeholder="ex: Academia Centro" /></label><label>Tipo<select name="business_type"><option value="academia">Academia</option><option value="estudio">Estúdio</option><option value="box">Box</option><option value="personal">Personal trainer</option></select></label><label>Slug<input name="slug" placeholder="academia-centro" /></label><label>Gestor<input name="owner_name" required placeholder="nome do gestor" /></label><label>Login<input name="login_identifier" required placeholder="seu@email.com" /></label><label>Senha/código<input name="secret" required type="password" placeholder="mínimo 8 caracteres" /></label><label>Primeiro professor<input name="professor_nome" placeholder="opcional" /></label><label>Primeiro aluno<input name="aluno_nome" placeholder="opcional" /></label><button type="submit">Criar operação</button></form><JsonBlock data={out} /></div>;
 }
 
 export function TeamPanel() {

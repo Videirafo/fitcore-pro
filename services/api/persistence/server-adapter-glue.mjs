@@ -1,7 +1,7 @@
 // FITCORE PRO — MVP-10
 // Glue entre server.mjs e PersistenceAdapter.
-// O servidor fala com um adapter explícito, mantém JsonFileStore como fallback seguro
-// e só ativa PostgresStore quando a configuração e a migration estiverem verificadas.
+// Em produção, PostgreSQL é obrigatório e falhas de readiness são fail-closed.
+// JsonFileStore permanece disponível somente em ambientes não produtivos e testes controlados.
 
 import { createPersistenceDescriptor } from "./adapter-contract.mjs";
 import { PostgresStore } from "./postgres-store.mjs";
@@ -66,6 +66,15 @@ export function createServerPersistenceAdapter({
   const jsonFileStore = createJsonFileStore({ paths, readJsonArray, writeJsonArray });
   const postgresActivationRequested = requestedPostgres(env);
   const databaseConfigured = Boolean(String(env.FITCORE_DATABASE_URL || env.DATABASE_URL || "").trim());
+  const runtimeEnvironment = String(env.FITCORE_ENV || env.NODE_ENV || "development").trim().toLowerCase();
+  const production = runtimeEnvironment === "production";
+
+  if (production && !postgresActivationRequested) {
+    throw new Error("FITCORE_PERSISTENCE_STORE=postgres é obrigatório em produção; fallback JSON foi bloqueado.");
+  }
+  if (production && !databaseConfigured) {
+    throw new Error("FITCORE_DATABASE_URL é obrigatório em produção; fallback JSON foi bloqueado.");
+  }
 
   let activeStore = jsonFileStore;
   let postgres = {
@@ -75,7 +84,7 @@ export function createServerPersistenceAdapter({
     status: databaseConfigured ? "aguardando_ativacao_controlada" : "aguardando_database_url",
     message: databaseConfigured
       ? "FITCORE_DATABASE_URL presente; defina FITCORE_PERSISTENCE_STORE=postgres para ativar após aplicar MVP-10."
-      : "FITCORE_DATABASE_URL ausente; JsonFileStore segue ativo.",
+      : "FITCORE_DATABASE_URL ausente; JsonFileStore segue ativo fora de produção.",
   };
 
   if (postgresActivationRequested) {
@@ -89,6 +98,8 @@ export function createServerPersistenceAdapter({
 
     if (databaseConfigured && readiness.ready) {
       activeStore = candidate;
+    } else if (production) {
+      throw new Error(`PostgreSQL indisponível ou incompleto em produção: ${readiness.status}.`);
     }
   }
 
@@ -103,16 +114,16 @@ export function createServerPersistenceAdapter({
     requestedStore: postgresActivationRequested ? "PostgresStore" : baseDescriptor.selectedStore,
     selectedStore: activeStore.name,
     activeStore: activeStore.name,
-    fallbackPreserved: true,
+    fallbackPreserved: !production,
     databaseConfigured,
-    safeFallback: !usingPostgres,
+    safeFallback: !production && !usingPostgres,
     postgres,
     resources: baseDescriptor.resources,
     stores: [
       {
         name: "JsonFileStore",
-        status: usingPostgres ? "fallback_disponivel" : "ativo",
-        purpose: "mantém os MVPs funcionando se o banco não estiver pronto ou se rollback for necessário",
+        status: usingPostgres ? "fallback_disponivel_fora_de_producao" : "ativo",
+        purpose: "compatibilidade local/teste; bloqueado como fallback automático em produção",
       },
       {
         name: "PostgresStore",
@@ -125,16 +136,20 @@ export function createServerPersistenceAdapter({
       tenantIdRequired: true,
       actorRoleRequired: true,
       auditRequired: true,
-      fallbackRollback: "remova FITCORE_PERSISTENCE_STORE=postgres para voltar ao JsonFileStore",
-      lgpd: "dados mínimos, tenant_id, user_role, auditoria por ação e fallback seguro",
+      fallbackRollback: production
+        ? "produção exige PostgreSQL; restaure o banco/configuração em vez de cair para JSON"
+        : "remova FITCORE_PERSISTENCE_STORE=postgres somente em ambiente não produtivo",
+      lgpd: "dados mínimos, tenant_id, user_role, auditoria por ação e persistência canônica",
     },
     reason: usingPostgres
-      ? "PostgresStore ativo: FITCORE_PERSISTENCE_STORE=postgres, FITCORE_DATABASE_URL presente e migration verificada."
-      : postgresActivationRequested
-        ? `PostgresStore solicitado, mas não ativado: ${postgres.message || postgres.status}. JsonFileStore segue como fallback seguro.`
-        : databaseConfigured
-          ? "FITCORE_DATABASE_URL presente, mas ativação explícita não solicitada. JsonFileStore segue ativo por segurança."
-          : "FITCORE_DATABASE_URL ausente; JsonFileStore segue como fallback seguro.",
+      ? "PostgresStore ativo: configuração e migration verificadas."
+      : production
+        ? "Produção inválida sem PostgreSQL; este estado deveria falhar antes da inicialização."
+        : postgresActivationRequested
+          ? `PostgresStore solicitado, mas não ativado: ${postgres.message || postgres.status}.`
+          : databaseConfigured
+            ? "FITCORE_DATABASE_URL presente, mas ativação explícita não solicitada em ambiente não produtivo."
+            : "FITCORE_DATABASE_URL ausente; JsonFileStore permitido somente fora de produção.",
   };
 
   return {
