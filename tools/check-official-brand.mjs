@@ -18,9 +18,9 @@ for (const [name, file] of Object.entries(paths)) if (!existsSync(file)) throw n
 const read = (file) => readFileSync(file, "utf8");
 const sha = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
 const expected = {
-  primary: "a28525a9d3665e7d3eccb15b80fe536d0c1bfce8a9c31bab815a08f116e0207f",
-  symbol: "4d1e09732b192fdb17d660af063ccc8eea44e82547a34575109adc8b82d9c147",
-  icon: "10be9d287c312c1c18e20a8bbe7a90d100be49558009294732443875a5d056d1",
+  primary: "614a083538f1d0259f8c16eae7d3c91e12e36f8cf109f032b7a2cea47f3f3569",
+  symbol: "f617907c9e289d10f1fa2b13749ea6a963baf01d5fb809bcac41b4db736eb3c9",
+  icon: "3a365ad2040fb6dd8722cd88daf2f9aeb1e8cfba547f127c48a3523e1b4d0b5c",
   mobileIcon: "e753edb3de2641a4f8d951a083b20a6426d22e2a19343f4b5066fc6c46a17d3b",
   mobileForeground: "c170e9840565d3aa49bc8c008b378fa1ea5a327a4a8fbf66d06d48b2e706b8b6",
   mobileSplash: "3798048a1bad7d45fbdcb3ccdda0c3fce7bbb2454888abc53bbfdca8c7f980dc",

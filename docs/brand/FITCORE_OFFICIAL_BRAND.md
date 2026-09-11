@@ -15,7 +15,7 @@ Assets canônicos:
 - `fitcore-pro-symbol-256.png` — derivação de tamanho do mesmo símbolo para superfícies compactas;
 - `app/icon.png` — favicon/metadata derivado do símbolo oficial.
 
-SHA-256 do lockup canônico do site: `a28525a9d3665e7d3eccb15b80fe536d0c1bfce8a9c31bab815a08f116e0207f`.
+SHA-256 do lockup canônico do site: `614a083538f1d0259f8c16eae7d3c91e12e36f8cf109f032b7a2cea47f3f3569`.
 
 ## Uso permitido
 
