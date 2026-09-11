@@ -20,7 +20,7 @@ export function FitCoreAppShell({ children, section = "Operação", eyebrow, tit
       <aside className="sidebar" aria-label="Navegação do FitCore">
         <Link className="brand" href="/">
           <FitCoreBrandMark />
-          <span><strong>FitCore Pro</strong><small>Operação fitness premium</small></span>
+          <span><strong className="fitcore-wordmark"><span>FitCore</span><b>Pro</b></strong><small>Operação fitness premium</small></span>
         </Link>
         <FitCoreNavClient />
       </aside>

@@ -1,42 +1,33 @@
-/* MVP-45 — FitCore mesh identity + mobile-first public landing repair */
+/* MVP-45 / #36 — canonical FitCore Pro official brand identity */
 .fitcore-symbol {
-  position: relative;
   display: inline-grid;
   place-items: center;
   flex: none;
-  overflow: hidden;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible;
   isolation: isolate;
-  background:
-    radial-gradient(circle at 22% 16%, rgba(203, 255, 215, .62), transparent 29%),
-    radial-gradient(circle at 86% 86%, rgba(109, 93, 252, .72), transparent 36%),
-    linear-gradient(145deg, #3df36d 0%, #20d6a1 46%, #119b91 70%, #6d5dfc 100%) !important;
-  border: 1px solid rgba(210, 255, 223, .30) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.38),
-    inset 0 -14px 26px rgba(3, 28, 24, .20),
-    0 14px 34px rgba(24, 214, 140, .16),
-    0 8px 26px rgba(109, 93, 252, .10) !important;
 }
-.fitcore-symbol::before {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  z-index: -1;
-  border: 1px solid rgba(255,255,255,.20);
-  border-radius: inherit;
-  opacity: .74;
-}
+.fitcore-symbol::before,
 .fitcore-symbol::after { content: none !important; }
-.fitcore-symbol svg { width: 74%; height: 74%; overflow: visible; }
-.fitcore-symbol-f { fill: #fff; filter: drop-shadow(0 2px 7px rgba(1,20,16,.22)); }
-.fitcore-symbol-ring { fill: none; stroke: rgba(255,255,255,.94); stroke-width: 5.6; stroke-linecap: round; }
-.fitcore-symbol-core { fill: #fff; }
-.fcx-logo { width: 54px; height: 54px; border-radius: 17px; }
-.fcx-logo.is-compact { width: 38px; height: 38px; border-radius: 12px; }
-.fitcore-brand-mark.fitcore-symbol { width: 60px; height: 60px; border-radius: 19px; }
-.fitcore-brand-mark.fitcore-symbol::before { inset: 6px; }
+.fitcore-symbol img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fcx-logo { width: 54px; height: 54px; border-radius: 0; }
+.fcx-logo.is-compact { width: 38px; height: 38px; border-radius: 0; }
+.fitcore-brand-mark.fitcore-symbol { width: 60px; height: 60px; border-radius: 0; }
 .fitcore-brand-mark.fitcore-symbol > i,
 .fitcore-brand-mark.fitcore-symbol > b { display: none !important; }
+.fitcore-wordmark { display:inline-flex !important; align-items:baseline; gap:.18em; letter-spacing:-.045em !important; }
+.fitcore-wordmark > span { color:inherit; }
+.fitcore-wordmark > b {
+  background: linear-gradient(135deg, #18C8FF 0%, #1686FF 48%, #2747FF 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent; font:inherit; letter-spacing:inherit;
+}
 .fcx-mobile-menu { display: none; }
 .fcx-theme-toggle {
   width: 48px;
