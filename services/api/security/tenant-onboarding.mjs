@@ -1,9 +1,9 @@
 // FITCORE PRO — MVP-21
-// Onboarding real do tenant: negócio, gestor proprietário, primeiro professor/aluno e sessão real.
+// Onboarding real do tenant: cria negócio + gestor proprietário e, somente quando informados,
+// professor/aluno iniciais vinculados à mesma unidade.
 
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes, scryptSync } from "node:crypto";
-import { normalizeRole } from "./access-context.mjs";
 
 const BUSINESS_TYPES = new Set(["academia", "estudio", "box", "personal"]);
 
@@ -132,7 +132,8 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
       current_tenant_slug: context?.tenant_slug || null,
       current_actor_role: context?.actor_role || null,
       demo_is_no_longer_only_flow: true,
-      creates: ["tenant", "owner_gestor", "first_professor", "first_student", "owner_credential", "signed_session"],
+      creates: ["tenant", "owner_gestor", "owner_credential", "signed_session"],
+      optional_creates: ["first_professor", "first_student"],
       endpoints: [
         "GET /api/mvp-21/status",
         "POST /api/mvp-21/onboarding",
@@ -177,8 +178,8 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
     const ownerName = displayClean(input.owner_name || input.gestor_nome || "Gestor proprietário", "Gestor proprietário", 120);
     const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
     const secret = String(input.secret || input.senha || input.codigo_acesso || "");
-    const professorName = displayClean(input.professor_nome || input.first_professor_name || "Professor inicial", "Professor inicial", 120);
-    const studentName = displayClean(input.aluno_nome || input.first_student_name || "Aluno inicial", "Aluno inicial", 120);
+    const professorName = displayClean(input.professor_nome || input.first_professor_name || "", "", 120);
+    const studentName = displayClean(input.aluno_nome || input.first_student_name || "", "", 120);
 
     if (businessName.length < 3) {
       return { guard: { allowed: false, statusCode: 400, response: { erro: "nome_negocio_invalido", mensagem: "Informe o nome da academia, estúdio, box ou operação." } } };
@@ -214,17 +215,19 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
         INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, atualizado_em)
         SELECT id, ${sqlText(professorName)}, 'professor', ${sqlText(`mvp21-professor-${slug}`)}, true, now()
         FROM tenant_created, scope
+        WHERE ${sqlText(professorName)} <> ''
         RETURNING id, tenant_id, nome, papel
       ), aluno_user_created AS (
         INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, atualizado_em)
         SELECT id, ${sqlText(studentName)}, 'aluno', ${sqlText(`mvp21-aluno-${slug}`)}, true, now()
         FROM tenant_created, scope
+        WHERE ${sqlText(studentName)} <> ''
         RETURNING id, tenant_id, nome, papel
       ), student_created AS (
-        INSERT INTO fitcore_students (tenant_id, source_mvp_id, nome_publico, nivel, status, criado_por, payload, atualizado_em)
-        SELECT tenant_created.id, ${sqlText(`mvp21-student-${slug}`)}, ${sqlText(studentName)}, 'iniciante', 'ativo', owner_created.id, ${sqlJson({"origem":"mvp21_onboarding"})}, now()
-        FROM tenant_created, owner_created, scope
-        RETURNING id, tenant_id, nome_publico
+        INSERT INTO fitcore_students (tenant_id, user_id, professor_id, source_mvp_id, nome_publico, nivel, status, criado_por, payload, atualizado_em)
+        SELECT tenant_created.id, aluno_user_created.id, (SELECT id FROM professor_created LIMIT 1), ${sqlText(`mvp21-student-${slug}`)}, ${sqlText(studentName)}, 'iniciante', 'ativo', owner_created.id, ${sqlJson({"origem":"mvp21_onboarding"})}, now()
+        FROM tenant_created, owner_created, aluno_user_created, scope
+        RETURNING id, tenant_id, user_id, professor_id, nome_publico
       ), tenant_updated AS (
         UPDATE fitcore_tenants
         SET owner_user_id = (SELECT id FROM owner_created), atualizado_em = now()
@@ -236,10 +239,16 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
         FROM tenant_created, owner_created, scope,
         (VALUES
           ('tenant_onboarded', ${sqlText(`tipo=${businessType}; slug=${slug}`)}),
-          ('owner_created', ${sqlText(`login=${loginIdentifier}`)}),
-          ('first_professor_created', ${sqlText(professorName)}),
-          ('first_student_created', ${sqlText(studentName)})
+          ('owner_created', ${sqlText(`login=${loginIdentifier}`)})
         ) AS evento(acao, detalhe)
+      ), professor_audit AS (
+        INSERT INTO fitcore_audit_events (tenant_id, actor_id, actor_role, recurso_tipo, recurso_id, acao, status, detalhe, ip_hash, user_agent_hash)
+        SELECT tenant_created.id, owner_created.id, 'gestor', 'tenant_user', professor_created.id, 'first_professor_created', 'ok', professor_created.nome, ${sqlText(meta['ip_hash'])}, ${sqlText(meta['user_agent_hash'])}
+        FROM tenant_created, owner_created, professor_created, scope
+      ), student_audit AS (
+        INSERT INTO fitcore_audit_events (tenant_id, actor_id, actor_role, recurso_tipo, recurso_id, acao, status, detalhe, ip_hash, user_agent_hash)
+        SELECT tenant_created.id, owner_created.id, 'gestor', 'student', student_created.id, 'first_student_created', 'ok', student_created.nome_publico, ${sqlText(meta['ip_hash'])}, ${sqlText(meta['user_agent_hash'])}
+        FROM tenant_created, owner_created, student_created, scope
       ), security_event AS (
         INSERT INTO fitcore_security_events (tenant_id, actor_id, actor_role, acao, status, detalhe, ip_hash, user_agent_hash)
         SELECT tenant_created.id, owner_created.id, 'gestor', 'tenant_onboarding_completed', 'ok', ${sqlText(`slug=${slug}; type=${businessType}`)}, ${sqlText(meta['ip_hash'])}, ${sqlText(meta['user_agent_hash'])}
@@ -254,7 +263,7 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
         'owner', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'tenant_slug', ${sqlText(slug)}, 'nome', nome, 'papel', papel, 'login_identifier', login_identifier) FROM owner_created),
         'first_professor', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'nome', nome, 'papel', papel) FROM professor_created),
         'first_student_user', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'nome', nome, 'papel', papel) FROM aluno_user_created),
-        'first_student', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'nome_publico', nome_publico) FROM student_created)
+        'first_student', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'user_id', user_id, 'professor_id', professor_id, 'nome_publico', nome_publico) FROM student_created)
       )::text;
     `);
 
@@ -271,7 +280,7 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
       first_professor: created.first_professor,
       first_student_user: created.first_student_user,
       first_student: created.first_student,
-      login: { tenant_slug: slug, login_identifier: owner.login_identifier, url: `${publicUrl}/mvp-19.html?tenant_slug=${encodeURIComponent(slug)}` },
+      login: { tenant_slug: slug, login_identifier: owner.login_identifier, url: `${publicUrl}/login?tenant_slug=${encodeURIComponent(slug)}` },
       session: session.session,
       cookie: session.cookie,
     };
