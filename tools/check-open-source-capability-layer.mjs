@@ -4,17 +4,22 @@ import { createOpenSourceCapabilityManager } from "../services/api/security/open
 import { normalizeLoopbackBaseUrl } from "../services/api/security/loopback-service.mjs";
 import { FITCORE_ALL_UPSTREAMS } from "../services/api/security/upstream-capabilities.mjs";
 
-assert.equal(FITCORE_ALL_UPSTREAMS.length, 6, "capability registry deve conter seis upstreams auditados");
+assert.equal(FITCORE_ALL_UPSTREAMS.length, 7, "capability registry deve conter sete upstreams auditados");
 assert.equal(normalizeLoopbackBaseUrl("http://127.0.0.1:11235", ""), "http://127.0.0.1:11235");
 assert.throws(() => normalizeLoopbackBaseUrl("https://example.com", ""), /loopback_service/);
 
 const manager = createOpenSourceCapabilityManager({
   FITCORE_CRAWL4AI_ENABLED: "false",
   FITCORE_STIRLING_PDF_ENABLED: "false",
+  FITCORE_SCRAPEGRAPH_ENABLED: "false",
 });
 const status = manager.status({ actor_role: "gestor" });
 assert.equal(status.services.crawl4ai.enabled, false);
+assert.equal(status.services.scrapegraphai.enabled, false);
+assert.equal(status.services.scrapegraphai.pinned, "2.2.4");
 assert.equal(status.services.stirlingPdf.enabled, false);
+assert.equal(status.policy.externalContentUntrusted, true);
+assert.equal(status.policy.semanticAutoApply, false);
 assert.equal(status.policy.privilegedAutoExecution, false);
 
 const unsignedPreview = await manager.previewWebKnowledge({}, { url: "https://example.com" });

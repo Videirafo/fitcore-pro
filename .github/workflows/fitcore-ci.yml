@@ -27,6 +27,8 @@ jobs:
         run: npm --prefix apps/site ci --no-audit --no-fund
       - name: Project structure
         run: npm run check:project
+      - name: Open-source capability gates
+        run: node tools/check-open-source-capability-layer.mjs && node tools/check-scrapegraph-web-intelligence.mjs
       - name: UI and contract gates
         run: npm run all:ui-gates
       - name: Mobile foundation contract

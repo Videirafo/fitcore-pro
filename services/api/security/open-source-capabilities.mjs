@@ -1,5 +1,6 @@
 import { normalizeRole } from "./access-context.mjs";
-import { boolEnv, fetchWithDeadline, normalizeLoopbackBaseUrl } from "./loopback-service.mjs";
+import { fetchWithDeadline, normalizeLoopbackBaseUrl, boolEnv } from "./loopback-service.mjs";
+import { createScrapeGraphSemanticClient } from "./scrapegraph-semantic.mjs";
 import { publicFitCoreCapabilityStatus } from "./upstream-capabilities.mjs";
 
 const CRAWL_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -68,6 +69,7 @@ export function createOpenSourceCapabilityManager(env = process.env) {
   const crawlToken = clean(env.FITCORE_CRAWL4AI_TOKEN, "", 500);
   const stirlingApiKey = clean(env.FITCORE_STIRLING_PDF_API_KEY, "", 500);
   const domainAllowlist = parseDomainAllowlist(env.FITCORE_WEB_KNOWLEDGE_ALLOWLIST);
+  const semanticClient = createScrapeGraphSemanticClient(env);
 
   function status(context = {}) {
     return {
@@ -78,9 +80,16 @@ export function createOpenSourceCapabilityManager(env = process.env) {
       upstreams: publicFitCoreCapabilityStatus(),
       services: {
         crawl4ai: { enabled: crawlEnabled, pinned: "0.9.3", loopbackOnly: true, configured: Boolean(crawlToken && domainAllowlist.length) },
+        scrapegraphai: semanticClient.status(),
         stirlingPdf: { enabled: stirlingEnabled, pinned: "2.14.3", loopbackOnly: true, configured: Boolean(stirlingBaseUrl) },
       },
-      policy: { webKnowledgeReviewRequired: true, agentHostFilesystem: false, privilegedAutoExecution: false },
+      policy: {
+        webKnowledgeReviewRequired: true,
+        externalContentUntrusted: true,
+        semanticAutoApply: false,
+        agentHostFilesystem: false,
+        privilegedAutoExecution: false,
+      },
     };
   }
 
@@ -109,13 +118,33 @@ export function createOpenSourceCapabilityManager(env = process.env) {
     const text = markdownText(payload?.markdown).trim();
     if (!text) throw new Error("crawl4ai_empty_markdown");
 
+    let semantic = null;
+    let semantic_status = semanticClient.enabled ? (semanticClient.configured ? "unavailable" : "not_configured") : "disabled";
+    if (semanticClient.enabled && semanticClient.configured) {
+      try {
+        semantic = await semanticClient.extract(text, target.toString());
+        semantic_status = "ok";
+      } catch {
+        semantic = null;
+        semantic_status = "unavailable";
+      }
+    }
+
     return {
       ok: true,
       review_required: true,
       content: text.slice(0, KNOWLEDGE_MAX_CHARS),
       truncated: text.length > KNOWLEDGE_MAX_CHARS,
+      semantic,
+      semantic_status,
       source: { renderer: "crawl4ai", requested_url: target.toString(), domain: target.hostname, version: "0.9.3" },
-      safety: { tenant_scoped: true, allowlisted_domain: true, auto_apply: false },
+      safety: {
+        tenant_scoped: true,
+        allowlisted_domain: true,
+        auto_apply: false,
+        semantic_auto_apply: false,
+        external_content_untrusted: true,
+      },
     };
   }
 
