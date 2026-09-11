@@ -5,7 +5,7 @@ const files = {
   css: "apps/site/app/globals.css",
   shell: "apps/site/components/FitCoreAppShell.tsx",
   layout: "apps/site/app/layout.tsx",
-  icon: "apps/site/app/icon.svg",
+  icon: "apps/site/app/icon.png",
 };
 for (const [name, path] of Object.entries(files)) {
   if (!existsSync(path)) throw new Error(`Arquivo ausente: ${name} -> ${path}`);
@@ -14,7 +14,6 @@ const client = readFileSync(files.client, "utf8");
 const css = readFileSync(files.css, "utf8");
 const shell = readFileSync(files.shell, "utf8");
 const layout = readFileSync(files.layout, "utf8");
-const icon = readFileSync(files.icon, "utf8");
 for (const pattern of ["focusedEntry", "entry-route", "Console inteligente", "Dados da unidade"]) {
   if (!client.includes(pattern)) throw new Error(`Contrato visual ausente no client: ${pattern}`);
 }
@@ -22,6 +21,6 @@ for (const pattern of ["MVP-38", "overflow: visible", "entry-route", "shell-arro
   if (!css.includes(pattern)) throw new Error(`Contrato CSS ausente: ${pattern}`);
 }
 if (!shell.includes("shell-arrow")) throw new Error("Seta do shell ausente.");
-if (!layout.includes("/icon.svg")) throw new Error("Favicon FC não registrado no metadata.");
-if (!icon.includes("<svg") || !icon.includes("FitCore Pro") || !icon.includes("Símbolo oficial FitCore Pro") && icon.includes("#155EEF") && icon.includes("#18C8FF")) throw new Error("Ícone FitCore inválido.");
+if (!layout.includes("/icon.png")) throw new Error("Favicon oficial FitCore não registrado no metadata.");
+if (!existsSync(files.icon)) throw new Error("Ícone FitCore oficial ausente.");
 console.log("OK: MVP-38 shell visual, login, favicon e overflow validados.");

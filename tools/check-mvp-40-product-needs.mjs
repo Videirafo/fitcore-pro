@@ -5,7 +5,7 @@ const files = {
   landing: "apps/site/components/FitCorePublicLanding.tsx",
   modules: "apps/site/components/FitCoreProductModules.tsx",
   css: "apps/site/app/professional-visuals.css",
-  icon: "apps/site/app/icon.svg",
+  icon: "apps/site/app/icon.png",
 };
 
 for (const [name, path] of Object.entries(files)) {
@@ -15,7 +15,6 @@ for (const [name, path] of Object.entries(files)) {
 const landing = readFileSync(files.landing, "utf8");
 const modules = readFileSync(files.modules, "utf8");
 const css = readFileSync(files.css, "utf8");
-const icon = readFileSync(files.icon, "utf8");
 
 for (const pattern of ["FitCoreProductModules", "#operacao", "GIFs internos"]) {
   if (!landing.includes(pattern)) throw new Error(`Landing sem contrato MVP-40: ${pattern}`);
@@ -38,6 +37,6 @@ for (const pattern of ["product-modules", "product-module-card", "product-module
   if (!css.includes(pattern)) throw new Error(`CSS MVP-40 ausente: ${pattern}`);
 }
 
-if (!icon.includes("<svg") || !icon.includes("FitCore Pro") || !icon.includes("Símbolo oficial FitCore Pro") && icon.includes("#155EEF") && icon.includes("#18C8FF")) throw new Error("Logo/favicon FitCore não está profissionalmente identificado.");
+if (!existsSync(files.icon)) throw new Error("Ícone FitCore oficial ausente.");
 
 console.log("OK: MVP-40 produto fitness completo por necessidade real validado por contrato.");
