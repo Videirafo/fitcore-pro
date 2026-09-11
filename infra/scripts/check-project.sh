@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-ROOT="/opt/fitcore-pro"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 echo "Verificando FitCore Pro em $ROOT"
 echo ""
@@ -29,13 +29,21 @@ DIRS=(
   "upstream"
 )
 
+missing=0
 for dir in "${DIRS[@]}"; do
   if [ -d "$ROOT/$dir" ]; then
     echo "OK: $dir"
   else
-    echo "FALTANDO: $dir"
+    echo "FALTANDO: $dir" >&2
+    missing=1
   fi
 done
 
+if [ "$missing" -ne 0 ]; then
+  echo "" >&2
+  echo "ERRO: estrutura obrigatória incompleta no checkout atual." >&2
+  exit 1
+fi
+
 echo ""
-echo "Check finalizado."
+echo "Check finalizado no checkout atual."
