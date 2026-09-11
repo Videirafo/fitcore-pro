@@ -155,3 +155,13 @@ A change is not done merely because it compiles. It should be:
 - documented where future agents need context.
 
 Issue records the reason. Branch isolates the work. Code implements it. Tests demonstrate behavior. PR records and reviews the change. CI enforces gates. Deployment promotes an approved revision. Observability validates production behavior.
+
+## 11. FitCore Pro brand invariant
+
+The official FitCore Pro identity is a product invariant. Read `docs/brand/FITCORE_OFFICIAL_BRAND.md` before changing logos, favicons, launcher icons or brand marks.
+
+Canonical source assets live under `apps/site/public/brand/` and the primary mark is `fitcore-pro-official.svg`. Responsive/contrast variants must preserve the same symbol and geometry.
+
+Do not replace the official brand with `FC` monograms, generic fitness symbols, arbitrary generated logos or a new palette unless the owner explicitly approves a rebrand. Product UI colors may evolve independently; brand assets may not silently drift with the UI palette.
+
+Any intentional brand change requires its own Issue, owner approval, regression-gate update, PR/CI and deploy traceability.
