@@ -19,6 +19,14 @@ export const FITCORE_UPSTREAM_CAPABILITIES = Object.freeze([
     adoption: "isolated-loopback-service",
   }),
   Object.freeze({
+    id: "scrapegraphai",
+    repository: "ScrapeGraphAI/Scrapegraph-ai",
+    pinnedVersion: "2.2.4",
+    license: "MIT",
+    purpose: "semantic-web-knowledge-extraction",
+    adoption: "shared-loopback-service",
+  }),
+  Object.freeze({
     id: "openhands",
     repository: "OpenHands/OpenHands",
     pinnedVersion: "architecture-reference-2026-09-10",

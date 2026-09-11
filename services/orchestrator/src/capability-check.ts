@@ -39,7 +39,7 @@ const dangerous = suggestFitCoreCommandCorrection("git reset --hard HEAD~1", "fa
 assert(dangerous.risk === "blocked" && dangerous.autoExecute === false, "capability_destructive_command_must_be_blocked");
 
 console.log("FITCORE OPEN-SOURCE CAPABILITY CHECK: PASS");
-console.log("upstreams=6");
+console.log("upstreams=7");
 console.log("agency=curated<=7");
 console.log("execution=workspace+approval+no-host-fs");
 console.log("automation=concept-only+no-autoexec");
