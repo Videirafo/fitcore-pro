@@ -70,7 +70,7 @@
     "mvp31:check": "node tools/check-mvp-31-guided-setup.mjs",
     "mvp31:verify": "bash infra/scripts/lib/run-safe-mutable-verify.sh infra/scripts/verify-mvp-31-guided-setup.sh",
     "mvp32:apply": "bash infra/scripts/apply-mvp-32-premium-agent-workspace.sh",
-    "mvp32:check": "node tools/check-mvp-32-premium-agent-workspace.mjs",
+    "mvp32:check": "node tools/check-mvp-32-premium-agent-workspace.mjs && node --test tools/hermes-provider-client.test.mjs",
     "mvp32:verify": "bash infra/scripts/verify-mvp-32-premium-agent-workspace.sh",
     "mvp33:check": "node tools/check-mvp-33-exact-premium-console.mjs",
     "mvp33:verify": "bash infra/scripts/verify-mvp-33-exact-premium-console.sh",
