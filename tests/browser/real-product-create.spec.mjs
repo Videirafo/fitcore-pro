@@ -134,6 +134,8 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
     .getByLabel("Professor responsável")
     .selectOption({ label: "Professor Browser QA" });
   await page.getByLabel("Objetivo").fill("força e evolução");
+  const aiConsent = page.getByLabel(/Consentimento LGPD para processamento/);
+  await expect(aiConsent).not.toBeChecked();
   await page
     .getByRole("button", { name: "Cadastrar e prescrever treino" })
     .click();
@@ -182,7 +184,8 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
   const agentAnswer = page.locator(".agent-answer").first();
   await expect(agentAnswer).toContainText("Gestor Browser QA");
   await expect(agentAnswer).toContainText("Professor Browser QA");
-  await expect(agentAnswer).toContainText("Aluno Browser QA");
+  await expect(agentAnswer).not.toContainText("Aluno Browser QA");
+  await expect(agentAnswer).toContainText("Alunos com consentimento LGPD para IA: 0");
   await expect(agentAnswer).toContainText("não significa presença online em tempo real");
 
   await page.goto("/setup");

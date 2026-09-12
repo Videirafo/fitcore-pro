@@ -333,6 +333,7 @@ export function createStudentManagement(env = process.env) {
     const frequencia = intValue(input.frequencia_semana || input.dias_semana, 3, 1, 7);
     const observacoes = displayClean(input.observacoes_minimas || input.observacoes || "", "", 800);
     const etiquetas = normalizeTags(input.etiquetas || input.tags || []);
+    const consentimentoLgpd = boolEnv(input.consentimento_lgpd ?? input.consentimento_ia ?? input.ai_consent, false);
     const codigo = clean(input.codigo_publico || `ALU-${Date.now().toString(36)}-${randomBytes(2).toString("hex")}`, "", 80).toUpperCase();
     const sourceId = clean(input.source_mvp_id || `mvp23-${Date.now()}-${randomBytes(3).toString("hex")}`, "", 140);
     const actorSql = context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL";
@@ -349,7 +350,7 @@ export function createStudentManagement(env = process.env) {
           ${professorId ? `${sqlText(professorId)}::uuid` : "NULL"},
           ${sqlText(sourceId)}, ${sqlText(codigo)}, ${sqlText(nome)}, ${sqlText(nivel)}, ${sqlText(statusAluno)},
           ${sqlText(objetivo)}, ${sqlText(modalidade)}, ${frequencia}, ${observacoes ? sqlText(observacoes) : "NULL"}, ${sqlJson(etiquetas)}, 'mvp23_operacional',
-          true, ${sqlJson({ source: "mvp23_student_management", objetivo, modalidade, frequencia_semana: frequencia, etiquetas })}, ${actorSql}, now()
+          ${consentimentoLgpd ? "true" : "false"}, ${sqlJson({ source: "mvp23_student_management", objetivo, modalidade, frequencia_semana: frequencia, etiquetas, consentimento_lgpd: consentimentoLgpd })}, ${actorSql}, now()
         FROM scope
         RETURNING id, tenant_id, user_id, professor_id, codigo_publico, nome_publico, nivel, status, objetivo, modalidade_preferida, frequencia_semana, observacoes_minimas, etiquetas, consentimento_lgpd, criado_em, atualizado_em
       )
