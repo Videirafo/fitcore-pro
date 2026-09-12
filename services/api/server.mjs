@@ -1602,7 +1602,7 @@ const server = createServer(async (req, res) => {
         executions: (data.executions?.executions || []).map((item) => ({ aluno: item.student_name || item.aluno_nome, status: item.status, esforco: item.percepcao_esforco ?? null, concluido_em: item.concluido_em || null })),
         evolution: (data.evolution?.students || []).map((item) => ({ aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
       };
-      const result = agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext });
+      const result = await agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }

@@ -41,3 +41,24 @@ Script canônico:
 ```bash
 bash infra/scripts/verify-mvp-32-premium-agent-workspace.sh
 ```
+
+## Integração Hermes Provider Gateway — 2026-09-12
+
+O Assistente IA do FitCore usa o gateway compartilhado do MarcaIA como engine principal, sem carregar credenciais de modelo no browser ou no app Flutter.
+
+Fluxo canônico:
+
+`FitCore /api/mvp-32/agent → contexto tenant-scoped → Hermes Provider Gateway → provider/model configurado no MarcaIA`.
+
+Guardrails preservados:
+
+- RBAC e sessão assinada antes da chamada ao gateway;
+- contexto limitado ao tenant autenticado;
+- prompt Evidence-First, sem inventar fatos ausentes;
+- revisão humana para carga, volume, dor, lesão e risco;
+- sem autonomia médica ou alteração automática de treino;
+- timeout e fallback determinístico local quando o gateway estiver indisponível;
+- auditoria com engine, provider, model e indicador de fallback;
+- token `FITCORE_HERMES_GATEWAY_TOKEN` estritamente server-side.
+
+Gate de contrato e fallback: `npm run mvp32:check`.

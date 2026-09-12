@@ -3,6 +3,7 @@
 
 import { execFileSync } from "node:child_process";
 import { normalizeRole } from "./access-context.mjs";
+import { createHermesProviderClient } from "./hermes-provider-client.mjs";
 
 function clean(value, fallback = "", max = 900) {
   const text = String(value || "")
@@ -60,6 +61,31 @@ function contextPack(value = {}) {
 function summarizeContext(pack) {
   return pack.facts.length ? `Contexto real da unidade: ${pack.facts.join("; ")}.` : "Ainda não há métricas operacionais suficientes nesta unidade para uma análise quantitativa.";
 }
+function compactItems(items, formatter, maxItems = 8) {
+  return items.slice(0, maxItems).map(formatter).filter(Boolean).join("; ");
+}
+function buildGatewayPrompt(role, moduleName, prompt, pack) {
+  const sections = [
+    "Você é o Assistente IA do FitCore Pro. Responda em português do Brasil, de forma objetiva e profissional.",
+    "REGRA EVIDENCE-FIRST: use somente os dados abaixo; não invente alunos, medidas, treinos, diagnósticos, presença online ou resultados. Se faltar evidência, diga explicitamente.",
+    "Não faça diagnóstico médico nem altere treino automaticamente. Para carga, volume, dor, lesão ou risco, recomende revisão profissional humana.",
+    `Papel autenticado: ${role}. Módulo: ${moduleName}.`,
+    `Pergunta: ${prompt}`,
+    pack.facts.length ? `Fatos da unidade: ${pack.facts.join("; ")}` : "Fatos da unidade: insuficientes.",
+  ];
+  const team = compactItems(pack.team, (item) => `${item.nome || "membro"} [papel=${item.papel || "não informado"}; status=${item.status || "não informado"}]`);
+  const students = compactItems(pack.students, (item) => `${item.nome || "aluno"} [objetivo=${item.objetivo || "não informado"}; nível=${item.nivel || "não informado"}]`);
+  const prescriptions = compactItems(pack.prescriptions, (item) => `${item.nome || "treino"} [aluno=${item.aluno || "não informado"}; status=${item.status || "não informado"}]`);
+  const executions = compactItems(pack.executions, (item) => `${item.aluno || "aluno"} [status=${item.status || "não informado"}; esforço=${item.esforco ?? "não informado"}]`);
+  const evolution = compactItems(pack.evolution, (item) => `${item.aluno || "aluno"} [frequência=${item.frequencia ?? 0}; progresso=${item.progresso ?? 0}; esforço=${item.esforco ?? "não informado"}]`);
+  if (team) sections.push(`Equipe: ${team}`);
+  if (students) sections.push(`Alunos: ${students}`);
+  if (prescriptions) sections.push(`Prescrições: ${prescriptions}`);
+  if (executions) sections.push(`Execuções: ${executions}`);
+  if (evolution) sections.push(`Evolução: ${evolution}`);
+  sections.push("Entregue apenas a orientação final.");
+  return clean(sections.join("\n"), "", 3_900);
+}
 function buildReply(role, module, prompt, operationalContext = {}) {
   const base = prompt.toLowerCase();
   const pack = contextPack(operationalContext);
@@ -91,12 +117,13 @@ function buildReply(role, module, prompt, operationalContext = {}) {
   if (role === "professor") return `Revise alunos, prescrições e execuções disponíveis antes de orientar progressão. ${summary}`;
   return `Use apenas seu treino, suas execuções e sua evolução visíveis nesta sessão. ${summary}`;
 }
-export function createAgentAssistantManager(env = process.env) {
+export function createAgentAssistantManager(env = process.env, deps = {}) {
   const enabled = boolEnv(env.FITCORE_AGENT_ASSISTANT_ENABLED, true);
+  const hermesProvider = createHermesProviderClient(env, deps);
   function status(context = {}) {
-    return { ok: true, mvp: "MVP-32 Agent Assistant", enabled, tenant_slug: context?.tenant_slug || null, actor_role: context?.actor_role || null, tenant_scoped: true, audit: "fitcore_agent_events" };
+    return { ok: true, mvp: "MVP-32 Agent Assistant", enabled, tenant_slug: context?.tenant_slug || null, actor_role: context?.actor_role || null, tenant_scoped: true, audit: "fitcore_agent_events", provider_gateway: hermesProvider.status() };
   }
-  function ask(context = {}, input = {}) {
+  async function ask(context = {}, input = {}) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "agent_assistant_disabled" } } };
     const guard = signed(context);
     if (!guard.allowed) return { guard };
@@ -105,7 +132,12 @@ export function createAgentAssistantManager(env = process.env) {
     const prompt = clean(input.prompt || input.message || "O que devo fazer agora?", "O que devo fazer agora?", 900);
     const actions = roleActions(role, moduleName);
     const operationalContext = contextPack(input.operational_context || {});
-    const reply = buildReply(role, moduleName, prompt, operationalContext);
+    const fallbackReply = buildReply(role, moduleName, prompt, operationalContext);
+    const providerResult = await hermesProvider.generate({ tenantKey: context.tenant_id, prompt: buildGatewayPrompt(role, moduleName, prompt, operationalContext) });
+    const reply = providerResult.ok ? providerResult.output : fallbackReply;
+    const providerAudit = providerResult.ok
+      ? { engine: "hermes", contract: providerResult.contract, provider: providerResult.provider, model: providerResult.model, latency_ms: providerResult.latency_ms, fallback: false }
+      : { engine: "local-evidence-fallback", contract: "hermes-provider-gateway-v1", provider: null, model: null, latency_ms: providerResult.latency_ms ?? null, fallback: true, error: providerResult.error };
     try {
       runSql(env, `
         SELECT set_config('app.tenant_id', ${sqlText(context.tenant_id)}, false);
@@ -115,12 +147,12 @@ export function createAgentAssistantManager(env = process.env) {
           FROM scope RETURNING id
         ), audit AS (
           INSERT INTO fitcore_audit_events (tenant_id, actor_id, actor_role, recurso_tipo, recurso_id, acao, status, detalhe)
-          SELECT ${sqlText(context.tenant_id)}::uuid, ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"}, ${sqlText(role)}, 'agent_assistant', (SELECT id FROM event), 'agent_prompt_answered', 'ok', ${sqlText(`module=${moduleName}`)}
+          SELECT ${sqlText(context.tenant_id)}::uuid, ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"}, ${sqlText(role)}, 'agent_assistant', (SELECT id FROM event), 'agent_prompt_answered', 'ok', ${sqlText(`module=${moduleName};engine=${providerAudit.engine};provider=${providerAudit.provider || "none"};model=${providerAudit.model || "none"};fallback=${providerAudit.fallback}`)}
           FROM scope
         ) SELECT id::text FROM event;
       `);
     } catch {}
-    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, lgpd: "dados mínimos e auditoria por unidade" } };
+    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, lgpd: "dados mínimos e auditoria por unidade" } };
   }
   return { enabled, status, ask };
 }
