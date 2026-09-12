@@ -22,7 +22,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: apps/site/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            apps/site/package-lock.json
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
       - name: Install site dependencies
         run: npm --prefix apps/site ci --no-audit --no-fund
       - name: Project structure
@@ -31,6 +35,10 @@ jobs:
         run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: P0 real product E2E (PostgreSQL 17.6)
         run: npm run p0:real:e2e
+      - name: Install Chromium for browser E2E
+        run: npx playwright install --with-deps chromium
+      - name: Browser E2E (real human flow)
+        run: npm run e2e:browser
       - name: UI and contract gates
         run: npm run all:ui-gates
       - name: Mobile foundation contract

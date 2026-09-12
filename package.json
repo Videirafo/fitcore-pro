@@ -106,6 +106,11 @@
     "mobile:build:apk:signed": "cd apps/mobile && FITCORE_REQUIRE_RELEASE_SIGNING=true /root/flutter/bin/flutter build apk --release --dart-define=FITCORE_API_URL=https://fitcore.marcaia.app",
     "mobile:build:aab:signed": "cd apps/mobile && FITCORE_REQUIRE_RELEASE_SIGNING=true /root/flutter/bin/flutter build appbundle --release --dart-define=FITCORE_API_URL=https://fitcore.marcaia.app",
     "mobile:release:verify": "npm run mvp44:check && npm run mvp46:check && npm run mobile:analyze && npm run mobile:test",
-    "p0:real:e2e": "bash infra/scripts/e2e-p0-real-product.sh"
+    "p0:real:e2e": "bash infra/scripts/e2e-p0-real-product.sh",
+    "e2e:browser": "bash infra/scripts/e2e-browser-real-product.sh",
+    "e2e:browser:install": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }
