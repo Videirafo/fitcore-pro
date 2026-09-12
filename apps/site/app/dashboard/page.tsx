@@ -1,6 +1,10 @@
-import { FitCoreExactDashboard } from "../../components/FitCoreExactVisuals";
+import { FitCoreAppShell } from "../../components/FitCoreAppShell";
+import { FitCoreRouteClient } from "../../components/FitCoreRouteClient";
 
-// Compatibility contract: FitCoreRouteClient mode="home" remains preserved in the original client module.
 export default function DashboardPage() {
-  return <FitCoreExactDashboard />;
+  return (
+    <FitCoreAppShell section="Visão geral">
+      <FitCoreRouteClient mode="home" />
+    </FitCoreAppShell>
+  );
 }

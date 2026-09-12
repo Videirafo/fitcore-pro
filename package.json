@@ -84,7 +84,7 @@
     "mvp37:verify": "bash infra/scripts/verify-mvp-37-real-role-dashboard.sh",
     "mvp38:check": "node tools/check-mvp-38-shell-polish.mjs",
     "mvp40:check": "node tools/check-mvp-40-product-needs.mjs",
-    "all:ui-gates": "npm run site:next:check && npm run mvp28:check && npm run mvp29:check && npm run mvp30:check && npm run mvp31:check && npm run mvp32:check && npm run mvp33:check && npm run mvp34:check && npm run mvp35:check && npm run mvp36:check && npm run mvp37:check && npm run mvp38:check && npm run mvp40:check && npm run mvp41:check && npm run mvp42:check && npm run mvp43:check && npm run mvp45:check && npm run brand:check && npm run mvp48:check",
+    "all:ui-gates": "npm run site:next:check && npm run mvp28:check && npm run mvp29:check && npm run mvp30:check && npm run mvp31:check && npm run mvp32:check && npm run mvp33:check && npm run mvp34:check && npm run mvp35:check && npm run mvp36:check && npm run mvp37:check && npm run mvp38:check && npm run mvp40:check && npm run mvp41:check && npm run mvp42:check && npm run mvp43:check && npm run mvp45:check && npm run brand:check && npm run mvp48:check && npm run mvp56:check",
     "mvp41:check": "node tools/check-mvp-41-enterprise-assets.mjs",
     "mvp42:check": "node tools/check-mvp-42-exact-approved-preview.mjs",
     "mvp43:check": "node tools/check-mvp-43-product-scope-theme-polish.mjs",
@@ -110,7 +110,8 @@
     "e2e:browser": "bash infra/scripts/e2e-browser-real-product.sh",
     "e2e:browser:install": "playwright install chromium",
     "mvp48:check": "node tools/check-mvp-48-premium-product.mjs",
-    "mvp48:apply": "bash infra/scripts/apply-mvp-48-premium-product.sh"
+    "mvp48:apply": "bash infra/scripts/apply-mvp-48-premium-product.sh",
+    "mvp56:check": "node tools/check-mvp-56-real-postlogin.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

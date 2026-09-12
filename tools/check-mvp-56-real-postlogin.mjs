@@ -1,0 +1,18 @@
+import { existsSync, readFileSync } from "node:fs";
+let failed = false;
+const check = (condition, message) => { if (!condition) { failed = true; console.error(`ERRO: ${message}`); } };
+const read = (path) => readFileSync(path, "utf8");
+const required = ["apps/site/app/dashboard/page.tsx", "apps/site/components/FitCoreRouteClient.tsx", "services/api/server.mjs", "services/api/security/agent-assistant.mjs", "services/api/security/role-dashboard.mjs"];
+for (const path of required) check(existsSync(path), `arquivo ausente: ${path}`);
+const dashboard = read(required[0]);
+const client = read(required[1]);
+const server = read(required[2]);
+const agent = read(required[3]);
+check(dashboard.includes('FitCoreRouteClient mode="home"'), "dashboard não usa console real");
+check(!dashboard.includes("FitCoreExactDashboard"), "dashboard ainda usa demo estática");
+for (const token of ["/api/mvp-37/dashboard", "RoleConsole37", "Nenhum dado financeiro é estimado", "module: mode"]) check(client.includes(token), `client sem ${token}`);
+for (const token of ["dashboardSnapshot", "operationalContext", "mvp37_consolidated_dashboard"]) check(server.includes(token), `server sem contexto real: ${token}`);
+for (const token of ["contextPack", "evidence_only", "insufficient_data_is_explicit", "last_seen_at", "Membros disponíveis no cadastro desta unidade"]) check(agent.includes(token), `assistente sem ${token}`);
+for (const forbidden of ["Academia Movimento", "Fernando Lima", "Carlos Almeida", "Retenção\" value=\"92%"] ) check(!dashboard.includes(forbidden) && !client.includes(forbidden), `pós-login ainda contém demo: ${forbidden}`);
+if (failed) process.exit(1);
+console.log("OK: P0 #56 pós-login real e assistente contextual validado por contrato.");

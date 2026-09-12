@@ -2,19 +2,15 @@ import { existsSync, readFileSync } from "node:fs";
 let failed = false;
 const check = (condition, message) => { if (!condition) { failed = true; console.error(`ERRO: ${message}`); } };
 const read = (path) => readFileSync(path, "utf8");
-for (const path of [
-  "apps/site/components/FitCoreExactVisuals.tsx",
-  "apps/site/app/exact-preview.css",
-  "apps/site/app/page.tsx",
-  "apps/site/app/dashboard/page.tsx",
-]) check(existsSync(path), `arquivo ausente: ${path}`);
+for (const path of ["apps/site/components/FitCoreExactVisuals.tsx", "apps/site/app/exact-preview.css", "apps/site/app/page.tsx", "apps/site/app/dashboard/page.tsx"]) check(existsSync(path), `arquivo ausente: ${path}`);
 const exact = read("apps/site/components/FitCoreExactVisuals.tsx");
 const css = read("apps/site/app/exact-preview.css");
 const page = read("apps/site/app/page.tsx");
 const dashboard = read("apps/site/app/dashboard/page.tsx");
-for (const token of ["FitCoreExactLanding", "FitCoreExactDashboard", "Olá, Fernando", "Academia Movimento", "Fluxo completo da sua operação", "Agentes IA", "Treino do dia", "Biblioteca de exercícios", "Privacidade e LGPD", "/media/exercises/"]) check(exact.includes(token), `visual aprovado sem ${token}`);
-for (const token of ["fcx-public", "fcx-console", "fcx-sidebar", "fcx-preview", "fcx-kpis", "fcx-workout", "fcx-agents", "@media(max-width:760px)"]) check(css.includes(token), `CSS exato sem ${token}`);
+for (const token of ["FitCoreExactLanding", "FitCoreExactPreview", "Assistente IA para prescrição", "Seus dados, sempre protegidos", "Começar gratuitamente"]) check(exact.includes(token), `landing aprovada sem ${token}`);
+for (const token of ["fcx-public", "fcx-preview", "fcx-mini-card", "fcx-ai-banner", "@media(max-width:760px)"]) check(css.includes(token), `CSS público sem ${token}`);
 check(page.includes("FitCorePublicLanding"), "/ deve continuar usando landing pública.");
-check(dashboard.includes("FitCoreExactDashboard"), "/dashboard deve usar console visual aprovado.");
+check(dashboard.includes('FitCoreRouteClient mode="home"'), "/dashboard deve usar console real por tenant/papel.");
+check(!dashboard.includes("FitCoreExactDashboard"), "/dashboard não pode usar console demonstrativa hardcoded.");
 if (failed) process.exit(1);
-console.log("OK: MVP-42 visual aprovado reproduzido em Next com landing e console.");
+console.log("OK: landing visual aprovada preservada e dashboard produtivo usa dados reais.");
