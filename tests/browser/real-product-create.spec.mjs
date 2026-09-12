@@ -40,6 +40,26 @@ test("marca oficial usa transparência nativa sem caixa branca", async ({ page }
   expect(style.background).toBe("rgba(0, 0, 0, 0)");
   expect(style.shadow).toBe("none");
   expect(style.border).toBe("0px");
+
+  const wrapper = page.locator(".brand-official-transparent").first();
+  await expect(wrapper).toBeVisible();
+  const wrapperStyle = await wrapper.evaluate((el) => {
+    const css = getComputedStyle(el);
+    return {
+      background: css.backgroundColor,
+      image: css.backgroundImage,
+      shadow: css.boxShadow,
+      border: css.borderTopWidth,
+      radius: css.borderRadius,
+      padding: css.padding,
+    };
+  });
+  expect(wrapperStyle.background).toBe("rgba(0, 0, 0, 0)");
+  expect(wrapperStyle.image).toBe("none");
+  expect(wrapperStyle.shadow).toBe("none");
+  expect(wrapperStyle.border).toBe("0px");
+  expect(wrapperStyle.radius).toBe("0px");
+  expect(wrapperStyle.padding).toBe("0px");
 });
 
 test("cadastro → gestor → equipe → aluno vinculado → professor prescreve", async ({

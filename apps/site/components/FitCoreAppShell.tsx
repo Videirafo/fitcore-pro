@@ -18,7 +18,7 @@ export function FitCoreAppShell({ children, section = "Operação", eyebrow, tit
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Navegação do FitCore">
-        <Link className="brand" href="/">
+        <Link className="brand brand-official-transparent" href="/">
           <FitCoreBrandLockup className="fitcore-shell-lockup" />
         </Link>
         <FitCoreNavClient />
