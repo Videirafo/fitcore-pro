@@ -136,8 +136,8 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
     const providerResult = await hermesProvider.generate({ tenantKey: context.tenant_id, prompt: buildGatewayPrompt(role, moduleName, prompt, operationalContext) });
     const reply = providerResult.ok ? providerResult.output : fallbackReply;
     const providerAudit = providerResult.ok
-      ? { engine: "hermes", contract: providerResult.contract, provider: providerResult.provider, model: providerResult.model, latency_ms: providerResult.latency_ms, fallback: false }
-      : { engine: "local-evidence-fallback", contract: "hermes-provider-gateway-v1", provider: null, model: null, latency_ms: providerResult.latency_ms ?? null, fallback: true, error: providerResult.error };
+      ? { engine: "hermes", contract: providerResult.contract, provider: providerResult.provider, model: providerResult.model, latency_ms: providerResult.latency_ms, gateway_route: providerResult.gateway_route || "primary", fallback: false }
+      : { engine: "local-evidence-fallback", contract: "hermes-provider-gateway-v1", provider: null, model: null, latency_ms: providerResult.latency_ms ?? null, gateway_route: null, fallback: true, error: providerResult.error };
     try {
       runSql(env, `
         SELECT set_config('app.tenant_id', ${sqlText(context.tenant_id)}, false);
@@ -147,7 +147,7 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
           FROM scope RETURNING id
         ), audit AS (
           INSERT INTO fitcore_audit_events (tenant_id, actor_id, actor_role, recurso_tipo, recurso_id, acao, status, detalhe)
-          SELECT ${sqlText(context.tenant_id)}::uuid, ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"}, ${sqlText(role)}, 'agent_assistant', (SELECT id FROM event), 'agent_prompt_answered', 'ok', ${sqlText(`module=${moduleName};engine=${providerAudit.engine};provider=${providerAudit.provider || "none"};model=${providerAudit.model || "none"};fallback=${providerAudit.fallback}`)}
+          SELECT ${sqlText(context.tenant_id)}::uuid, ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"}, ${sqlText(role)}, 'agent_assistant', (SELECT id FROM event), 'agent_prompt_answered', 'ok', ${sqlText(`module=${moduleName};engine=${providerAudit.engine};provider=${providerAudit.provider || "none"};model=${providerAudit.model || "none"};route=${providerAudit.gateway_route || "none"};fallback=${providerAudit.fallback}`)}
           FROM scope
         ) SELECT id::text FROM event;
       `);
