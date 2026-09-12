@@ -5,7 +5,7 @@ const files = [
   "apps/site/components/FitCoreHeaderActionsClient.tsx",
   "apps/site/app/globals.css",
   "services/api/security/agent-assistant.mjs",
-  "infra/scripts/install-fitcore-hermes-runtime.sh",
+  "infra/scripts/fitcore-api-with-hermes.sh",
   "services/api/security/hermes-provider-client.mjs",
   "infra/sql/018-mvp-32-premium-agents-media.sql",
 ];
@@ -27,8 +27,8 @@ for (const token of ["consentimento_lgpd", "external_provider_allowed", "aiConse
 const studentManagement = readFileSync("services/api/security/student-management.mjs", "utf8");
 check(studentManagement.includes("input.consentimento_lgpd") && studentManagement.includes(", false)"), "MVP-32 deve exigir opt-in explícito para consentimento LGPD do aluno");
 check(client.includes("consentimento_lgpd") && client.includes("não são enviados ao Hermes"), "UI de aluno sem consentimento explícito do processamento Hermes");
-const runtimeInstaller = readFileSync("infra/scripts/install-fitcore-hermes-runtime.sh", "utf8");
-for (const token of ["127.0.0.1:3411/api/internal/hermes/provider", "90000", "HERMES_GATEWAY_INTERNAL_TOKEN"]) check(runtimeInstaller.includes(token), `runtime Hermes sem ${token}`);
+const runtimeWrapper = readFileSync("infra/scripts/fitcore-api-with-hermes.sh", "utf8");
+for (const token of ["127.0.0.1:3411/api/internal/hermes/provider", "90000", "HERMES_GATEWAY_INTERNAL_TOKEN"]) check(runtimeWrapper.includes(token), `runtime Hermes sem ${token}`);
 for (const token of ["lgpd_external_processing_denied", "latency_ms=", "error="]) check(assistant.includes(token), `Assistente sem auditoria/fallback seguro: ${token}`);
 check(gateway.includes('gateway_endpoint_invalid') && gateway.includes('return { url: null'), "Gateway não falha fechado para URL explícita inválida");
 if (failed) process.exit(1);

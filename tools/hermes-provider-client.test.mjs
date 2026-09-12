@@ -21,7 +21,7 @@ test("#32 client envia somente contrato server-side do consumer fitcore", async 
   assert.equal(result.ok, true);
   assert.equal(result.output, "Resposta Hermes");
   assert.equal(result.gateway_route, "primary");
-  assert.equal(client.status().timeout_ms, 120000);
+  assert.equal(client.status().timeout_ms, 90000);
   assert.equal(request.url, baseEnv.FITCORE_HERMES_GATEWAY_URL);
   assert.equal(request.options.headers.authorization, `Bearer ${baseEnv.FITCORE_HERMES_GATEWAY_TOKEN}`);
   assert.deepEqual(JSON.parse(request.options.body), { consumer: "fitcore", tenantKey: "tenant-demo", prompt: "Analise o treino" });
@@ -80,13 +80,13 @@ test("#32 timeout do gateway não vaza exceção", async () => {
   assert.equal(result.error, "gateway_timeout");
 });
 
-test("#32 wrapper deriva orçamento E2E e configura primary+standby sem expor segredos", async () => {
+test("#32 wrapper mantém budget abaixo do proxy e configura primary+standby sem expor segredos", async () => {
   const script = await readFile(new URL("../infra/scripts/fitcore-api-with-hermes.sh", import.meta.url), "utf8");
-  assert.match(script, /PROVIDER_TIMEOUT_MS \* 2 \+ 15000/);
-  assert.match(script, /GATEWAY_TIMEOUT_MS < 120000/);
+  assert.match(script, /FITCORE_GATEWAY_TIMEOUT_MS=90000/);
+  assert.doesNotMatch(script, /120000/);
   assert.match(script, /127\.0\.0\.1:3411\/api\/internal\/hermes\/provider/);
   assert.match(script, /127\.0\.0\.1:3413\/api\/internal\/hermes\/provider/);
-  assert.match(script, /unset HERMES_GATEWAY_INTERNAL_TOKEN HERMES_TOKEN HERMES_PROVIDER_TIMEOUT_MS/);
+  assert.match(script, /unset HERMES_GATEWAY_INTERNAL_TOKEN HERMES_TOKEN/);
 });
 
 test("#32 manager usa Hermes e preserva Evidence-First", async () => {
