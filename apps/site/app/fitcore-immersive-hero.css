@@ -1,0 +1,173 @@
+/* Issue #59 — immersive public hero extension.
+   Keeps the official FitCore artwork and existing product system unchanged. */
+
+.fcx-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.fitcore-energy-canvas {
+  position: absolute;
+  inset: -28px -48px -18px;
+  z-index: 0;
+  width: calc(100% + 96px);
+  height: calc(100% + 46px);
+  pointer-events: none;
+  opacity: .82;
+  filter: saturate(1.12) contrast(1.06);
+}
+
+.fcx-hero::after {
+  content: "";
+  position: absolute;
+  inset: -28px -48px -18px;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(76% 78% at 28% 48%, rgba(5,11,21,.93) 0%, rgba(5,11,21,.80) 34%, rgba(5,11,21,.40) 61%, rgba(5,11,21,.08) 100%),
+    radial-gradient(46% 60% at 83% 43%, rgba(7,16,29,.10) 0%, rgba(7,16,29,.26) 72%, rgba(7,16,29,.46) 100%);
+}
+
+.fcx-hero > .fcx-hero-copy,
+.fcx-hero > .fcx-preview {
+  position: relative;
+  z-index: 3;
+}
+
+.fitcore-energy-ready .fcx-public-nav {
+  animation: fitcore-nav-in 720ms cubic-bezier(.2,0,0,1) 110ms both;
+}
+
+.fitcore-energy-ready .fcx-badge {
+  animation: fitcore-block-in 720ms cubic-bezier(.2,0,0,1) 250ms both;
+}
+
+.fitcore-energy-word {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.fitcore-energy-ready .fitcore-energy-word-title {
+  animation: fitcore-word-title-in 760ms cubic-bezier(.2,0,0,1) calc(390ms + var(--fitcore-word-delay)) both;
+}
+
+.fitcore-energy-ready .fitcore-energy-word-copy {
+  animation: fitcore-word-copy-in 620ms cubic-bezier(.2,0,0,1) calc(910ms + var(--fitcore-word-delay)) both;
+}
+
+.fitcore-energy-ready .fcx-actions {
+  animation: fitcore-block-in 720ms cubic-bezier(.2,0,0,1) 1090ms both;
+}
+
+.fitcore-energy-ready .fcx-checks {
+  animation: fitcore-block-in 720ms cubic-bezier(.2,0,0,1) 1210ms both;
+}
+
+.fitcore-energy-ready .fcx-preview {
+  animation: fitcore-preview-in 960ms cubic-bezier(.2,0,0,1) 650ms both;
+}
+
+.fcx-preview-inner {
+  transition: transform 420ms cubic-bezier(.2,0,0,1), border-color 420ms cubic-bezier(.2,0,0,1), box-shadow 420ms cubic-bezier(.2,0,0,1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fcx-preview:hover .fcx-preview-inner {
+    transform: perspective(1450px) rotateY(-1.2deg) rotateX(.45deg) translateY(-5px);
+    border-color: rgba(119,243,158,.58);
+    box-shadow: 0 34px 110px rgba(0,0,0,.46), 0 0 72px rgba(61,243,109,.12);
+  }
+}
+
+@keyframes fitcore-nav-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fitcore-block-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fitcore-word-title-in {
+  from { opacity: 0; transform: translateY(25px); filter: blur(5px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes fitcore-word-copy-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fitcore-preview-in {
+  from {
+    opacity: 0;
+    transform: perspective(1500px) rotateY(4deg) rotateX(1.7deg) translate3d(36px, 22px, 0) scale(.972);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1500px) rotateY(0) rotateX(0) translate3d(0,0,0) scale(1);
+  }
+}
+
+@media (max-width: 1099px) {
+  .fitcore-energy-canvas,
+  .fcx-hero::after {
+    inset-inline: -28px;
+  }
+
+  .fitcore-energy-canvas {
+    width: calc(100% + 56px);
+    opacity: .68;
+  }
+
+  .fcx-hero::after {
+    background:
+      radial-gradient(86% 54% at 50% 27%, rgba(5,11,21,.94) 0%, rgba(5,11,21,.78) 48%, rgba(5,11,21,.30) 80%, rgba(5,11,21,.08) 100%),
+      linear-gradient(180deg, rgba(5,11,21,.34), rgba(5,11,21,.10));
+  }
+}
+
+@media (max-width: 699px) {
+  .fitcore-energy-canvas {
+    inset: -18px -18px -12px;
+    width: calc(100% + 36px);
+    height: calc(100% + 30px);
+    opacity: .56;
+  }
+
+  .fcx-hero::after {
+    inset: -18px -18px -12px;
+    background: linear-gradient(180deg, rgba(5,11,21,.88) 0%, rgba(5,11,21,.66) 46%, rgba(5,11,21,.22) 100%);
+  }
+
+  .fitcore-energy-ready .fcx-preview {
+    animation-delay: 790ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fitcore-energy-ready .fcx-public-nav,
+  .fitcore-energy-ready .fcx-badge,
+  .fitcore-energy-ready .fitcore-energy-word-title,
+  .fitcore-energy-ready .fitcore-energy-word-copy,
+  .fitcore-energy-ready .fcx-actions,
+  .fitcore-energy-ready .fcx-checks,
+  .fitcore-energy-ready .fcx-preview {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .fcx-preview-inner,
+  .fcx-preview:hover .fcx-preview-inner {
+    transition: none;
+    transform: none;
+  }
+
+  .fitcore-energy-canvas {
+    opacity: .32;
+  }
+}
