@@ -52,6 +52,9 @@ for file in $(find infra/sql -maxdepth 1 -type f -name '[0-9][0-9][0-9]-*.sql' |
   apply_sql "$file"
 done
 
+# MVP-48 migration reapply: must remain idempotent.
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/sql/020-mvp-48-premium-product.sql >/dev/null
+
 export FITCORE_DATABASE_URL="$DATABASE_URL"
 export FITCORE_PERSISTENCE_STORE=postgres
 export FITCORE_ENV=production
@@ -104,15 +107,15 @@ stop_api() {
 start_api
 STAMP="$(date +%s)-$RANDOM"
 SLUG="p0-$STAMP"
-OWNER_LOGIN="owner-$STAMP"
+OWNER_LOGIN="owner-$STAMP@fitcore.test"
 OWNER_SECRET="FitCore#Owner-$RANDOM"
-PROF_LOGIN="prof-$STAMP"
+PROF_LOGIN="prof-$STAMP@fitcore.test"
 PROF_SECRET="FitCore#Prof-$RANDOM"
-ALUNO_LOGIN="aluno-$STAMP"
+ALUNO_LOGIN="aluno-$STAMP@fitcore.test"
 ALUNO_SECRET="FitCore#Aluno-$RANDOM"
 
 curl -fsS -c "$OWNER_JAR" -H 'content-type: application/json' \
-  -d "{\"business_name\":\"Academia P0 $STAMP\",\"business_type\":\"academia\",\"slug\":\"$SLUG\",\"owner_name\":\"Gestor P0\",\"login_identifier\":\"$OWNER_LOGIN\",\"secret\":\"$OWNER_SECRET\"}" \
+  -d "{\"business_name\":\"Academia P0 $STAMP\",\"business_type\":\"academia\",\"slug\":\"$SLUG\",\"owner_name\":\"Gestor P0 Completo\",\"owner_email\":\"$OWNER_LOGIN\",\"owner_phone\":\"22999998888\",\"city\":\"Saquarema\",\"state\":\"RJ\",\"accept_terms\":true,\"accept_privacy\":true,\"secret\":\"$OWNER_SECRET\",\"confirm_secret\":\"$OWNER_SECRET\"}" \
   "$BASE/api/mvp-21/onboarding" > "/tmp/${NAME}-onboarding.json"
 python3 - <<PY
 import json
@@ -126,10 +129,10 @@ print('OK cadastro cria somente tenant + gestor real, sem equipe fictícia')
 PY
 
 curl -fsS -b "$OWNER_JAR" -H 'content-type: application/json' \
-  -d "{\"nome\":\"Professor P0\",\"papel\":\"professor\",\"login_identifier\":\"$PROF_LOGIN\",\"secret\":\"$PROF_SECRET\"}" \
+  -d "{\"nome\":\"Professor P0\",\"papel\":\"professor\",\"email\":\"$PROF_LOGIN\",\"telefone\":\"22999997777\",\"secret\":\"$PROF_SECRET\"}" \
   "$BASE/api/mvp-22/users" > "/tmp/${NAME}-prof.json"
 curl -fsS -b "$OWNER_JAR" -H 'content-type: application/json' \
-  -d "{\"nome\":\"Aluno P0\",\"papel\":\"aluno\",\"login_identifier\":\"$ALUNO_LOGIN\",\"secret\":\"$ALUNO_SECRET\"}" \
+  -d "{\"nome\":\"Aluno P0\",\"papel\":\"aluno\",\"email\":\"$ALUNO_LOGIN\",\"telefone\":\"22999996666\",\"secret\":\"$ALUNO_SECRET\"}" \
   "$BASE/api/mvp-22/users" > "/tmp/${NAME}-aluno.json"
 PROF_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-prof.json'))['user']['id'])")"
 ALUNO_USER_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-aluno.json'))['user']['id'])")"
@@ -147,12 +150,12 @@ print('OK aluno operacional vinculado ao usuário e professor reais')
 PY
 
 curl -fsS -c "$PROF_JAR" -H 'content-type: application/json' \
-  -d "{\"tenant_slug\":\"$SLUG\",\"login_identifier\":\"$PROF_LOGIN\",\"secret\":\"$PROF_SECRET\"}" \
+  -d "{\"login_identifier\":\"$PROF_LOGIN\",\"secret\":\"$PROF_SECRET\"}" \
   "$BASE/api/mvp-19/login" > "/tmp/${NAME}-prof-login.json"
 curl -fsS -b "$PROF_JAR" "$BASE/api/mvp-15/session" | grep -q '"actor_role": "professor"'
 
 curl -fsS -c "$ALUNO_JAR" -H 'content-type: application/json' \
-  -d "{\"tenant_slug\":\"$SLUG\",\"login_identifier\":\"$ALUNO_LOGIN\",\"secret\":\"$ALUNO_SECRET\"}" \
+  -d "{\"login_identifier\":\"$ALUNO_LOGIN\",\"secret\":\"$ALUNO_SECRET\"}" \
   "$BASE/api/mvp-19/login" > "/tmp/${NAME}-aluno-login.json"
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/mvp-15/session" | grep -q '"actor_role": "aluno"'
 

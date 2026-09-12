@@ -13,6 +13,7 @@ const paths = {
   mobileIcon: "apps/mobile/assets/branding/fitcore-app-icon.png",
   mobileForeground: "apps/mobile/assets/branding/fitcore-adaptive-foreground.png",
   mobileSplash: "apps/mobile/assets/branding/fitcore-splash.png",
+  premiumCss: "apps/site/app/mvp-48-premium-product.css",
 };
 for (const [name, file] of Object.entries(paths)) if (!existsSync(file)) throw new Error(`Official brand asset missing: ${name} -> ${file}`);
 const read = (file) => readFileSync(file, "utf8");
@@ -32,9 +33,11 @@ const component = read(paths.component);
 const exact = read(paths.exact);
 const docs = read(paths.docs);
 const agents = read(paths.agents);
+const premiumCss = read(paths.premiumCss);
 if (!component.includes('/brand/fitcore-pro-official.png') || !component.includes('/brand/fitcore-pro-symbol.png')) throw new Error("Canonical artwork is not wired into the brand component.");
 if (!exact.includes('FitCoreBrandLockup') || exact.includes('fitcore-wordmark')) throw new Error("Public/dashboard brand is reconstructing the approved lockup instead of using it directly.");
 if (component.includes('fitcore-symbol-ring') || component.includes('fitcore-symbol-f')) throw new Error("Legacy reconstructed symbol returned.");
 if (!docs.includes(expected.primary) || !docs.includes('Não redesenhar')) throw new Error("Exact artwork rule/hash missing from brand docs.");
 if (!agents.includes('do not redraw or reconstruct it')) throw new Error("Agent exact-artwork invariant missing.");
+if (!premiumCss.includes(".fitcore-lockup") || !premiumCss.includes("background: transparent !important") || !premiumCss.includes("box-shadow: none !important")) throw new Error("Public brand must use the transparent canonical lockup without a white box.");
 console.log("OK: exact owner-approved FitCore Pro artwork invariant validated.");

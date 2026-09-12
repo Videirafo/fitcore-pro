@@ -27,6 +27,16 @@ function displayClean(value, fallback = "", max = 240) {
   return text || fallback;
 }
 
+function normalizeEmail(value) {
+  const email = String(value || "").trim().toLowerCase().slice(0, 180);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? email : "";
+}
+
+function normalizePhone(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 15);
+  return digits.length >= 10 ? digits : "";
+}
+
 function sqlText(value) {
   return `'${String(value ?? "").replace(/'/g, "''")}'`;
 }
@@ -115,6 +125,8 @@ function publicUser(user) {
     papel: user.papel,
     ativo: user.ativo !== false,
     login_identifier: user.login_identifier || null,
+    email: user.email || null,
+    telefone: user.telefone || null,
     credential_set: Boolean(user.credential_set_at || user.credential_hash),
     credential_kind: user.credential_kind || null,
     last_login_at: user.last_login_at || null,
@@ -223,6 +235,8 @@ export function createTenantUserManagement(env = process.env, sessionManager) {
             'papel', u.papel,
             'ativo', u.ativo,
             'login_identifier', u.login_identifier,
+            'email', u.email,
+            'telefone', u.telefone,
             'credential_kind', u.credential_kind,
             'credential_set_at', u.credential_set_at,
             'last_login_at', u.last_login_at,
@@ -265,21 +279,28 @@ export function createTenantUserManagement(env = process.env, sessionManager) {
     const role = normalizeRole(input.papel || input.role || "professor");
     if (!USER_ROLES.has(role)) return { guard: { allowed: false, statusCode: 400, response: { erro: "papel_invalido", mensagem: "Use professor ou aluno." } } };
     const nome = displayClean(input.nome || input.name || `${role} do tenant`, `${role} do tenant`, 120);
-    const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
+    const email = normalizeEmail(input.email || input.login_identifier || input.identificador || "");
+    const telefone = normalizePhone(input.telefone || input.whatsapp || "");
+    const loginIdentifier = email || clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
     const credentialHash = hashSecret(input.secret || input.senha || input.codigo_acesso || "");
     const credentialKind = clean(input.credential_kind || (credentialHash ? "password" : "password"), "password", 40) === "access_code" ? "access_code" : "password";
     if (loginIdentifier && loginIdentifier.length < 4) return { guard: { allowed: false, statusCode: 400, response: { erro: "identificador_invalido" } } };
+    if ((input.email || String(input.login_identifier || "").includes("@")) && !email) return { guard: { allowed: false, statusCode: 400, response: { erro: "email_invalido", mensagem: "Informe um e-mail válido para o usuário." } } };
+    if (email) {
+      const duplicate = scalar(env, `WITH ${tenantScope(context)} SELECT 1 FROM fitcore_users, scope WHERE tenant_id = ${sqlText(context.tenant_id)}::uuid AND lower(email) = ${sqlText(email)} AND ativo = true LIMIT 1;`);
+      if (duplicate) return { guard: { allowed: false, statusCode: 409, response: { erro: "email_em_uso", mensagem: "Já existe um usuário ativo com este e-mail nesta unidade." } } };
+    }
 
     const externalId = clean(input.externo_id || `mvp22-${role}-${Date.now()}-${randomBytes(3).toString("hex")}`, "", 140);
     const raw = scalar(env, `
       WITH ${tenantScope(context)}, upsert_user AS (
-        INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, login_identifier, credential_kind, credential_hash, credential_set_at, atualizado_em)
-        SELECT ${sqlText(context.tenant_id)}::uuid, ${sqlText(nome)}, ${sqlText(role)}, ${sqlText(externalId)}, true, ${loginIdentifier ? sqlText(loginIdentifier) : "NULL"}, ${sqlText(credentialKind)}, ${credentialHash ? sqlText(credentialHash) : "NULL"}, ${credentialHash ? "now()" : "NULL"}, now()
+        INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, login_identifier, email, telefone, credential_kind, credential_hash, credential_set_at, atualizado_em)
+        SELECT ${sqlText(context.tenant_id)}::uuid, ${sqlText(nome)}, ${sqlText(role)}, ${sqlText(externalId)}, true, ${loginIdentifier ? sqlText(loginIdentifier) : "NULL"}, ${email ? sqlText(email) : "NULL"}, ${telefone ? sqlText(telefone) : "NULL"}, ${sqlText(credentialKind)}, ${credentialHash ? sqlText(credentialHash) : "NULL"}, ${credentialHash ? "now()" : "NULL"}, now()
         FROM scope
-        ON CONFLICT (tenant_id, externo_id) DO UPDATE SET nome = EXCLUDED.nome, papel = EXCLUDED.papel, ativo = true, login_identifier = COALESCE(EXCLUDED.login_identifier, fitcore_users.login_identifier), credential_hash = COALESCE(EXCLUDED.credential_hash, fitcore_users.credential_hash), credential_set_at = COALESCE(EXCLUDED.credential_set_at, fitcore_users.credential_set_at), atualizado_em = now()
-        RETURNING id, tenant_id, nome, papel, ativo, login_identifier, credential_kind, credential_set_at, last_login_at, criado_em
+        ON CONFLICT (tenant_id, externo_id) DO UPDATE SET nome = EXCLUDED.nome, papel = EXCLUDED.papel, ativo = true, login_identifier = COALESCE(EXCLUDED.login_identifier, fitcore_users.login_identifier), email = COALESCE(EXCLUDED.email, fitcore_users.email), telefone = COALESCE(EXCLUDED.telefone, fitcore_users.telefone), credential_hash = COALESCE(EXCLUDED.credential_hash, fitcore_users.credential_hash), credential_set_at = COALESCE(EXCLUDED.credential_set_at, fitcore_users.credential_set_at), atualizado_em = now()
+        RETURNING id, tenant_id, nome, papel, ativo, login_identifier, email, telefone, credential_kind, credential_set_at, last_login_at, criado_em
       )
-      SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'tenant_slug', ${sqlText(context.tenant_slug || "")}, 'nome', nome, 'papel', papel, 'ativo', ativo, 'login_identifier', login_identifier, 'credential_kind', credential_kind, 'credential_set_at', credential_set_at, 'last_login_at', last_login_at, 'criado_em', criado_em)::text
+      SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'tenant_slug', ${sqlText(context.tenant_slug || "")}, 'nome', nome, 'papel', papel, 'ativo', ativo, 'login_identifier', login_identifier, 'email', email, 'telefone', telefone, 'credential_kind', credential_kind, 'credential_set_at', credential_set_at, 'last_login_at', last_login_at, 'criado_em', criado_em)::text
       FROM upsert_user;
     `);
     const user = jsonScalar(raw);

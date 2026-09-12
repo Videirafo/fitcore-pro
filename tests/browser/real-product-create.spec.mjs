@@ -24,25 +24,44 @@ async function login(page, identifier, secret) {
   await page.goto("/login");
   await page.getByLabel("E-mail ou identificador").fill(identifier);
   await page.getByLabel("Senha ou código").fill(secret);
-  await page.getByLabel("Unidade (opcional)").fill(slug);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
+
+test("marca oficial usa transparência nativa sem caixa branca", async ({ page }) => {
+  await page.goto("/");
+  const lockup = page.locator(".fitcore-lockup").first();
+  await expect(lockup).toBeVisible();
+  await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/fitcore-pro-official.png");
+  const style = await lockup.evaluate((el) => {
+    const css = getComputedStyle(el);
+    return { background: css.backgroundColor, shadow: css.boxShadow, border: css.borderTopWidth };
+  });
+  expect(style.background).toBe("rgba(0, 0, 0, 0)");
+  expect(style.shadow).toBe("none");
+  expect(style.border).toBe("0px");
+});
 
 test("cadastro → gestor → equipe → aluno vinculado → professor prescreve", async ({
   page,
 }) => {
   await page.goto("/cadastro");
   await expect(
-    page.getByRole("heading", { name: "Criar operação fitness" }),
+    page.getByRole("heading", { name: "Crie sua operação FitCore" }),
   ).toBeVisible();
 
   await page.getByLabel("Nome do negócio").fill(`Academia Browser ${slug}`);
-  await page.getByLabel("Slug desejado").fill(slug);
-  await page.getByLabel("Gestor proprietário").fill("Gestor Browser QA");
-  await page.getByLabel("Identificador de login").fill(ownerLogin);
-  await page.getByLabel("Senha ou código").fill(ownerSecret);
-  await page.getByRole("button", { name: "Criar e configurar equipe" }).click();
+  await page.getByLabel("Endereço digital").fill(slug);
+  await page.getByLabel("Cidade", { exact: true }).fill("Saquarema");
+  await page.getByLabel("UF").fill("RJ");
+  await page.getByLabel("Nome completo").fill("Gestor Browser QA");
+  await page.getByLabel("E-mail profissional").fill(ownerLogin);
+  await page.getByLabel("WhatsApp / telefone").fill("22999998888");
+  await page.getByLabel("Crie sua senha").fill(ownerSecret);
+  await page.getByLabel("Confirme a senha").fill(ownerSecret);
+  await page.getByLabel(/Li e aceito os Termos de Uso/).check();
+  await page.getByLabel(/Li e aceito a Política de Privacidade/).check();
+  await page.getByRole("button", { name: "Criar minha operação →" }).click();
   await expect(page).toHaveURL(/\/setup$/);
   await expect(page.getByText("Gestor Browser QA").first()).toBeVisible();
 
@@ -52,8 +71,9 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
     .first()
     .fill("Professor Browser QA");
   await page.getByLabel("Papel").first().selectOption("professor");
-  await page.getByLabel("Identificador", { exact: true }).fill(profLogin);
-  await page.getByLabel("Senha/código").fill(profSecret);
+  await page.getByLabel("E-mail", { exact: true }).fill(profLogin);
+  await page.getByLabel("WhatsApp / telefone").fill("22999997777");
+  await page.getByLabel("Senha", { exact: true }).fill(profSecret);
   await page.getByRole("button", { name: "Criar usuário" }).click();
   await expectSuccess(page, "Criar usuário");
   await expect(page.getByText("Professor Browser QA").first()).toBeVisible();
@@ -63,8 +83,9 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
     .first()
     .fill("Aluno Browser QA");
   await page.getByLabel("Papel").first().selectOption("aluno");
-  await page.getByLabel("Identificador", { exact: true }).fill(alunoLogin);
-  await page.getByLabel("Senha/código").fill(alunoSecret);
+  await page.getByLabel("E-mail", { exact: true }).fill(alunoLogin);
+  await page.getByLabel("WhatsApp / telefone").fill("22999996666");
+  await page.getByLabel("Senha", { exact: true }).fill(alunoSecret);
   await page.getByRole("button", { name: "Criar usuário" }).click();
   await expectSuccess(page, "Criar usuário");
   await expect(page.getByText("Aluno Browser QA").first()).toBeVisible();
