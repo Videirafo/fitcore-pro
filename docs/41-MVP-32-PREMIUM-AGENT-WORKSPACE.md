@@ -62,3 +62,11 @@ Guardrails preservados:
 - token `FITCORE_HERMES_GATEWAY_TOKEN` estritamente server-side.
 
 Gate de contrato e fallback: `npm run mvp32:check`.
+
+### Resiliência primary/standby
+
+Em produção na mesma VPS, o wrapper `infra/scripts/fitcore-api-with-hermes.sh` deriva o orçamento E2E a partir de `HERMES_PROVIDER_TIMEOUT_MS`: duas fases (`plan` + `finalize`) mais 15 s de margem, com piso de 120 s.
+
+O FitCore usa `3411` como primary e `3413` como standby. O standby só é tentado quando há falha de transporte do primary (por exemplo, durante cutover). Respostas HTTP válidas do gateway, inclusive `provider_timeout`, não são repetidas no standby para não duplicar a mesma chamada ao Ollama.
+
+O status do client expõe apenas `endpoint_count`, `failover_enabled` e `timeout_ms`; URLs e tokens não são expostos. A auditoria registra `gateway_route` (`primary` ou `standby`) sem armazenar segredo.
