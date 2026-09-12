@@ -1,6 +1,6 @@
 const DEFAULT_ENDPOINT = "https://marcaia.app/api/internal/hermes/provider";
-const DEFAULT_TIMEOUT_MS = 120_000;
-const MAX_TIMEOUT_MS = 240_000;
+const DEFAULT_TIMEOUT_MS = 90_000;
+const MAX_TIMEOUT_MS = 100_000;
 const MAX_OUTPUT_CHARS = 8_000;
 
 function clean(value, fallback = "", max = 4_000) {
@@ -13,37 +13,44 @@ function boolEnv(value, fallback = false) {
 }
 function boundedTimeout(value) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
-  return Number.isFinite(parsed) ? Math.min(MAX_TIMEOUT_MS, Math.max(2_000, parsed)) : DEFAULT_TIMEOUT_MS;
+  return Number.isFinite(parsed) ? Math.min(MAX_TIMEOUT_MS, Math.max(5_000, parsed)) : DEFAULT_TIMEOUT_MS;
 }
-function safeEndpoint(value) {
+function safeEndpoint(value, { allowDefault = false } = {}) {
+  const raw = clean(value, "", 900);
+  if (!raw) return allowDefault ? { url: DEFAULT_ENDPOINT, error: null } : { url: null, error: "gateway_endpoint_invalid" };
   try {
-    const url = new URL(clean(value, DEFAULT_ENDPOINT, 900));
+    const url = new URL(raw);
     if (url.protocol !== "https:" && !(url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname))) throw new Error("unsafe_protocol");
-    return url.toString();
+    return { url: url.toString(), error: null };
   } catch {
-    return DEFAULT_ENDPOINT;
+    return { url: null, error: "gateway_endpoint_invalid" };
   }
 }
-function endpointList(env) {
-  const raw = clean(env.FITCORE_HERMES_GATEWAY_URLS, "", 2_000);
-  const values = raw ? raw.split(",") : [env.FITCORE_HERMES_GATEWAY_URL || DEFAULT_ENDPOINT];
-  return [...new Set(values.map((value) => safeEndpoint(value)).filter(Boolean))].slice(0, 3);
+function endpointConfig(env) {
+  const rawList = clean(env.FITCORE_HERMES_GATEWAY_URLS, "", 2_000);
+  const explicitSingle = clean(env.FITCORE_HERMES_GATEWAY_URL, "", 900);
+  const values = rawList ? rawList.split(",").map((item) => item.trim()).filter(Boolean) : explicitSingle ? [explicitSingle] : [DEFAULT_ENDPOINT];
+  const parsed = values.map((value) => safeEndpoint(value));
+  if (!parsed.length || parsed.some((item) => !item.url || item.error)) return { endpoints: [], error: "gateway_endpoint_invalid" };
+  return { endpoints: [...new Set(parsed.map((item) => item.url))].slice(0, 3), error: null };
 }
 
 export function createHermesProviderClient(env = process.env, deps = {}) {
   const enabled = boolEnv(env.FITCORE_HERMES_GATEWAY_ENABLED, false);
-  const endpoints = endpointList(env);
+  const config = endpointConfig(env);
+  const endpoints = config.endpoints;
   const token = clean(env.FITCORE_HERMES_GATEWAY_TOKEN, "", 512);
   const timeoutMs = boundedTimeout(env.FITCORE_HERMES_GATEWAY_TIMEOUT_MS);
   const fetchImpl = deps.fetchImpl || globalThis.fetch;
 
   function status() {
-    return { enabled, configured: enabled && token.length >= 32, contract: "hermes-provider-gateway-v1", timeout_ms: timeoutMs, endpoint_count: endpoints.length, failover_enabled: endpoints.length > 1 };
+    return { enabled, configured: enabled && token.length >= 32 && endpoints.length > 0 && !config.error, contract: "hermes-provider-gateway-v1", timeout_ms: timeoutMs, endpoint_count: endpoints.length, failover_enabled: endpoints.length > 1, configuration_error: config.error };
   }
 
   async function generate({ tenantKey, prompt }) {
     if (!enabled) return { ok: false, error: "gateway_disabled" };
     if (token.length < 32) return { ok: false, error: "gateway_auth_not_configured" };
+    if (config.error || !endpoints.length) return { ok: false, error: config.error || "gateway_endpoint_invalid" };
     if (typeof fetchImpl !== "function") return { ok: false, error: "gateway_fetch_unavailable" };
     const safeTenantKey = clean(tenantKey, "", 160);
     const safePrompt = clean(prompt, "", 4_000);

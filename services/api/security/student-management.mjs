@@ -381,6 +381,25 @@ export function createStudentManagement(env = process.env) {
     return { ok: true, mvp: "MVP-23 Student Management", created: true, tenant_slug: context.tenant_slug, student: publicStudent(student), audit };
   }
 
+  function aiConsentForActor(context = {}) {
+    if (!context?.session_signed || !context?.tenant_id || !context?.actor_id) return false;
+    if (normalizeRole(context.actor_role) !== "aluno") return true;
+    try {
+      const result = scalar(env, `
+        ${setTenantSession(context)}
+        WITH ${tenantScope(context)}
+        SELECT COALESCE(bool_and(s.consentimento_lgpd), false)::text
+        FROM fitcore_students s, scope
+        WHERE s.tenant_id = ${sqlText(context.tenant_id)}::uuid
+          AND s.user_id = ${sqlText(context.actor_id)}::uuid
+          AND s.status = 'ativo';
+      `);
+      return result === "t" || result === "true";
+    } catch {
+      return false;
+    }
+  }
+
   function updateStudentStatus(context = {}, id = "", input = {}) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "student_management_disabled" } } };
     const guard = requireStaff(context);
@@ -405,5 +424,5 @@ export function createStudentManagement(env = process.env) {
     return { ok: true, mvp: "MVP-23 Student Management", updated: true, tenant_slug: context.tenant_slug, student: publicStudent(student), audit };
   }
 
-  return { enabled, status, listStudents, getStudent, createStudent, updateStudentStatus };
+  return { enabled, status, listStudents, getStudent, createStudent, updateStudentStatus, aiConsentForActor };
 }

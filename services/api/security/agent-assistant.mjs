@@ -50,14 +50,38 @@ function roleActions(role, module) {
   return ["Entrar na unidade", "Criar negócio", "Conhecer módulos principais"];
 }
 function contextPack(value = {}) {
-  const facts = Array.isArray(value?.facts) ? value.facts.map((item) => clean(item, "", 180)).filter(Boolean).slice(0, 12) : [];
-  const team = Array.isArray(value?.team) ? value.team.map((item) => ({ nome: clean(item?.nome, "", 100), papel: clean(item?.papel, "", 40), status: clean(item?.status, "ativo", 40), last_seen_at: item?.last_seen_at || null })).slice(0, 20) : [];
-  const students = Array.isArray(value?.students) ? value.students.map((item) => ({ nome: clean(item?.nome, "", 100), objetivo: clean(item?.objetivo, "", 120), professor: clean(item?.professor, "", 100), nivel: clean(item?.nivel, "", 40) })).slice(0, 20) : [];
-  const prescriptions = Array.isArray(value?.prescriptions) ? value.prescriptions.map((item) => ({ nome: clean(item?.nome, "", 120), aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40) })).slice(0, 20) : [];
-  const executions = Array.isArray(value?.executions) ? value.executions.map((item) => ({ aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40), esforco: item?.esforco ?? null, concluido_em: item?.concluido_em || null })).slice(0, 20) : [];
-  const evolution = Array.isArray(value?.evolution) ? value.evolution.map((item) => ({ aluno: clean(item?.aluno, "", 100), frequencia: item?.frequencia ?? 0, progresso: item?.progresso ?? 0, esforco: item?.esforco ?? null })).slice(0, 20) : [];
+  const rawStudents = Array.isArray(value?.students) ? value.students.slice(0, 40) : [];
+  const consentedStudents = rawStudents.filter((item) => item?.consentimento_lgpd !== false);
+  const consentedStudentIds = new Set(consentedStudents.map((item) => clean(item?.id || item?.student_id, "", 90)).filter(Boolean));
+  const consentedUserIds = new Set(consentedStudents.map((item) => clean(item?.user_id, "", 90)).filter(Boolean));
+  const hasConsentRegistry = rawStudents.some((item) => clean(item?.id || item?.student_id, "", 90));
+  const studentAllowed = (item) => {
+    const studentId = clean(item?.student_id || item?.id, "", 90);
+    return !hasConsentRegistry || (studentId && consentedStudentIds.has(studentId));
+  };
+  const team = Array.isArray(value?.team)
+    ? value.team.filter((item) => {
+        const role = clean(item?.papel || item?.role, "", 40).toLowerCase();
+        if (role !== "aluno" || !hasConsentRegistry) return true;
+        return consentedUserIds.has(clean(item?.id || item?.user_id, "", 90));
+      }).map((item) => ({ nome: clean(item?.nome, "", 100), papel: clean(item?.papel, "", 40), status: clean(item?.status, "ativo", 40), last_seen_at: item?.last_seen_at || null })).slice(0, 20)
+    : [];
+  const students = consentedStudents.map((item) => ({ nome: clean(item?.nome, "", 100), objetivo: clean(item?.objetivo, "", 120), professor: clean(item?.professor, "", 100), nivel: clean(item?.nivel, "", 40) })).slice(0, 20);
+  const prescriptions = Array.isArray(value?.prescriptions) ? value.prescriptions.filter(studentAllowed).map((item) => ({ nome: clean(item?.nome, "", 120), aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40) })).slice(0, 20) : [];
+  const executions = Array.isArray(value?.executions) ? value.executions.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40), esforco: item?.esforco ?? null, concluido_em: item?.concluido_em || null })).slice(0, 20) : [];
+  const evolution = Array.isArray(value?.evolution) ? value.evolution.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), frequencia: item?.frequencia ?? 0, progresso: item?.progresso ?? 0, esforco: item?.esforco ?? null })).slice(0, 20) : [];
+  const facts = hasConsentRegistry
+    ? [
+        `Equipe disponível para IA: ${team.length}`,
+        `Alunos com consentimento LGPD para IA: ${students.length}`,
+        `Prescrições disponíveis para IA: ${prescriptions.length}`,
+        `Execuções disponíveis para IA: ${executions.length}`,
+        `Evoluções disponíveis para IA: ${evolution.length}`,
+      ]
+    : (Array.isArray(value?.facts) ? value.facts.map((item) => clean(item, "", 180)).filter(Boolean).slice(0, 12) : []);
   return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution };
 }
+
 function summarizeContext(pack) {
   return pack.facts.length ? `Contexto real da unidade: ${pack.facts.join("; ")}.` : "Ainda não há métricas operacionais suficientes nesta unidade para uma análise quantitativa.";
 }
@@ -133,7 +157,10 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
     const actions = roleActions(role, moduleName);
     const operationalContext = contextPack(input.operational_context || {});
     const fallbackReply = buildReply(role, moduleName, prompt, operationalContext);
-    const providerResult = await hermesProvider.generate({ tenantKey: context.tenant_id, prompt: buildGatewayPrompt(role, moduleName, prompt, operationalContext) });
+    const externalProviderAllowed = input.external_provider_allowed !== false;
+    const providerResult = externalProviderAllowed
+      ? await hermesProvider.generate({ tenantKey: context.tenant_id, prompt: buildGatewayPrompt(role, moduleName, prompt, operationalContext) })
+      : { ok: false, error: "lgpd_external_processing_denied", latency_ms: 0 };
     const reply = providerResult.ok ? providerResult.output : fallbackReply;
     const providerAudit = providerResult.ok
       ? { engine: "hermes", contract: providerResult.contract, provider: providerResult.provider, model: providerResult.model, latency_ms: providerResult.latency_ms, gateway_route: providerResult.gateway_route || "primary", fallback: false }
@@ -147,7 +174,7 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
           FROM scope RETURNING id
         ), audit AS (
           INSERT INTO fitcore_audit_events (tenant_id, actor_id, actor_role, recurso_tipo, recurso_id, acao, status, detalhe)
-          SELECT ${sqlText(context.tenant_id)}::uuid, ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"}, ${sqlText(role)}, 'agent_assistant', (SELECT id FROM event), 'agent_prompt_answered', 'ok', ${sqlText(`module=${moduleName};engine=${providerAudit.engine};provider=${providerAudit.provider || "none"};model=${providerAudit.model || "none"};route=${providerAudit.gateway_route || "none"};fallback=${providerAudit.fallback}`)}
+          SELECT ${sqlText(context.tenant_id)}::uuid, ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"}, ${sqlText(role)}, 'agent_assistant', (SELECT id FROM event), 'agent_prompt_answered', 'ok', ${sqlText(`module=${moduleName};engine=${providerAudit.engine};provider=${providerAudit.provider || "none"};model=${providerAudit.model || "none"};route=${providerAudit.gateway_route || "none"};fallback=${providerAudit.fallback};error=${clean(providerAudit.error || "none", "none", 80)};latency_ms=${Number.isFinite(providerAudit.latency_ms) ? Math.max(0, Math.round(providerAudit.latency_ms)) : "na"}`)}
           FROM scope
         ) SELECT id::text FROM event;
       `);

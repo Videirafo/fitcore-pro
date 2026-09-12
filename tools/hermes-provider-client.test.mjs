@@ -120,3 +120,51 @@ test("#32 manager mantém fallback local quando gateway está desligado", async 
   assert.equal(result.provider.fallback, true);
   assert.match(result.reply, /dados atuais da unidade/i);
 });
+
+
+test("#32 URL explícita inválida falha fechado sem redirecionar tenant data", async () => {
+  let called = false;
+  const client = createHermesProviderClient({ ...baseEnv, FITCORE_HERMES_GATEWAY_URL: "ftp://example.invalid/hermes" }, { fetchImpl: async () => { called = true; throw new Error("should_not_call"); } });
+  const result = await client.generate({ tenantKey: "tenant-demo", prompt: "teste" });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "gateway_endpoint_invalid");
+  assert.equal(called, false);
+  assert.equal(client.status().configured, false);
+});
+
+test("#32 contexto Hermes exclui aluno sem consentimento LGPD e dados vinculados", async () => {
+  let gatewayPrompt = "";
+  const manager = createAgentAssistantManager(baseEnv, { fetchImpl: async (_url, options) => {
+    gatewayPrompt = JSON.parse(options.body).prompt;
+    return new Response(JSON.stringify({ ok: true, contract: "hermes-provider-gateway-v1", output: "ok", provider: "ollama-native-local", model: "qwen3:1.7b" }), { status: 200 });
+  }});
+  const result = await manager.ask(
+    { session_signed: true, tenant_id: "11111111-1111-4111-8111-111111111111", actor_role: "gestor" },
+    { prompt: "Analise a unidade", operational_context: {
+      team: [{ id: "u-ok", nome: "Professor", papel: "professor" }, { id: "u-no", nome: "Aluno Negado", papel: "aluno" }],
+      students: [
+        { id: "s-ok", user_id: "u-ok2", nome: "Aluno Consentido", objetivo: "força", consentimento_lgpd: true },
+        { id: "s-no", user_id: "u-no", nome: "Aluno Negado", objetivo: "dado privado", consentimento_lgpd: false },
+      ],
+      prescriptions: [{ student_id: "s-ok", nome: "Treino A", aluno: "Aluno Consentido" }, { student_id: "s-no", nome: "Treino Privado", aluno: "Aluno Negado" }],
+      executions: [{ student_id: "s-no", aluno: "Aluno Negado", status: "concluido" }],
+      evolution: [{ student_id: "s-no", aluno: "Aluno Negado", progresso: 99 }],
+    } },
+  );
+  assert.equal(result.provider.engine, "hermes");
+  assert.match(gatewayPrompt, /Aluno Consentido/);
+  assert.doesNotMatch(gatewayPrompt, /Aluno Negado|dado privado|Treino Privado/);
+});
+
+test("#32 consentimento negado pula Hermes e usa fallback local", async () => {
+  let called = false;
+  const manager = createAgentAssistantManager(baseEnv, { fetchImpl: async () => { called = true; throw new Error("should_not_call"); } });
+  const result = await manager.ask(
+    { session_signed: true, tenant_id: "11111111-1111-4111-8111-111111111111", actor_role: "aluno" },
+    { prompt: "Meu treino", external_provider_allowed: false, operational_context: { facts: ["dado local"] } },
+  );
+  assert.equal(called, false);
+  assert.equal(result.provider.engine, "local-evidence-fallback");
+  assert.equal(result.provider.error, "lgpd_external_processing_denied");
+  assert.equal(result.provider.latency_ms, 0);
+});

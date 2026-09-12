@@ -1593,16 +1593,34 @@ const server = createServer(async (req, res) => {
       const input = await readJsonBody(req);
       const dashboardSnapshot = roleDashboardManager.dashboard(accessContext, new URL("http://fitcore.local/api/mvp-37/dashboard?limit=100"));
       const data = dashboardSnapshot?.data || {};
+      const actorRole = String(accessContext?.actor_role || "").trim().toLowerCase();
+      const externalProviderAllowed = actorRole !== "aluno" || studentManagement.aiConsentForActor(accessContext);
+      const prescriptions = data.prescriptions?.prescriptions || [];
+      const executions = data.executions?.executions || [];
+      const evolutionStudents = Array.isArray(data.evolution?.students)
+        ? data.evolution.students
+        : (data.evolution?.student ? [data.evolution.student] : []);
+      let studentsForAgent = data.students?.students || [];
+      if (actorRole === "aluno") {
+        const ownStudentId = prescriptions[0]?.student_id || executions[0]?.student_id || evolutionStudents[0]?.student_id || null;
+        const ownStudentName = prescriptions[0]?.student_name || executions[0]?.student_name || evolutionStudents[0]?.student_name || "Aluno";
+        studentsForAgent = ownStudentId ? [{
+          id: ownStudentId,
+          user_id: accessContext.actor_id,
+          nome_publico: ownStudentName,
+          consentimento_lgpd: externalProviderAllowed,
+        }] : [];
+      }
       const operationalContext = dashboardSnapshot?.guard ? {} : {
         source: dashboardSnapshot?.agent_context?.source || dashboardSnapshot?.source || "mvp37_consolidated_dashboard",
         facts: dashboardSnapshot?.agent_context?.facts || [],
-        team: (data.team?.users || []).map((item) => ({ nome: item.nome || item.name, papel: item.papel || item.role, status: item.status, last_seen_at: item.last_seen_at || null })),
-        students: (data.students?.students || []).map((item) => ({ nome: item.nome_publico || item.nome, objetivo: item.objetivo, professor: item.professor_nome, nivel: item.nivel })),
-        prescriptions: (data.prescriptions?.prescriptions || []).map((item) => ({ nome: item.nome_treino || item.objetivo, aluno: item.student_name || item.aluno_nome, status: item.status })),
-        executions: (data.executions?.executions || []).map((item) => ({ aluno: item.student_name || item.aluno_nome, status: item.status, esforco: item.percepcao_esforco ?? null, concluido_em: item.concluido_em || null })),
-        evolution: (data.evolution?.students || []).map((item) => ({ aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
+        team: (data.team?.users || []).map((item) => ({ id: item.id, nome: item.nome || item.name, papel: item.papel || item.role, status: item.status, last_seen_at: item.last_seen_at || null })),
+        students: studentsForAgent.map((item) => ({ id: item.id || item.student_id, user_id: item.user_id || item.student_user_id, nome: item.nome_publico || item.student_name || item.nome, objetivo: item.objetivo, professor: item.professor_nome, nivel: item.nivel, consentimento_lgpd: item.consentimento_lgpd !== false })),
+        prescriptions: prescriptions.map((item) => ({ student_id: item.student_id, nome: item.nome_treino || item.objetivo, aluno: item.student_name || item.aluno_nome, status: item.status })),
+        executions: executions.map((item) => ({ student_id: item.student_id, aluno: item.student_name || item.aluno_nome, status: item.status, esforco: item.percepcao_esforco ?? null, concluido_em: item.concluido_em || null })),
+        evolution: evolutionStudents.map((item) => ({ student_id: item.student_id, aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
       };
-      const result = await agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext });
+      const result = await agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext, external_provider_allowed: externalProviderAllowed });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }
