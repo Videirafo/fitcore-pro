@@ -41,6 +41,15 @@ test("marca oficial usa transparência nativa sem caixa branca", async ({ page }
   expect(style.shadow).toBe("none");
   expect(style.border).toBe("0px");
 
+  const publicBrand = page.locator(".fcx-public-nav .fcx-brand-official").first();
+  const publicBrandVisual = await publicBrand.evaluate((el) => {
+    const before = getComputedStyle(el, "::before");
+    const header = getComputedStyle(el.closest(".fcx-public-nav"));
+    return { halo: before.backgroundImage, header: header.backgroundImage };
+  });
+  expect(publicBrandVisual.halo).toContain("radial-gradient");
+  expect(publicBrandVisual.header).toContain("linear-gradient");
+
   await page.goto("/cadastro");
   const wrapper = page.locator(".brand-official-transparent").first();
   await expect(wrapper).toBeVisible();
