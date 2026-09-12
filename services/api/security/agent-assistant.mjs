@@ -48,25 +48,48 @@ function roleActions(role, module) {
   if (role === "aluno") return ["Ver treino do dia", "Entender como executar cada exercício", "Registrar esforço e duração", "Acompanhar evolução pessoal"];
   return ["Entrar na unidade", "Criar negócio", "Conhecer módulos principais"];
 }
-function buildReply(role, module, prompt) {
+function contextPack(value = {}) {
+  const facts = Array.isArray(value?.facts) ? value.facts.map((item) => clean(item, "", 180)).filter(Boolean).slice(0, 12) : [];
+  const team = Array.isArray(value?.team) ? value.team.map((item) => ({ nome: clean(item?.nome, "", 100), papel: clean(item?.papel, "", 40), status: clean(item?.status, "ativo", 40), last_seen_at: item?.last_seen_at || null })).slice(0, 20) : [];
+  const students = Array.isArray(value?.students) ? value.students.map((item) => ({ nome: clean(item?.nome, "", 100), objetivo: clean(item?.objetivo, "", 120), professor: clean(item?.professor, "", 100), nivel: clean(item?.nivel, "", 40) })).slice(0, 20) : [];
+  const prescriptions = Array.isArray(value?.prescriptions) ? value.prescriptions.map((item) => ({ nome: clean(item?.nome, "", 120), aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40) })).slice(0, 20) : [];
+  const executions = Array.isArray(value?.executions) ? value.executions.map((item) => ({ aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40), esforco: item?.esforco ?? null, concluido_em: item?.concluido_em || null })).slice(0, 20) : [];
+  const evolution = Array.isArray(value?.evolution) ? value.evolution.map((item) => ({ aluno: clean(item?.aluno, "", 100), frequencia: item?.frequencia ?? 0, progresso: item?.progresso ?? 0, esforco: item?.esforco ?? null })).slice(0, 20) : [];
+  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution };
+}
+function summarizeContext(pack) {
+  return pack.facts.length ? `Contexto real da unidade: ${pack.facts.join("; ")}.` : "Ainda não há métricas operacionais suficientes nesta unidade para uma análise quantitativa.";
+}
+function buildReply(role, module, prompt, operationalContext = {}) {
   const base = prompt.toLowerCase();
+  const pack = contextPack(operationalContext);
+  const summary = summarizeContext(pack);
+  const asksUsers = /quem|equipe|usu[aá]rio|pessoa|membro/.test(base);
+  if (asksUsers && role === "gestor") {
+    if (!pack.team.length) return `Não há membros de equipe disponíveis no contexto atual. ${summary}`;
+    const members = pack.team.map((item) => `${item.nome || "Sem nome"} (${item.papel || "sem papel"}${item.status ? `, ${item.status}` : ""})`).join("; ");
+    return `Membros disponíveis no cadastro desta unidade: ${members}. last_seen_at, quando existir, é apenas último registro de atividade e não significa presença online em tempo real. ${summary}`;
+  }
   if (base.includes("agach") || base.includes("exerc") || module === "execucao") {
-    return role === "aluno"
-      ? "Abra o treino do dia, veja o GIF de cada exercício, execute com amplitude segura, marque como feito e registre esforço e duração ao concluir."
-      : "Use a biblioteca com GIFs para conferir a técnica, ajuste séries/repetições pelo nível do aluno e acompanhe se a execução foi concluída com esforço adequado.";
+    const guidance = role === "aluno"
+      ? "Abra o treino liberado, confira a demonstração disponível, execute com amplitude segura e registre esforço/duração ao concluir."
+      : "Revise o treino e a execução registrada antes de alterar séries, repetições, carga ou descanso.";
+    return `${guidance} ${summary}`;
   }
   if (base.includes("evol") || module === "evolucao") {
-    return "Analise frequência semanal, esforço médio e histórico. Se a frequência cair ou o esforço subir demais, ajuste volume e envie orientação ao aluno.";
+    if (!pack.evolution.length && !pack.executions.length) return `Ainda não há execuções/evolução suficientes para analisar tendência. ${summary}`;
+    return `Use frequência, execuções concluídas e esforço registrado para decidir a próxima ação; não aumente carga automaticamente sem revisão profissional. ${summary}`;
   }
-  if (base.includes("treino") || module === "treinos") {
-    return role === "professor" || role === "gestor"
-      ? "Selecione o aluno, escolha objetivo e frequência, monte exercícios com GIFs de apoio, aprove a prescrição e libere a execução."
-      : "Consulte apenas treinos liberados para você e use o painel de execução para registrar o progresso.";
+  if (base.includes("treino") || module === "treinos" || module === "training") {
+    const guidance = role === "professor" || role === "gestor"
+      ? "Use somente alunos e prescrições presentes no tenant, revise objetivo, frequência e execução recente antes de liberar mudanças."
+      : "Consulte apenas os treinos liberados para sua conta e registre a execução para gerar histórico real.";
+    return `${guidance} ${summary}`;
   }
-  if (base.includes("lgpd") || base.includes("seguran")) {
-    return "Mantenha dados mínimos, acesso por papel, sessão assinada, registro de auditoria por unidade e revogação de credenciais quando necessário.";
-  }
-  return "O FitCore deve operar em fluxo: negócio, equipe, alunos, prescrição, execução, evolução e segurança. A próxima ação recomendada aparece conforme seu papel e dados da unidade.";
+  if (base.includes("lgpd") || base.includes("seguran")) return `Mantenha dados mínimos, acesso por papel, sessão assinada e auditoria por unidade. ${summary}`;
+  if (role === "gestor") return `Priorize os próximos passos a partir dos dados atuais da unidade, sem preencher lacunas com estimativas. ${summary}`;
+  if (role === "professor") return `Revise alunos, prescrições e execuções disponíveis antes de orientar progressão. ${summary}`;
+  return `Use apenas seu treino, suas execuções e sua evolução visíveis nesta sessão. ${summary}`;
 }
 export function createAgentAssistantManager(env = process.env) {
   const enabled = boolEnv(env.FITCORE_AGENT_ASSISTANT_ENABLED, true);
@@ -81,7 +104,8 @@ export function createAgentAssistantManager(env = process.env) {
     const moduleName = clean(input.module || input.area || "dashboard", "dashboard", 80);
     const prompt = clean(input.prompt || input.message || "O que devo fazer agora?", "O que devo fazer agora?", 900);
     const actions = roleActions(role, moduleName);
-    const reply = buildReply(role, moduleName, prompt);
+    const operationalContext = contextPack(input.operational_context || {});
+    const reply = buildReply(role, moduleName, prompt, operationalContext);
     try {
       runSql(env, `
         SELECT set_config('app.tenant_id', ${sqlText(context.tenant_id)}, false);
@@ -96,7 +120,7 @@ export function createAgentAssistantManager(env = process.env) {
         ) SELECT id::text FROM event;
       `);
     } catch {}
-    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, safety: { tenant_scoped: true, lgpd: "dados mínimos e auditoria por unidade" } };
+    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, lgpd: "dados mínimos e auditoria por unidade" } };
   }
   return { enabled, status, ask };
 }

@@ -164,6 +164,27 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
 
   await logout(page);
   await login(page, ownerLogin, ownerSecret);
+
+  await page.goto("/dashboard");
+  const realConsole = page.locator(".role-console37");
+  await expect(realConsole.getByRole("heading", { name: "Dashboard executivo do dono" })).toBeVisible();
+  await expect(realConsole.locator(".console-kpi-grid .metric").filter({ hasText: "Alunos" }).first()).toContainText("1");
+  await expect(realConsole.locator(".console-kpi-grid .metric").filter({ hasText: "Equipe" }).first()).toContainText("3");
+  await expect(realConsole.locator(".console-kpi-grid .metric").filter({ hasText: "Treinos" }).first()).toContainText("1");
+  await expect(page.getByText("Fernando Lima")).toHaveCount(0);
+  await expect(page.getByText("Academia Movimento")).toHaveCount(0);
+  await expect(page.getByText("Carlos Almeida")).toHaveCount(0);
+
+  await page.goto("/agents");
+  await page.getByPlaceholder("Digite sua pergunta...").fill("Quem está usando o sistema?");
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
+  await expectSuccess(page, "Assistente IA");
+  const agentAnswer = page.locator(".agent-answer").first();
+  await expect(agentAnswer).toContainText("Gestor Browser QA");
+  await expect(agentAnswer).toContainText("Professor Browser QA");
+  await expect(agentAnswer).toContainText("Aluno Browser QA");
+  await expect(agentAnswer).toContainText("não significa presença online em tempo real");
+
   await page.goto("/setup");
   await expect(page.getByText(/Professor/).first()).toBeVisible();
   await expect(page.getByText(/Alunos/).first()).toBeVisible();

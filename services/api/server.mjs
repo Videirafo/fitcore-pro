@@ -1591,7 +1591,18 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-32/agent") {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
       const input = await readJsonBody(req);
-      const result = agentAssistantManager.ask(accessContext, input);
+      const dashboardSnapshot = roleDashboardManager.dashboard(accessContext, new URL("http://fitcore.local/api/mvp-37/dashboard?limit=100"));
+      const data = dashboardSnapshot?.data || {};
+      const operationalContext = dashboardSnapshot?.guard ? {} : {
+        source: dashboardSnapshot?.agent_context?.source || dashboardSnapshot?.source || "mvp37_consolidated_dashboard",
+        facts: dashboardSnapshot?.agent_context?.facts || [],
+        team: (data.team?.users || []).map((item) => ({ nome: item.nome || item.name, papel: item.papel || item.role, status: item.status, last_seen_at: item.last_seen_at || null })),
+        students: (data.students?.students || []).map((item) => ({ nome: item.nome_publico || item.nome, objetivo: item.objetivo, professor: item.professor_nome, nivel: item.nivel })),
+        prescriptions: (data.prescriptions?.prescriptions || []).map((item) => ({ nome: item.nome_treino || item.objetivo, aluno: item.student_name || item.aluno_nome, status: item.status })),
+        executions: (data.executions?.executions || []).map((item) => ({ aluno: item.student_name || item.aluno_nome, status: item.status, esforco: item.percepcao_esforco ?? null, concluido_em: item.concluido_em || null })),
+        evolution: (data.evolution?.students || []).map((item) => ({ aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
+      };
+      const result = agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }
