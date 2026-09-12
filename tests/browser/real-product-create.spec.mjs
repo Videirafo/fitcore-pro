@@ -41,6 +41,7 @@ test("marca oficial usa transparência nativa sem caixa branca", async ({ page }
   expect(style.shadow).toBe("none");
   expect(style.border).toBe("0px");
 
+  await page.goto("/cadastro");
   const wrapper = page.locator(".brand-official-transparent").first();
   await expect(wrapper).toBeVisible();
   const wrapperStyle = await wrapper.evaluate((el) => {
