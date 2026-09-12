@@ -97,7 +97,8 @@
 
       float ribbonA = smoothstep(0.52, 0.80, n1 * 0.52 + n2 * 0.72);
       float ribbonB = smoothstep(0.64, 0.87, n2 * 0.64 + n3 * 0.54);
-      float filament = smoothstep(0.08, 0.28, abs(n1 - n2)) * smoothstep(0.86, 0.35, abs(n1 - n2));
+      float delta = abs(n1 - n2);
+      float filament = smoothstep(0.08, 0.28, delta) * (1.0 - smoothstep(0.35, 0.86, delta));
       float pulseRadius = 0.11 + uTime * 0.16;
       float burst = uBurst * exp(-pow((radius - pulseRadius) * 6.4, 2.0));
       float ink = clamp(ribbonA * 0.78 + ribbonB * 0.56 + filament * 0.18 + pointerForce * 0.40 + burst * 0.56, 0.0, 1.0);
