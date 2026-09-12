@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT"
 SECRET_FILE="${FITCORE_POSTGRES_SECRET_FILE:-/opt/fitcore-pro/storage/secrets/fitcore-postgres.env}"
 
 if [[ ! -f "$SECRET_FILE" ]]; then
