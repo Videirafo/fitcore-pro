@@ -117,11 +117,11 @@ curl -fsS "$FITCORE_BROWSER_BASE_URL/cadastro" >/dev/null
 
 STAMP="$(date +%s)-$RANDOM"
 export FITCORE_E2E_SLUG="browser-$STAMP"
-export FITCORE_E2E_OWNER_LOGIN="owner-$STAMP"
+export FITCORE_E2E_OWNER_LOGIN="owner-$STAMP@fitcore.test"
 export FITCORE_E2E_OWNER_SECRET="FitCoreOwner9-$RANDOM"
-export FITCORE_E2E_PROF_LOGIN="prof-$STAMP"
+export FITCORE_E2E_PROF_LOGIN="prof-$STAMP@fitcore.test"
 export FITCORE_E2E_PROF_SECRET="FitCoreProf9-$RANDOM"
-export FITCORE_E2E_ALUNO_LOGIN="aluno-$STAMP"
+export FITCORE_E2E_ALUNO_LOGIN="aluno-$STAMP@fitcore.test"
 export FITCORE_E2E_ALUNO_SECRET="FitCoreAluno9-$RANDOM"
 
 npx playwright test tests/browser/real-product-create.spec.mjs --config=playwright.config.mjs

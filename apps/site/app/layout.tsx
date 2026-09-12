@@ -7,6 +7,7 @@ import "./exact-preview.css";
 import "./mvp-43-visual-fix.css";
 import "./mvp-44-precision-layout.css";
 import "./mvp-45-mobile-brand.css";
+import "./mvp-48-premium-product.css";
 
 export const metadata: Metadata = {
   title: "FitCore Pro | Gestão fitness",

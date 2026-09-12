@@ -27,6 +27,25 @@ function displayClean(value, fallback = "", max = 240) {
   return text || fallback;
 }
 
+function normalizeEmail(value) {
+  const email = String(value || "").trim().toLowerCase().slice(0, 180);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? email : "";
+}
+
+function normalizePhone(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 15);
+  return digits.length >= 10 ? digits : "";
+}
+
+function normalizeState(value) {
+  const state = String(value || "").trim().toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+  return state.length === 2 ? state : "";
+}
+
+function boolInput(value) {
+  return [true, 1, "1", "true", "on", "sim", "yes"].includes(value);
+}
+
 function sqlText(value) {
   return `'${String(value ?? "").replace(/'/g, "''")}'`;
 }
@@ -83,8 +102,8 @@ function sha256(value) {
 
 function hashSecret(secret) {
   const value = String(secret || "").trim();
-  if (value.length < 8) {
-    const error = new Error("A senha/código do gestor precisa ter pelo menos 8 caracteres.");
+  if (value.length < 10 || !/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/[0-9]/.test(value)) {
+    const error = new Error("Crie uma senha com pelo menos 10 caracteres, incluindo maiúscula, minúscula e número.");
     error.statusCode = 400;
     throw error;
   }
@@ -116,6 +135,11 @@ function publicTenant(row) {
     onboarding_status: row.onboarding_status,
     plano: row.plano,
     owner_user_id: row.owner_user_id,
+    email_contato: row.email_contato || null,
+    telefone_contato: row.telefone_contato || null,
+    cidade: row.cidade || null,
+    estado: row.estado || null,
+    timezone: row.timezone || "America/Sao_Paulo",
     criado_em: row.criado_em,
   };
 }
@@ -158,6 +182,11 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
         'onboarding_status', t.onboarding_status,
         'plano', t.plano,
         'owner_user_id', t.owner_user_id,
+        'email_contato', t.email_contato,
+        'telefone_contato', t.telefone_contato,
+        'cidade', t.cidade,
+        'estado', t.estado,
+        'timezone', t.timezone,
         'criado_em', t.criado_em,
         'users', (SELECT count(*) FROM fitcore_users u WHERE u.tenant_id = t.id),
         'students', (SELECT count(*) FROM fitcore_students s WHERE s.tenant_id = t.id),
@@ -175,9 +204,16 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "tenant_onboarding_disabled" } } };
     const businessName = displayClean(input.business_name || input.nome_negocio || input.nome || "", "", 120);
     const businessType = clean(input.business_type || input.tipo_negocio || "academia", "academia", 40).toLowerCase();
-    const ownerName = displayClean(input.owner_name || input.gestor_nome || "Gestor proprietário", "Gestor proprietário", 120);
-    const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
+    const ownerName = displayClean(input.owner_name || input.gestor_nome || "", "", 120);
+    const ownerEmail = normalizeEmail(input.owner_email || input.email || input.login_identifier || input.identificador || "");
+    const ownerPhone = normalizePhone(input.owner_phone || input.telefone || input.whatsapp || "");
+    const loginIdentifier = ownerEmail || clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
+    const city = displayClean(input.city || input.cidade || "", "", 100);
+    const state = normalizeState(input.state || input.estado || "");
+    const acceptedTerms = boolInput(input.accept_terms ?? input.aceito_termos);
+    const acceptedPrivacy = boolInput(input.accept_privacy ?? input.aceito_privacidade);
     const secret = String(input.secret || input.senha || input.codigo_acesso || "");
+    const secretConfirmation = String(input.confirm_secret || input.confirmar_senha || "");
     const professorName = displayClean(input.professor_nome || input.first_professor_name || "", "", 120);
     const studentName = displayClean(input.aluno_nome || input.first_student_name || "", "", 120);
 
@@ -187,8 +223,26 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
     if (!BUSINESS_TYPES.has(businessType)) {
       return { guard: { allowed: false, statusCode: 400, response: { erro: "tipo_negocio_invalido", permitidos: [...BUSINESS_TYPES] } } };
     }
+    if (ownerName.length < 3) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "nome_gestor_invalido", mensagem: "Informe o nome completo do responsável." } } };
+    }
+    if (!ownerEmail) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "email_invalido", mensagem: "Informe um e-mail válido para o acesso do gestor." } } };
+    }
+    if (!ownerPhone) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "telefone_invalido", mensagem: "Informe um WhatsApp/telefone com DDD." } } };
+    }
+    if (!acceptedTerms || !acceptedPrivacy) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "consentimento_obrigatorio", mensagem: "Aceite os Termos de Uso e a Política de Privacidade para continuar." } } };
+    }
+    if (secretConfirmation && secretConfirmation !== secret) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "senhas_nao_conferem", mensagem: "A confirmação da senha não confere." } } };
+    }
+    if ((input.state || input.estado) && !state) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "estado_invalido", mensagem: "Informe a UF com 2 letras." } } };
+    }
     if (loginIdentifier.length < 4) {
-      return { guard: { allowed: false, statusCode: 400, response: { erro: "identificador_invalido", mensagem: "Informe identificador do gestor com pelo menos 4 caracteres." } } };
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "identificador_invalido", mensagem: "Informe um e-mail válido para o gestor." } } };
     }
 
     const slug = uniqueSlug(env, input.slug || businessName);
@@ -201,16 +255,16 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
 
     const raw = scalar(env, `
       WITH tenant_created AS (
-        INSERT INTO fitcore_tenants (slug, nome, status, tipo_negocio, internal_domain, onboarding_status, plano, origem, atualizado_em)
-        VALUES (${sqlText(slug)}, ${sqlText(businessName)}, 'ativo', ${sqlText(businessType)}, ${sqlText(internalDomain)}, 'ativo', 'trial', 'mvp21_onboarding', now())
-        RETURNING id, slug, nome, status, tipo_negocio, internal_domain, onboarding_status, plano, criado_em
+        INSERT INTO fitcore_tenants (slug, nome, status, tipo_negocio, internal_domain, onboarding_status, plano, origem, email_contato, telefone_contato, cidade, estado, timezone, atualizado_em)
+        VALUES (${sqlText(slug)}, ${sqlText(businessName)}, 'ativo', ${sqlText(businessType)}, ${sqlText(internalDomain)}, 'ativo', 'trial', 'mvp21_onboarding', ${sqlText(ownerEmail)}, ${sqlText(ownerPhone)}, ${city ? sqlText(city) : "NULL"}, ${state ? sqlText(state) : "NULL"}, 'America/Sao_Paulo', now())
+        RETURNING id, slug, nome, status, tipo_negocio, internal_domain, onboarding_status, plano, email_contato, telefone_contato, cidade, estado, timezone, criado_em
       ), scope AS (
         SELECT set_config('app.tenant_id', (SELECT id::text FROM tenant_created), true)
       ), owner_created AS (
-        INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, login_identifier, credential_kind, credential_hash, credential_set_at, atualizado_em)
-        SELECT id, ${sqlText(ownerName)}, 'gestor', ${sqlText(`mvp21-owner-${slug}`)}, true, ${sqlText(loginIdentifier)}, 'password', ${sqlText(ownerCredentialHash)}, now(), now()
+        INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, login_identifier, email, telefone, credential_kind, credential_hash, credential_set_at, aceitou_termos_em, aceitou_privacidade_em, perfil_completo_em, atualizado_em)
+        SELECT id, ${sqlText(ownerName)}, 'gestor', ${sqlText(`mvp21-owner-${slug}`)}, true, ${sqlText(loginIdentifier)}, ${sqlText(ownerEmail)}, ${sqlText(ownerPhone)}, 'password', ${sqlText(ownerCredentialHash)}, now(), now(), now(), now(), now()
         FROM tenant_created, scope
-        RETURNING id, tenant_id, nome, papel, login_identifier
+        RETURNING id, tenant_id, nome, papel, login_identifier, email, telefone
       ), professor_created AS (
         INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, atualizado_em)
         SELECT id, ${sqlText(professorName)}, 'professor', ${sqlText(`mvp21-professor-${slug}`)}, true, now()
@@ -259,8 +313,8 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
         FROM tenant_created, owner_created, scope
       )
       SELECT jsonb_build_object(
-        'tenant', (SELECT jsonb_build_object('id', id, 'slug', slug, 'nome', nome, 'status', status, 'tipo_negocio', tipo_negocio, 'internal_domain', internal_domain, 'onboarding_status', onboarding_status, 'plano', plano, 'owner_user_id', (SELECT id FROM owner_created), 'criado_em', criado_em) FROM tenant_created),
-        'owner', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'tenant_slug', ${sqlText(slug)}, 'nome', nome, 'papel', papel, 'login_identifier', login_identifier) FROM owner_created),
+        'tenant', (SELECT jsonb_build_object('id', id, 'slug', slug, 'nome', nome, 'status', status, 'tipo_negocio', tipo_negocio, 'internal_domain', internal_domain, 'onboarding_status', onboarding_status, 'plano', plano, 'email_contato', email_contato, 'telefone_contato', telefone_contato, 'cidade', cidade, 'estado', estado, 'timezone', timezone, 'owner_user_id', (SELECT id FROM owner_created), 'criado_em', criado_em) FROM tenant_created),
+        'owner', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'tenant_slug', ${sqlText(slug)}, 'nome', nome, 'papel', papel, 'login_identifier', login_identifier, 'email', email, 'telefone', telefone) FROM owner_created),
         'first_professor', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'nome', nome, 'papel', papel) FROM professor_created),
         'first_student_user', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'nome', nome, 'papel', papel) FROM aluno_user_created),
         'first_student', (SELECT jsonb_build_object('id', id, 'tenant_id', tenant_id, 'user_id', user_id, 'professor_id', professor_id, 'nome_publico', nome_publico) FROM student_created)
@@ -276,11 +330,11 @@ export function createTenantOnboardingManager(env = process.env, sessionManager)
       onboarding_completed: true,
       demo_is_no_longer_only_flow: true,
       tenant: created.tenant,
-      owner: { id: owner.id, nome: owner.nome, papel: owner.papel, login_identifier: owner.login_identifier, credential_set: true },
+      owner: { id: owner.id, nome: owner.nome, papel: owner.papel, login_identifier: owner.login_identifier, email: owner.email, telefone: owner.telefone, credential_set: true },
       first_professor: created.first_professor,
       first_student_user: created.first_student_user,
       first_student: created.first_student,
-      login: { tenant_slug: slug, login_identifier: owner.login_identifier, url: `${publicUrl}/login?tenant_slug=${encodeURIComponent(slug)}` },
+      login: { tenant_slug: slug, login_identifier: owner.login_identifier, email: owner.email, url: `${publicUrl}/login?tenant_slug=${encodeURIComponent(slug)}` },
       session: session.session,
       cookie: session.cookie,
     };

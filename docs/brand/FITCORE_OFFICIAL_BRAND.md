@@ -24,3 +24,7 @@ SHA-256 do lockup canônico do site: `614a083538f1d0259f8c16eae7d3c91e12e36f8cf1
 A paleta funcional da interface pode evoluir separadamente. O logo não deve acompanhar automaticamente mudanças de tema ou cores do produto.
 
 Toda alteração intencional de branding exige aprovação explícita do owner e deve atualizar o gate `brand:check`, passando por Issue → PR → CI → deploy por SHA.
+
+## Superfície de uso
+
+O lockup deve aparecer sobre a interface com **fundo transparente**, usando a transparência nativa do PNG. Não envolver o artwork em caixa branca, badge, borda, radius ou sombra. A interface pode ter seu próprio fundo; o logo permanece sem container visual.

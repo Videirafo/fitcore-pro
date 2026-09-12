@@ -131,6 +131,8 @@ function safeUser(user) {
     nome: user.nome,
     papel: user.papel,
     login_identifier: user.login_identifier,
+    email: user.email || null,
+    telefone: user.telefone || null,
     credential_kind: user.credential_kind,
     credential_set: Boolean(user.credential_set_at || user.credential_hash),
     credential_set_at: user.credential_set_at || null,
@@ -176,6 +178,8 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
         'nome', nome,
         'papel', papel,
         'login_identifier', login_identifier,
+        'email', email,
+        'telefone', telefone,
         'credential_kind', credential_kind,
         'credential_set_at', credential_set_at,
         'credential_revoked_at', credential_revoked_at,
@@ -216,6 +220,22 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     return { ok: true, mvp: "MVP-19 Credential Login", credential_set: true, user: safeUser(user), audit: { persisted: true } };
   }
 
+  function resolveTenantByUniqueEmail(loginIdentifier) {
+    const identifier = clean(loginIdentifier, "", 180).toLowerCase();
+    if (!identifier.includes("@")) return { matches: [], tenant_slug: null };
+    const raw = runSql(env, `
+      SELECT COALESCE(jsonb_agg(jsonb_build_object('tenant_slug', t.slug, 'user_id', u.id) ORDER BY t.slug), '[]'::jsonb)::text
+      FROM fitcore_users u
+      JOIN fitcore_tenants t ON t.id = u.tenant_id
+      WHERE lower(COALESCE(u.email, u.login_identifier)) = ${sqlText(identifier)}
+        AND u.ativo = true
+        AND u.credential_hash IS NOT NULL
+        AND u.credential_revoked_at IS NULL;
+    `);
+    const matches = jsonScalar(raw) || [];
+    return { matches, tenant_slug: matches.length === 1 ? matches[0].tenant_slug : null };
+  }
+
   function findCredentialUser(loginIdentifier, candidateTenantSlug = tenantSlug) {
     const identifier = clean(loginIdentifier, "", 120).toLowerCase();
     const lookupTenantSlug = clean(candidateTenantSlug || tenantSlug, tenantSlug, 80);
@@ -228,6 +248,8 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
         'nome', u.nome,
         'papel', u.papel,
         'login_identifier', u.login_identifier,
+        'email', u.email,
+        'telefone', u.telefone,
         'credential_kind', u.credential_kind,
         'credential_hash', u.credential_hash,
         'credential_set_at', u.credential_set_at,
@@ -245,9 +267,17 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
 
   function credentialLogin(input = {}) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "credential_login_disabled", mensagem: "MVP-19 não está ativo." } } };
-    const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 120).toLowerCase();
+    const loginIdentifier = clean(input.login_identifier || input.identificador || "", "", 180).toLowerCase();
     const secret = input.secret || input.senha || input.codigo_acesso || input.access_code || "";
-    const lookupTenantSlug = clean(input.tenant_slug || input.tenant || tenantSlug, tenantSlug, 80);
+    const requestedTenantSlug = clean(input.tenant_slug || input.tenant || "", "", 80);
+    let lookupTenantSlug = requestedTenantSlug || tenantSlug;
+    if (!requestedTenantSlug && loginIdentifier.includes("@")) {
+      const resolved = resolveTenantByUniqueEmail(loginIdentifier);
+      if (resolved.matches.length > 1) {
+        return { guard: { allowed: false, statusCode: 409, response: { erro: "unidade_obrigatoria", mensagem: "Este e-mail pertence a mais de uma unidade. Informe a unidade para continuar." } } };
+      }
+      if (resolved.tenant_slug) lookupTenantSlug = resolved.tenant_slug;
+    }
     const user = findCredentialUser(loginIdentifier, lookupTenantSlug);
     if (!user || !user.credential_hash || user.credential_revoked_at || !verifySecret(user.credential_hash, secret)) {
       if (user) recordSystemAudit(user, "credential_login_failed", `identifier=${loginIdentifier}`, "erro");

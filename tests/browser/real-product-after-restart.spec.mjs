@@ -8,7 +8,6 @@ async function loginAluno(page) {
   await page.goto("/login");
   await page.getByLabel("E-mail ou identificador").fill(alunoLogin);
   await page.getByLabel("Senha ou código").fill(alunoSecret);
-  await page.getByLabel("Unidade (opcional)").fill(slug);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
