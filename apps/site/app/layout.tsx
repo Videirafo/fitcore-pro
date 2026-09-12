@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
 import "./globals.css";
 import "./premium-stabilization.css";
 import "./professional-visuals.css";
@@ -9,6 +10,7 @@ import "./mvp-44-precision-layout.css";
 import "./mvp-45-mobile-brand.css";
 import "./mvp-48-premium-product.css";
 import "./mvp-54-logo-contrast.css";
+import "./fitcore-immersive-hero.css";
 
 export const metadata: Metadata = {
   title: "FitCore Pro | Gestão fitness",
@@ -23,7 +25,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <Script src="/fitcore-energy.js" strategy="afterInteractive" />
+        {children}
+      </body>
     </html>
   );
 }

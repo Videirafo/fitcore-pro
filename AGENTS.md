@@ -49,6 +49,8 @@ For infrastructure, production, database or deployment changes, preserve backup/
 
 Use `https://github.com/kylezantos/design-motion-principles` as the motion-design reference for creating or auditing web/app interfaces.
 
+Use `docs/design/UI_UX_PRO_MAX_ADOPTION.md` as the canonical FitCore adaptation of `nextlevelbuilder/ui-ux-pro-max-skill` for style selection, Editorial Design, responsive/touch rules, accessibility, charts, typography and the local `/Uiux.build` review workflow. It is design intelligence only and must not replace the official FitCore brand, current tokens/components or product architecture.
+
 Motion must improve comprehension, continuity, feedback or perceived performance. Do not add animation simply for decoration.
 
 Every asynchronous UI must explicitly consider relevant states such as:
