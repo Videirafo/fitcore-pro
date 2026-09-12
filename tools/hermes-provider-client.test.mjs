@@ -8,7 +8,7 @@ const baseEnv = {
   FITCORE_HERMES_GATEWAY_ENABLED: "true",
   FITCORE_HERMES_GATEWAY_URL: "https://marcaia.app/api/internal/hermes/provider",
   FITCORE_HERMES_GATEWAY_TOKEN: "x".repeat(64),
-  FITCORE_HERMES_GATEWAY_TIMEOUT_MS: "120000",
+  FITCORE_HERMES_GATEWAY_TIMEOUT_MS: "90000",
 };
 
 test("#32 client envia somente contrato server-side do consumer fitcore", async () => {
@@ -167,4 +167,45 @@ test("#32 consentimento negado pula Hermes e usa fallback local", async () => {
   assert.equal(result.provider.engine, "local-evidence-fallback");
   assert.equal(result.provider.error, "lgpd_external_processing_denied");
   assert.equal(result.provider.latency_ms, 0);
+});
+
+
+test("#32 timeout Hermes fica abaixo do proxy público de 120s", () => {
+  const client = createHermesProviderClient({ ...baseEnv, FITCORE_HERMES_GATEWAY_TIMEOUT_MS: "999999" });
+  const status = client.status();
+  assert.equal(status.timeout_ms, 100000);
+  assert.ok(status.timeout_ms < 120000);
+});
+
+test("#32 contexto sem registry de consentimento falha fechado para dados de aluno", async () => {
+  let sentPrompt = "";
+  const manager = createAgentAssistantManager(baseEnv, { fetchImpl: async (_url, options) => {
+    sentPrompt = JSON.parse(options.body).prompt;
+    return new Response(JSON.stringify({ ok: true, contract: "hermes-provider-gateway-v1", output: "ok", provider: "ollama-native-local", model: "qwen3:1.7b" }), { status: 200 });
+  }});
+  const result = await manager.ask(
+    { session_signed: true, tenant_id: "11111111-1111-4111-8111-111111111111", actor_role: "gestor" },
+    { prompt: "resuma", operational_context: {
+      team: [{ id: "u-aluno", nome: "Aluno Sem Registry", papel: "aluno" }, { id: "u-prof", nome: "Prof Seguro", papel: "professor" }],
+      prescriptions: [{ student_id: "s1", nome: "Treino Privado", aluno: "Aluno Sem Registry", status: "aprovado" }],
+      executions: [{ student_id: "s1", aluno: "Aluno Sem Registry", status: "concluido" }],
+    } },
+  );
+  assert.equal(result.ok, true);
+  assert.doesNotMatch(sentPrompt, /Aluno Sem Registry|Treino Privado/);
+  assert.match(sentPrompt, /Prof Seguro/);
+});
+
+test("#32 registry completo filtra antes do cap de detalhes", async () => {
+  let sentPrompt = "";
+  const students = Array.from({ length: 55 }, (_, index) => ({ id: `s${index+1}`, user_id: `u${index+1}`, nome: `Aluno ${index+1}`, consentimento_lgpd: true }));
+  const manager = createAgentAssistantManager(baseEnv, { fetchImpl: async (_url, options) => {
+    sentPrompt = JSON.parse(options.body).prompt;
+    return new Response(JSON.stringify({ ok: true, contract: "hermes-provider-gateway-v1", output: "ok", provider: "ollama-native-local", model: "qwen3:1.7b" }), { status: 200 });
+  }});
+  await manager.ask(
+    { session_signed: true, tenant_id: "11111111-1111-4111-8111-111111111111", actor_role: "gestor" },
+    { prompt: "resuma", operational_context: { students, prescriptions: [{ student_id: "s55", nome: "Treino 55", aluno: "Aluno 55", status: "aprovado" }] } },
+  );
+  assert.match(sentPrompt, /Treino 55/);
 });

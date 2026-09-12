@@ -50,27 +50,28 @@ function roleActions(role, module) {
   return ["Entrar na unidade", "Criar negócio", "Conhecer módulos principais"];
 }
 function contextPack(value = {}) {
-  const rawStudents = Array.isArray(value?.students) ? value.students.slice(0, 40) : [];
+  const consentRegistrySupplied = Array.isArray(value?.students);
+  const rawStudents = consentRegistrySupplied ? value.students : [];
   const consentedStudents = rawStudents.filter((item) => item?.consentimento_lgpd !== false);
   const consentedStudentIds = new Set(consentedStudents.map((item) => clean(item?.id || item?.student_id, "", 90)).filter(Boolean));
   const consentedUserIds = new Set(consentedStudents.map((item) => clean(item?.user_id, "", 90)).filter(Boolean));
   const hasConsentRegistry = rawStudents.some((item) => clean(item?.id || item?.student_id, "", 90));
   const studentAllowed = (item) => {
     const studentId = clean(item?.student_id || item?.id, "", 90);
-    return !hasConsentRegistry || (studentId && consentedStudentIds.has(studentId));
+    return Boolean(consentRegistrySupplied && hasConsentRegistry && studentId && consentedStudentIds.has(studentId));
   };
   const team = Array.isArray(value?.team)
     ? value.team.filter((item) => {
         const role = clean(item?.papel || item?.role, "", 40).toLowerCase();
-        if (role !== "aluno" || !hasConsentRegistry) return true;
-        return consentedUserIds.has(clean(item?.id || item?.user_id, "", 90));
+        if (role !== "aluno") return true;
+        return Boolean(consentRegistrySupplied && hasConsentRegistry && consentedUserIds.has(clean(item?.id || item?.user_id, "", 90)));
       }).map((item) => ({ nome: clean(item?.nome, "", 100), papel: clean(item?.papel, "", 40), status: clean(item?.status, "ativo", 40), last_seen_at: item?.last_seen_at || null })).slice(0, 20)
     : [];
-  const students = consentedStudents.map((item) => ({ nome: clean(item?.nome, "", 100), objetivo: clean(item?.objetivo, "", 120), professor: clean(item?.professor, "", 100), nivel: clean(item?.nivel, "", 40) })).slice(0, 20);
+  const students = consentedStudents.slice(0, 20).map((item) => ({ nome: clean(item?.nome, "", 100), objetivo: clean(item?.objetivo, "", 120), professor: clean(item?.professor, "", 100), nivel: clean(item?.nivel, "", 40) })).slice(0, 20);
   const prescriptions = Array.isArray(value?.prescriptions) ? value.prescriptions.filter(studentAllowed).map((item) => ({ nome: clean(item?.nome, "", 120), aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40) })).slice(0, 20) : [];
   const executions = Array.isArray(value?.executions) ? value.executions.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40), esforco: item?.esforco ?? null, concluido_em: item?.concluido_em || null })).slice(0, 20) : [];
   const evolution = Array.isArray(value?.evolution) ? value.evolution.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), frequencia: item?.frequencia ?? 0, progresso: item?.progresso ?? 0, esforco: item?.esforco ?? null })).slice(0, 20) : [];
-  const facts = hasConsentRegistry
+  const facts = consentRegistrySupplied
     ? [
         `Equipe disponível para IA: ${team.length}`,
         `Alunos com consentimento LGPD para IA: ${students.length}`,
