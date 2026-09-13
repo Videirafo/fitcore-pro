@@ -111,7 +111,9 @@
     "e2e:browser:install": "playwright install chromium",
     "mvp48:check": "node tools/check-mvp-48-premium-product.mjs",
     "mvp48:apply": "bash infra/scripts/apply-mvp-48-premium-product.sh",
-    "mvp56:check": "node tools/check-mvp-56-real-postlogin.mjs"
+    "mvp56:check": "node tools/check-mvp-56-real-postlogin.mjs",
+    "deploy:sha": "bash infra/scripts/deploy-fitcore-by-sha.sh",
+    "deploy:sha:check": "node tools/check-canonical-sha-deploy.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
