@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { PasswordStrengthField } from "@/components/ui/password-strength";
 
 type Json = Record<string, any>;
 type Mode = "home" | "login" | "onboarding" | "setup" | "invite" | "team" | "students" | "training" | "execution" | "evolution" | "agents" | "library" | "security" | "audit" | "settings" | "agenda" | "reports" | "finance";
@@ -283,7 +284,7 @@ function OnboardingPanel({ onSubmit, state }: { onSubmit: (event: FormEvent<HTML
         <label>UF<input name="state" maxLength={2} autoComplete="address-level1" placeholder="RJ" /></label>
       </fieldset>
       <fieldset className="signup-section"><legend>Segurança</legend>
-        <label>Crie sua senha<input name="secret" required type="password" minLength={10} autoComplete="new-password" placeholder="10+ caracteres, letras e número" /></label>
+        <PasswordStrengthField name="secret" label="Crie sua senha" minLength={10} placeholder="10+ caracteres, maiúscula, minúscula e número" />
         <label>Confirme a senha<input name="confirm_secret" required type="password" minLength={10} autoComplete="new-password" placeholder="Repita sua senha" /></label>
       </fieldset>
       <div className="signup-consents">
