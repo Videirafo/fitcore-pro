@@ -30,6 +30,7 @@ import { createOpenSourceCapabilityManager } from "./security/open-source-capabi
 import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
 import { createGuidedSetupManager } from "./security/guided-setup.mjs";
 import { createRoleDashboardManager } from "./security/role-dashboard.mjs";
+import { createPlatformOwnerManager } from "./security/platform-owner.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -69,6 +70,7 @@ const openSourceCapabilityManager = createOpenSourceCapabilityManager(process.en
 const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager);
 const guidedSetupManager = createGuidedSetupManager(process.env);
 const roleDashboardManager = createRoleDashboardManager(process.env, { tenantUserManagement, studentManagement, workoutPrescriptionManager, workoutExecutionManager, studentEvolutionManager, agentAssistantManager, guidedSetupManager });
+const platformOwnerManager = createPlatformOwnerManager(process.env, sessionManager);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1201,6 +1203,7 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/mvp-15/session/logout") {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
+      platformOwnerManager.auditLogout(accessContext);
       const result = sessionManager.logout(req);
       return sendJson(res, 200, { ok: true, mvp: "MVP-15 Signed Session RBAC", logout: true }, { "set-cookie": result.cookie });
     }
@@ -1265,6 +1268,21 @@ const server = createServer(async (req, res) => {
       return sendJson(res, 201, { ok: true, mvp: result.mvp, accepted: true, invite: result.invite, user: result.user, session: result.session }, { "set-cookie": result.cookie });
     }
 
+    if (url.pathname === "/api/platform-owner/tenants") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = platformOwnerManager.listTenants(accessContext);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/platform-owner/switch") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = platformOwnerManager.switchTenant(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result, { "set-cookie": result.cookie });
+    }
+
     if (url.pathname === "/api/mvp-19/status") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       return sendJson(res, 200, credentialAuthManager.publicHealth(accessContext));
@@ -1288,9 +1306,14 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-19/login") {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
       const input = await readJsonBody(req);
+      const platformLogin = platformOwnerManager.globalLogin(input);
+      if (platformLogin.matched) {
+        if (platformLogin.guard && !platformLogin.guard.allowed) return sendJson(res, platformLogin.guard.statusCode, platformLogin.guard.response);
+        return sendJson(res, 201, { ok: true, login: true, credential_login: true, platform_owner: true, user: platformLogin.user, session: platformLogin.session }, { "set-cookie": platformLogin.cookie });
+      }
       const result = credentialAuthManager.credentialLogin(input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
-      return sendJson(res, 201, { ok: true, mvp: result.mvp, login: true, credential_login: true, user: result.user, session: result.session }, { "set-cookie": result.cookie });
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, login: true, credential_login: true, platform_owner: false, user: result.user, session: result.session }, { "set-cookie": result.cookie });
     }
 
     if (url.pathname === "/api/mvp-19/credentials/revoke") {
