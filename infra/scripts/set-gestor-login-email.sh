@@ -79,6 +79,13 @@ fi
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
+if [[ "$MODE" == "--apply" && "${CURRENT_LOGIN,,}" == "${EMAIL,,}" ]]; then
+  sync_secret_identifier "$EMAIL"
+  LATEST_BACKUP="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'gestor-login-*.sql' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2- || true)"
+  printf 'apply=PASS already_applied=true credential_hash_preserved=true rollback_file=%s\n' "${LATEST_BACKUP:-none}"
+  exit 0
+fi
+
 if [[ "$MODE" == "--rollback" ]]; then
   [[ -n "$ROLLBACK_FILE" && -f "$ROLLBACK_FILE" ]] || { echo "ERRO: backup SQL obrigatório." >&2; exit 2; }
   BACKUP_REAL="$(realpath "$ROLLBACK_FILE")"
@@ -126,7 +133,11 @@ FROM fitcore_users WHERE id=:'user_id'::uuid;
 COMMIT;
 SQL
 
-AFTER="$(query -v user_id="$USER_ID" -v email="$EMAIL" -c "SELECT concat_ws('|',lower(login_identifier)=lower(:'email'),md5(coalesce(credential_hash,''))) FROM fitcore_users WHERE id=:'user_id'::uuid;")"
+AFTER="$(query -v user_id="$USER_ID" -v email="$EMAIL" <<'SQL'
+SELECT concat_ws('|',lower(login_identifier)=lower(:'email'),md5(coalesce(credential_hash,'')))
+FROM fitcore_users WHERE id=:'user_id'::uuid;
+SQL
+)"
 IFS='|' read -r IDENTIFIER_OK AFTER_HASH <<< "$AFTER"
 [[ "$IDENTIFIER_OK" == "t" && "$AFTER_HASH" == "$BEFORE_HASH" ]] || {
   echo "ERRO: verificação pós-update falhou; use o backup gerado." >&2

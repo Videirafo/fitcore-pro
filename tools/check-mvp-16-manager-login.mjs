@@ -21,5 +21,8 @@ assert.match(script, /credential_hash_preserved=true/);
 assert.match(script, /--rollback/);
 assert.match(script, /CONFLICTS=/);
 assert.match(script, /md5\(coalesce\(credential_hash/);
+assert.match(script, /already_applied=true/);
+assert.match(script, /sync_secret_identifier "\$EMAIL"/);
+assert.doesNotMatch(script, /-c "SELECT concat_ws\('\|',lower\(login_identifier\)=lower\(:'email'\)/);
 assert.doesNotMatch(script, /credential_hash\s*=/);
 console.log("OK: MVP-16 login canônico, backup e preservação de credencial validados.");
