@@ -1029,7 +1029,11 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     const softAccessContext = createAccessContext(req, process.env);
     const signedAccessContext = sessionManager.resolveAccessContext(req);
-    const accessContext = signedAccessContext || softAccessContext;
+    const baseAccessContext = signedAccessContext || softAccessContext;
+    const productEntitlements = platformOwnerManager.resolveEntitlements(baseAccessContext);
+    const accessContext = productEntitlements
+      ? { ...baseAccessContext, product_entitlements: productEntitlements }
+      : baseAccessContext;
     currentAccessContext = accessContext;
     const hardeningDecision = authHardeningManager.checkRequest(req, url, accessContext);
     if (!hardeningDecision.allowed) return sendJson(res, hardeningDecision.statusCode, hardeningDecision.response);
@@ -1283,6 +1287,41 @@ const server = createServer(async (req, res) => {
       return sendJson(res, 200, result, { "set-cookie": result.cookie });
     }
 
+    if (url.pathname === "/api/platform-owner/invites") {
+      if (req.method === "GET") {
+        const result = platformOwnerManager.listInternalInvites(accessContext);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = platformOwnerManager.createInternalInvite(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      if (req.method === "DELETE") {
+        const input = await readJsonBody(req);
+        const result = platformOwnerManager.revokeInternalAccess(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    if (url.pathname === "/api/platform-owner/invites/inspect") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = platformOwnerManager.inspectInternalInvite(url.searchParams.get("token"));
+      return sendJson(res, result.ok ? 200 : (result.statusCode || 400), result);
+    }
+
+    if (url.pathname === "/api/platform-owner/invites/accept") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = platformOwnerManager.acceptInternalInvite(input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
     if (url.pathname === "/api/mvp-19/status") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       return sendJson(res, 200, credentialAuthManager.publicHealth(accessContext));
@@ -1309,11 +1348,11 @@ const server = createServer(async (req, res) => {
       const platformLogin = platformOwnerManager.globalLogin(input);
       if (platformLogin.matched) {
         if (platformLogin.guard && !platformLogin.guard.allowed) return sendJson(res, platformLogin.guard.statusCode, platformLogin.guard.response);
-        return sendJson(res, 201, { ok: true, login: true, credential_login: true, platform_owner: true, user: platformLogin.user, session: platformLogin.session }, { "set-cookie": platformLogin.cookie });
+        return sendJson(res, 201, { ok: true, login: true, credential_login: true, platform_owner: platformLogin.platform_owner, platform_internal: true, platform_role: platformLogin.platform_role, user: platformLogin.user, session: platformLogin.session }, { "set-cookie": platformLogin.cookie });
       }
       const result = credentialAuthManager.credentialLogin(input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
-      return sendJson(res, 201, { ok: true, mvp: result.mvp, login: true, credential_login: true, platform_owner: false, user: result.user, session: result.session }, { "set-cookie": result.cookie });
+      return sendJson(res, 201, { ok: true, mvp: result.mvp, login: true, credential_login: true, platform_owner: false, platform_internal: false, platform_role: null, user: result.user, session: result.session }, { "set-cookie": result.cookie });
     }
 
     if (url.pathname === "/api/mvp-19/credentials/revoke") {

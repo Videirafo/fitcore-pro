@@ -5,12 +5,21 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 EMAIL="${FITCORE_PLATFORM_OWNER_EMAIL:-}"
+ROOT_EMAIL="${FITCORE_PLATFORM_ROOT_EMAIL:-}"
 SECRET="${FITCORE_PLATFORM_OWNER_SECRET:-}"
 NAME="${FITCORE_PLATFORM_OWNER_NAME:-Fernando Videira}"
 SECRET_FILE="${FITCORE_POSTGRES_SECRET_FILE:-/opt/fitcore-pro/storage/secrets/fitcore-postgres.env}"
 
 if [[ ! "$EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
   echo "ERRO: FITCORE_PLATFORM_OWNER_EMAIL inválido." >&2
+  exit 2
+fi
+if [[ ! "$ROOT_EMAIL" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
+  echo "ERRO: FITCORE_PLATFORM_ROOT_EMAIL ausente ou inválido." >&2
+  exit 2
+fi
+if [[ "${EMAIL,,}" != "${ROOT_EMAIL,,}" ]]; then
+  echo "ERRO: somente o e-mail raiz configurado pode receber platform_owner." >&2
   exit 2
 fi
 if (( ${#SECRET} < 8 )); then
