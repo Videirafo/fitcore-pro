@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { modeFromLoginSource, normalizeInternalProductMode, resolveProductEntitlements } from "./product-entitlements.mjs";
 
 function clean(value, fallback = "", max = 240) {
   const text = String(value || "")
@@ -12,6 +13,16 @@ function clean(value, fallback = "", max = 240) {
 
 function sqlText(value) {
   return `'${String(value ?? "").replace(/'/g, "''")}'`;
+}
+
+function sha256(value) {
+  return createHash("sha256").update(String(value || "")).digest("hex");
+}
+
+function hashSecret(value) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(String(value || ""), salt, 64, { N: 16384, r: 8, p: 1 }).toString("hex");
+  return `scrypt:16384:8:1:${salt}:${hash}`;
 }
 
 function jsonScalar(value) {
@@ -86,7 +97,8 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
         'papel', u.papel,
         'login_identifier', u.login_identifier,
         'credential_hash', u.credential_hash,
-        'credential_revoked_at', u.credential_revoked_at
+        'credential_revoked_at', u.credential_revoked_at,
+        'platform_role', pa.role
       )::text
       FROM fitcore_platform_admins pa
       JOIN fitcore_users u ON u.id = pa.principal_user_id
@@ -104,7 +116,7 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
     if (!principal) return { matched: false };
 
     if (!principal.credential_hash || principal.credential_revoked_at || !verifySecret(principal.credential_hash, secret)) {
-      recordAudit(principal.platform_admin_id, principal.user_id, "global_login_failed", null, { source: "platform_owner" });
+      recordAudit(principal.platform_admin_id, principal.user_id, "global_login_failed", null, { source: principal.platform_role });
       return {
         matched: true,
         guard: { allowed: false, statusCode: 401, response: { erro: "credencial_invalida", mensagem: "E-mail ou senha inválidos." } },
@@ -116,22 +128,24 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
       SET last_login_at = now(), atualizado_em = now()
       WHERE id = ${sqlText(principal.user_id)}::uuid;
     `);
-    recordAudit(principal.platform_admin_id, principal.user_id, "global_login_ok", null, { source: "platform_owner" });
+    recordAudit(principal.platform_admin_id, principal.user_id, "global_login_ok", null, { source: principal.platform_role });
     const created = sessionManager.createSessionForUserRecord({
       id: principal.user_id,
       tenant_id: principal.tenant_id,
       tenant_slug: principal.tenant_slug,
       nome: principal.nome,
       papel: "gestor",
-    }, { source: "platform_owner_login", tenant_slug: principal.tenant_slug });
+    }, { source: `${principal.platform_role}_login:full`, tenant_slug: principal.tenant_slug });
 
     return {
       matched: true,
       ok: true,
-      platform_owner: true,
+      platform_owner: principal.platform_role === "platform_owner",
+      platform_internal: true,
+      platform_role: principal.platform_role,
       session: created.session,
       cookie: created.cookie,
-      user: { id: principal.user_id, nome: principal.nome, papel: "platform_owner", login_identifier: identifier },
+      user: { id: principal.user_id, nome: principal.nome, papel: principal.platform_role, login_identifier: identifier },
     };
   }
 
@@ -159,18 +173,27 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
     `));
   }
 
-  function requirePlatformOwner(context) {
+  function requirePlatformInternal(context) {
     const signed = requireSigned(context);
     if (!signed.allowed) return { guard: signed };
     const platformAdmin = resolvePlatformAdmin(context);
     if (!platformAdmin) {
-      return { guard: { allowed: false, statusCode: 403, response: { erro: "platform_owner_required", mensagem: "Acesso exclusivo do proprietário da plataforma." } } };
+      return { guard: { allowed: false, statusCode: 403, response: { erro: "platform_internal_required", mensagem: "Acesso interno da plataforma obrigatório." } } };
     }
     return { platformAdmin };
   }
 
+  function requireRootOwner(context) {
+    const access = requirePlatformInternal(context);
+    if (access.guard) return access;
+    if (access.platformAdmin.role !== "platform_owner") {
+      return { guard: { allowed: false, statusCode: 403, response: { erro: "root_owner_required", mensagem: "Somente o proprietário raiz pode convidar acessos internos." } } };
+    }
+    return access;
+  }
+
   function listTenants(context) {
-    const access = requirePlatformOwner(context);
+    const access = requirePlatformInternal(context);
     if (access.guard) return access;
     const tenants = jsonScalar(runSql(env, `
       SELECT COALESCE(jsonb_agg(jsonb_build_object(
@@ -184,20 +207,29 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
       FROM fitcore_tenants
       WHERE slug <> 'platform-control' AND status <> 'suspenso';
     `)) || [];
-    return { ok: true, platform_owner: true, tenants };
+    return {
+      ok: true, platform_owner: access.platformAdmin.role === "platform_owner", platform_internal: true, platform_role: access.platformAdmin.role, tenants,
+      internal_product_access: {
+        billing_exempt: true,
+        checkout_required: false,
+        default_mode: "full",
+        modes: ["full", "essencial", "profissional", "business", "enterprise"],
+      },
+    };
   }
 
   function switchTenant(context, input = {}) {
-    const access = requirePlatformOwner(context);
+    const access = requirePlatformInternal(context);
     if (access.guard) return access;
     const tenantSlug = clean(input.tenant_slug || input.slug || "", "", 80);
     const tenantId = clean(input.tenant_id || "", "", 80);
+    const internalMode = normalizeInternalProductMode(input.internal_product_mode || input.mode || "full");
     if (!tenantSlug && !tenantId) {
       return { guard: { allowed: false, statusCode: 400, response: { erro: "tenant_required", mensagem: "Informe a unidade para continuar." } } };
     }
 
     const target = jsonScalar(runSql(env, `
-      SELECT jsonb_build_object('id', id, 'slug', slug, 'nome', nome, 'status', status)::text
+      SELECT jsonb_build_object('id', id, 'slug', slug, 'nome', nome, 'status', status, 'plano', plano)::text
       FROM fitcore_tenants
       WHERE slug <> 'platform-control'
         AND status <> 'suspenso'
@@ -208,11 +240,11 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
       return { guard: { allowed: false, statusCode: 404, response: { erro: "tenant_not_found", mensagem: "Unidade não encontrada ou indisponível." } } };
     }
 
-    const bridgeExternalId = `platform-owner-${access.platformAdmin.id}`;
+    const bridgeExternalId = `${access.platformAdmin.role}-${access.platformAdmin.id}`;
     const bridge = jsonScalar(runSql(env, `
       WITH scope AS (SELECT set_config('app.tenant_id', ${sqlText(target.id)}, true)), upsert_user AS (
         INSERT INTO fitcore_users (tenant_id, nome, papel, externo_id, ativo, atualizado_em)
-        SELECT ${sqlText(target.id)}::uuid, 'Proprietário da plataforma', 'gestor', ${sqlText(bridgeExternalId)}, true, now()
+        SELECT ${sqlText(target.id)}::uuid, CASE WHEN ${sqlText(access.platformAdmin.role)}='platform_owner' THEN 'Proprietário da plataforma' ELSE 'Delegate interno' END, 'gestor', ${sqlText(bridgeExternalId)}, true, now()
         FROM scope
         ON CONFLICT (tenant_id, externo_id) DO UPDATE SET
           nome = EXCLUDED.nome, papel = 'gestor', ativo = true, atualizado_em = now()
@@ -235,22 +267,167 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
         atualizado_em = now();
     `);
 
-    recordAudit(access.platformAdmin.id, context.actor_id, "tenant_selected", target.id, { tenant_slug: target.slug });
+    recordAudit(access.platformAdmin.id, context.actor_id, "tenant_selected", target.id, { tenant_slug: target.slug, platform_role: access.platformAdmin.role, internal_product_mode: internalMode, billing_exempt: true, checkout_required: false });
     const created = sessionManager.createSessionForUserRecord({
       id: bridge.id,
       tenant_id: target.id,
       tenant_slug: target.slug,
       nome: bridge.nome,
       papel: "gestor",
-    }, { source: "platform_owner_bridge", tenant_slug: target.slug });
+    }, { source: `${access.platformAdmin.role}_bridge:${internalMode}`, tenant_slug: target.slug });
 
     return {
       ok: true,
-      platform_owner: true,
+      platform_owner: access.platformAdmin.role === "platform_owner",
+      platform_internal: true,
+      platform_role: access.platformAdmin.role,
       tenant: target,
+      entitlements: resolveProductEntitlements({
+        tenantPlan: target.plano || "trial",
+        platformInternalRole: access.platformAdmin.role,
+        internalVerified: true,
+        internalMode,
+      }),
       session: created.session,
       cookie: created.cookie,
     };
+  }
+
+  function listInternalInvites(context) {
+    const access = requireRootOwner(context);
+    if (access.guard) return access;
+    const invites = jsonScalar(runSql(env, `
+      SELECT COALESCE(jsonb_agg(jsonb_build_object(
+        'id', id, 'email', email, 'status', status,
+        'expires_at', expires_at, 'accepted_at', accepted_at,
+        'revoked_at', revoked_at, 'criado_em', criado_em
+      ) ORDER BY criado_em DESC), '[]'::jsonb)::text
+      FROM fitcore_platform_admin_invites;
+    `)) || [];
+    return { ok: true, platform_role: access.platformAdmin.role, invites };
+  }
+
+  function createInternalInvite(context, input = {}) {
+    const access = requireRootOwner(context);
+    if (access.guard) return access;
+    const email = clean(input.email || "", "", 180).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "email_invalido" } } };
+    }
+    const rootEmail = clean(env.FITCORE_PLATFORM_ROOT_EMAIL || "", "", 180).toLowerCase();
+    if (rootEmail && email === rootEmail) {
+      return { guard: { allowed: false, statusCode: 409, response: { erro: "root_owner_nao_pode_ser_delegate" } } };
+    }
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = sha256(token);
+    const invite = jsonScalar(runSql(env, `
+      UPDATE fitcore_platform_admin_invites
+      SET status='expired', atualizado_em=now()
+      WHERE status='pending' AND expires_at <= now();
+      WITH created AS (
+        INSERT INTO fitcore_platform_admin_invites (email, token_hash, invited_by, expires_at)
+        VALUES (${sqlText(email)}, ${sqlText(tokenHash)}, ${sqlText(access.platformAdmin.id)}::uuid, now() + interval '72 hours')
+        RETURNING id,email,status,expires_at,criado_em
+      )
+      SELECT jsonb_build_object('id',id,'email',email,'status',status,'expires_at',expires_at,'criado_em',criado_em)::text FROM created;
+    `));
+    recordAudit(access.platformAdmin.id, context.actor_id, "delegate_invited", null, { email });
+    const base = clean(env.FITCORE_PUBLIC_URL || "https://fitcore.marcaia.app", "https://fitcore.marcaia.app", 240).replace(/\/$/, "");
+    return { ok: true, invite, token, invite_url: `${base}/admin/convite?token=${encodeURIComponent(token)}` };
+  }
+
+  function inspectInternalInvite(tokenValue) {
+    const token = clean(tokenValue || "", "", 400);
+    if (!token) return { ok: false, statusCode: 400, erro: "token_obrigatorio" };
+    const invite = jsonScalar(runSql(env, `
+      SELECT jsonb_build_object('id',i.id,'email',i.email,'status',i.status,'expires_at',i.expires_at)::text
+      FROM fitcore_platform_admin_invites i
+      JOIN fitcore_platform_admins owner ON owner.id=i.invited_by
+      WHERE i.token_hash=${sqlText(sha256(token))}
+        AND i.status='pending' AND i.expires_at>now()
+        AND owner.active=true AND owner.role='platform_owner'
+      LIMIT 1;
+    `));
+    return invite ? { ok: true, invite } : { ok: false, statusCode: 404, erro: "convite_indisponivel" };
+  }
+
+  function acceptInternalInvite(input = {}) {
+    const token = clean(input.token || "", "", 400);
+    const inspected = inspectInternalInvite(token);
+    if (!inspected.ok) return { guard: { allowed: false, statusCode: inspected.statusCode || 400, response: inspected } };
+    const email = clean(input.email || "", "", 180).toLowerCase();
+    const name = clean(input.nome || input.name || "Delegate interno", "Delegate interno", 120);
+    const secret = String(input.secret || input.senha || "");
+    if (email !== String(inspected.invite.email || "").toLowerCase()) {
+      return { guard: { allowed: false, statusCode: 403, response: { erro: "email_nao_corresponde_ao_convite" } } };
+    }
+    if (secret.length < 8) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "senha_curta" } } };
+    }
+    const hash = hashSecret(secret);
+    const created = jsonScalar(runSql(env, `
+      WITH tenant AS (
+        SELECT id FROM fitcore_tenants WHERE slug='platform-control' LIMIT 1
+      ), upsert_user AS (
+        INSERT INTO fitcore_users (
+          tenant_id,nome,papel,externo_id,ativo,login_identifier,email,
+          credential_kind,credential_hash,credential_set_at,credential_revoked_at,atualizado_em
+        ) SELECT tenant.id,${sqlText(name)},'gestor',${sqlText(`platform-delegate-${inspected.invite.id}`)},true,
+          ${sqlText(email)},${sqlText(email)},'password',${sqlText(hash)},now(),NULL,now()
+          FROM tenant
+        ON CONFLICT (tenant_id, externo_id) DO UPDATE SET
+          nome=EXCLUDED.nome, ativo=true, login_identifier=EXCLUDED.login_identifier,
+          email=EXCLUDED.email, credential_kind='password', credential_hash=EXCLUDED.credential_hash,
+          credential_set_at=now(), credential_revoked_at=NULL, atualizado_em=now()
+        RETURNING id,tenant_id,nome
+      ), admin_row AS (
+        INSERT INTO fitcore_platform_admins (principal_user_id,role,active,invited_by,invited_at,atualizado_em)
+        SELECT u.id,'platform_delegate',true,i.invited_by,now(),now()
+        FROM upsert_user u JOIN fitcore_platform_admin_invites i ON i.id=${sqlText(inspected.invite.id)}::uuid
+        ON CONFLICT (principal_user_id) DO UPDATE SET
+          role='platform_delegate', active=true, invited_by=EXCLUDED.invited_by, invited_at=now(), atualizado_em=now()
+        RETURNING id,principal_user_id,role
+      ), accepted AS (
+        UPDATE fitcore_platform_admin_invites SET status='accepted',accepted_by=(SELECT id FROM admin_row),accepted_at=now(),atualizado_em=now()
+        WHERE id=${sqlText(inspected.invite.id)}::uuid AND status='pending'
+        RETURNING id
+      )
+      SELECT jsonb_build_object('admin_id',a.id,'user_id',a.principal_user_id,'role',a.role,'tenant_id',u.tenant_id,'nome',u.nome)::text
+      FROM admin_row a JOIN upsert_user u ON u.id=a.principal_user_id;
+    `));
+    recordAudit(created.admin_id, created.user_id, "delegate_invite_accepted", null, { invite_id: inspected.invite.id });
+    return { ok: true, accepted: true, platform_role: "platform_delegate" };
+  }
+
+  function revokeInternalAccess(context, input = {}) {
+    const access = requireRootOwner(context);
+    if (access.guard) return access;
+    const inviteId = clean(input.invite_id || "", "", 80);
+    const adminId = clean(input.platform_admin_id || "", "", 80);
+    if (!inviteId && !adminId) return { guard: { allowed: false, statusCode: 400, response: { erro: "target_required" } } };
+    if (inviteId) runSql(env, `UPDATE fitcore_platform_admin_invites SET status='revoked',revoked_at=now(),atualizado_em=now() WHERE id=${sqlText(inviteId)}::uuid AND status='pending';`);
+    if (adminId) runSql(env, `
+      UPDATE fitcore_platform_admins SET active=false,atualizado_em=now() WHERE id=${sqlText(adminId)}::uuid AND role='platform_delegate';
+      UPDATE fitcore_users SET ativo=false,atualizado_em=now() WHERE id IN (SELECT user_id FROM fitcore_platform_admin_bridges WHERE platform_admin_id=${sqlText(adminId)}::uuid);
+    `);
+    recordAudit(access.platformAdmin.id, context.actor_id, "delegate_revoked", null, { invite_id: inviteId || null, platform_admin_id: adminId || null });
+    return { ok: true };
+  }
+
+  function resolveEntitlements(context) {
+    const loginSource = String(context?.login_source || "");
+    if (!context?.session_signed || !(loginSource.startsWith("platform_owner") || loginSource.startsWith("platform_delegate"))) return null;
+    const platformAdmin = resolvePlatformAdmin(context);
+    if (!platformAdmin) return null;
+    const tenantPlan = clean(runSql(env, `
+      SELECT plano FROM fitcore_tenants WHERE id = ${sqlText(context.tenant_id)}::uuid LIMIT 1;
+    `), "trial", 40);
+    return resolveProductEntitlements({
+      tenantPlan,
+      platformInternalRole: platformAdmin.role,
+      internalVerified: true,
+      internalMode: modeFromLoginSource(loginSource),
+    });
   }
 
   function auditLogout(context) {
@@ -260,5 +437,5 @@ export function createPlatformOwnerManager(env = process.env, sessionManager) {
     return true;
   }
 
-  return { enabled, globalLogin, listTenants, switchTenant, resolvePlatformAdmin, auditLogout };
+  return { enabled, globalLogin, listTenants, switchTenant, resolvePlatformAdmin, resolveEntitlements, listInternalInvites, createInternalInvite, inspectInternalInvite, acceptInternalInvite, revokeInternalAccess, auditLogout };
 }

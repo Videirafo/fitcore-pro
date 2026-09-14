@@ -116,7 +116,8 @@
     "deploy:sha:check": "node tools/check-canonical-sha-deploy.mjs",
     "mvp16:check": "node tools/check-mvp-16-manager-login.mjs",
     "platform-owner:check": "node tools/check-platform-owner.mjs",
-    "platform-owner:bootstrap": "bash infra/scripts/bootstrap-platform-owner.sh"
+    "platform-owner:bootstrap": "bash infra/scripts/bootstrap-platform-owner.sh",
+    "platform-owner:root-email:migrate": "bash infra/scripts/migrate-platform-root-email.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
