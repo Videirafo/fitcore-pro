@@ -16,6 +16,7 @@ DIRS=(
   "packages/sdk-wger"
   "packages/validators"
   "packages/config"
+  "packages/execution-core"
   "packages/ui"
   "content/workout-series"
   "assets/images"
