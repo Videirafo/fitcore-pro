@@ -31,6 +31,8 @@ jobs:
         run: npm --prefix apps/site ci --no-audit --no-fund
       - name: Project structure
         run: npm run check:project
+      - name: Execution kernel contract
+        run: npm run execution:check
       - name: Ensure PostgreSQL client
         run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: P0 real product E2E (PostgreSQL 17.6)
