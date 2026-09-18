@@ -117,7 +117,8 @@
     "mvp16:check": "node tools/check-mvp-16-manager-login.mjs",
     "platform-owner:check": "node tools/check-platform-owner.mjs",
     "platform-owner:bootstrap": "bash infra/scripts/bootstrap-platform-owner.sh",
-    "platform-owner:root-email:migrate": "bash infra/scripts/migrate-platform-root-email.sh"
+    "platform-owner:root-email:migrate": "bash infra/scripts/migrate-platform-root-email.sh",
+    "execution:check": "node tools/check-execution-kernel.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
