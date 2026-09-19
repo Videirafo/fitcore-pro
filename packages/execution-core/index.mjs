@@ -24,6 +24,20 @@ function requireText(value, code) {
   return normalized;
 }
 
+function requirePositiveInteger(value, code) {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    throw new Error(code);
+  }
+  return value;
+}
+
+function requireNonNegativeInteger(value, code) {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error(code);
+  }
+  return value;
+}
+
 export function hashExecutionIdempotencyKey(idempotencyKey) {
   return digest('idempotency', requireText(idempotencyKey, 'execution_idempotency_key_required'));
 }
@@ -38,14 +52,21 @@ export function buildExecutionIdentity({
 }) {
   const normalizedTenantId = requireText(tenantId, 'execution_tenant_required');
   const normalizedActionId = requireText(actionId, 'execution_action_required');
+  const normalizedSource = requireText(source, 'execution_source_required');
   const idempotencyHash = hashExecutionIdempotencyKey(idempotencyKey);
-  const normalizedVersion = Math.max(1, Math.trunc(Number(actionVersion) || 1));
-  const normalizedOccurrence = Math.max(0, Math.trunc(Number(occurrence) || 0));
+  const normalizedVersion = requirePositiveInteger(
+    actionVersion,
+    'execution_action_version_invalid',
+  );
+  const normalizedOccurrence = requireNonNegativeInteger(
+    occurrence,
+    'execution_occurrence_invalid',
+  );
 
   const submissionId = compactId('sub', digest('submission', {
     product: FITCORE_EXECUTION_PRODUCT,
     tenantId: normalizedTenantId,
-    source,
+    source: normalizedSource,
     idempotencyHash,
   }));
 
