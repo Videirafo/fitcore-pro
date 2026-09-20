@@ -46,6 +46,27 @@ wait_db() {
   return 1
 }
 
+wait_postgres17_stable() {
+  local tries="${1:-160}"
+  local health=""
+  local version=""
+  local version2=""
+  for _ in $(seq 1 "$tries"); do
+    health="$(docker inspect "$OLD_CONTAINER" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' 2>/dev/null || true)"
+    version="$(docker exec "$OLD_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -Atqc "show server_version" 2>/dev/null || true)"
+    if [[ "$health" == "healthy" && "$version" == 17.6* ]]; then
+      sleep 2
+      version2="$(docker exec "$OLD_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -Atqc "show server_version" 2>/dev/null || true)"
+      if [[ "$version2" == 17.6* ]]; then
+        NEW_VERSION="$version2"
+        return 0
+      fi
+    fi
+    sleep 0.5
+  done
+  return 1
+}
+
 restart_api() {
   systemctl start "$API_SERVICE"
   for _ in $(seq 1 50); do
@@ -57,6 +78,8 @@ restart_api() {
 
 rollback() {
   local code=$?
+  trap - ERR
+  set +e
   echo "postgres17_promotion=FAIL rollback=START code=$code" >&2
   if [[ "$ROLLBACK_REQUIRED" -eq 1 ]]; then
     docker rm -f "$OLD_CONTAINER" >/dev/null 2>&1 || true
@@ -98,9 +121,10 @@ docker rm -f "$OLD_CONTAINER" >/dev/null
 ROLLBACK_REQUIRED=1
 
 docker compose -p docker -f "$COMPOSE" up -d fitcore_postgres >/dev/null
-wait_db 80
-NEW_VERSION="$(docker exec "$OLD_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -Atqc "show server_version")"
-[[ "$NEW_VERSION" == 17.6* ]] || { echo "ERRO: destino não está em PostgreSQL 17.6: $NEW_VERSION" >&2; false; }
+NEW_VERSION=""
+wait_postgres17_stable 160
+[[ "$NEW_VERSION" == 17.6* ]] || { echo "ERRO: destino PostgreSQL 17.6 não ficou estável/healthy." >&2; false; }
+echo "postgres17_readiness=PASS version=$NEW_VERSION"
 
 docker exec -i "$OLD_CONTAINER" pg_restore \
   -U "$DB_USER" -d "$DB_NAME" \
