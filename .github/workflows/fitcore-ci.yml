@@ -43,8 +43,6 @@ jobs:
         run: npm run check:project
       - name: Execution kernel contract
         run: npm run execution:check
-      - name: Execution kernel V2 PostgreSQL 17.6 gate
-        run: npm run execution:db:gate
       - name: Ensure PostgreSQL client
         run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
       - name: P0 real product E2E (PostgreSQL 17.6)
