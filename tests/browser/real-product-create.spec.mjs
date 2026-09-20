@@ -35,20 +35,33 @@ test("marca oficial usa transparência nativa sem caixa branca", async ({ page }
   await expect(lockup.locator("img")).toHaveAttribute("src", "/brand/fitcore-pro-official.png");
   const style = await lockup.evaluate((el) => {
     const css = getComputedStyle(el);
-    return { background: css.backgroundColor, shadow: css.boxShadow, border: css.borderTopWidth };
+    const image = getComputedStyle(el.querySelector("img"));
+    return {
+      background: css.backgroundColor,
+      shadow: css.boxShadow,
+      border: css.borderTopWidth,
+      radius: css.borderRadius,
+      padding: css.padding,
+      imageFilter: image.filter,
+    };
   });
   expect(style.background).toBe("rgba(0, 0, 0, 0)");
   expect(style.shadow).toBe("none");
   expect(style.border).toBe("0px");
+  expect(style.radius).toBe("0px");
+  expect(style.padding).toBe("0px");
+  expect(style.imageFilter).toBe("none");
 
   const publicBrand = page.locator(".fcx-public-nav .fcx-brand-official").first();
   const publicBrandVisual = await publicBrand.evaluate((el) => {
     const before = getComputedStyle(el, "::before");
     const header = getComputedStyle(el.closest(".fcx-public-nav"));
-    return { halo: before.backgroundImage, header: header.backgroundImage };
+    const footer = getComputedStyle(document.querySelector(".fcx-footer"));
+    return { halo: before.backgroundImage, header: header.backgroundImage, footer: footer.backgroundImage };
   });
-  expect(publicBrandVisual.halo).toContain("radial-gradient");
+  expect(publicBrandVisual.halo).toBe("none");
   expect(publicBrandVisual.header).toContain("linear-gradient");
+  expect(publicBrandVisual.footer).toContain("linear-gradient");
 
   await page.goto("/cadastro");
   const wrapper = page.locator(".brand-official-transparent").first();
