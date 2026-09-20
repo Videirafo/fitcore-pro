@@ -28,5 +28,6 @@ Toda alteração intencional de branding exige aprovação explícita do owner e
 ## Superfície de uso
 
 O lockup deve aparecer sobre a interface com **fundo transparente**, usando a transparência nativa do PNG. Não envolver o artwork em caixa branca, badge, borda, radius ou sombra. A interface pode ter seu próprio fundo; o logo permanece sem container visual.
+Quando a superfície padrão for escura demais para o wordmark aprovado, o contraste deve vir da **superfície ampla da interface** (header/footer/sidebar), nunca de filtro, glow, sombra, badge ou fundo aplicado ao próprio lockup.
 
 No splash nativo de Android/iOS, usar somente um derivado direto do **símbolo oficial isolado**, centralizado sobre o fundo `#07111F`, sem texto, caixa, borda, sombra ou reconstrução. O lockup completo fica para a interface já carregada.

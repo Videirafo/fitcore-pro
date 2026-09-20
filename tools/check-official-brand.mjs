@@ -15,6 +15,7 @@ const paths = {
   mobileSplash: "apps/mobile/assets/branding/fitcore-splash.png",
   premiumCss: "apps/site/app/mvp-48-premium-product.css",
   mobileCss: "apps/site/app/mvp-45-mobile-brand.css",
+  contrastCss: "apps/site/app/mvp-54-logo-contrast.css",
 };
 for (const [name, file] of Object.entries(paths)) if (!existsSync(file)) throw new Error(`Official brand asset missing: ${name} -> ${file}`);
 const read = (file) => readFileSync(file, "utf8");
@@ -36,11 +37,16 @@ const docs = read(paths.docs);
 const agents = read(paths.agents);
 const premiumCss = read(paths.premiumCss);
 const mobileCss = read(paths.mobileCss);
+const contrastCss = read(paths.contrastCss);
 if (!component.includes('/brand/fitcore-pro-official.png') || !component.includes('/brand/fitcore-pro-symbol.png')) throw new Error("Canonical artwork is not wired into the brand component.");
 if (!exact.includes('FitCoreBrandLockup') || exact.includes('fitcore-wordmark')) throw new Error("Public/dashboard brand is reconstructing the approved lockup instead of using it directly.");
 if (component.includes('fitcore-symbol-ring') || component.includes('fitcore-symbol-f')) throw new Error("Legacy reconstructed symbol returned.");
 if (!docs.includes(expected.primary) || !docs.includes('Não redesenhar')) throw new Error("Exact artwork rule/hash missing from brand docs.");
 if (!agents.includes('do not redraw or reconstruct it')) throw new Error("Agent exact-artwork invariant missing.");
 if (!premiumCss.includes(".fitcore-lockup") || !premiumCss.includes("background: transparent !important") || !premiumCss.includes("box-shadow: none !important")) throw new Error("Public brand must use the transparent canonical lockup without a white box.");
-if (!mobileCss.includes("background: transparent !important") || !mobileCss.includes("border: 0 !important") || !mobileCss.includes("box-shadow: none !important")) throw new Error("Base mobile/public lockup styling must not reintroduce a box, border or shadow.");
+const lockupRule = mobileCss.match(/\.fitcore-lockup\s*\{([^}]*)\}/)?.[1] ?? "";
+if (!lockupRule.includes("background: transparent !important") || !lockupRule.includes("border: 0 !important") || !lockupRule.includes("box-shadow: none !important")) throw new Error("The .fitcore-lockup rule must remain transparent and free of border/shadow chrome.");
+if (/background:(?!\s*transparent)|box-shadow:(?!\s*none)|filter:(?!\s*none)/.test(lockupRule)) throw new Error("The .fitcore-lockup rule reintroduced visual treatment around the canonical artwork.");
+for (const selector of [".fcx-public-nav", ".fcx-footer", ".fcx-sidebar", ".app-shell .sidebar"]) if (!contrastCss.includes(selector)) throw new Error(`Brand contrast surface missing: ${selector}`);
+if (contrastCss.includes("drop-shadow") || contrastCss.includes(".fcx-brand-official::before")) throw new Error("Brand contrast must come from the surrounding interface surface, not logo glow/shadow chrome.");
 console.log("OK: exact owner-approved FitCore Pro artwork invariant validated.");
