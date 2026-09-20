@@ -27,6 +27,9 @@ function intValue(value, fallback, min, max) {
   const safe = Number.isFinite(parsed) ? parsed : fallback;
   return Math.min(Math.max(safe, min), max);
 }
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
 function dbConnection(env = process.env) {
   const dbUrl = clean(env.FITCORE_DATABASE_URL || env.DATABASE_URL || "", "", 900);
   if (!dbUrl) throw new Error("FITCORE_DATABASE_URL ausente para MVP-25.");
@@ -76,6 +79,37 @@ function assertRequestedTenant(context = {}, requestedSlug = "") {
 function normalizeItems(items = []) {
   return Array.isArray(items) ? items.map((item, index) => ({ index, nome: displayClean(item?.nome || item?.name || `Exercício ${index + 1}`, `Exercício ${index + 1}`, 120), status: clean(item?.status || "pendente", "pendente", 30), feito_em: item?.feito_em || null, observacao: displayClean(item?.observacao || item?.observacoes || "", "", 240) })) : [];
 }
+export const WORKOUT_ACTION_IDS = Object.freeze({
+  START: "fitcore.workout.execution.start",
+  EXERCISE_COMPLETE: "fitcore.workout.exercise.complete",
+  FINISH: "fitcore.workout.execution.finish",
+});
+
+export function buildWorkoutActionBinding(actionId, { id = "", index = 0, input = {} } = {}) {
+  if (actionId === WORKOUT_ACTION_IDS.START) {
+    return {
+      workout_id: clean(input.workout_id || input.prescription_id || "", "", 90),
+      observacoes: displayClean(input.observacoes || "", "", 500),
+    };
+  }
+  if (actionId === WORKOUT_ACTION_IDS.EXERCISE_COMPLETE) {
+    return {
+      execution_id: clean(id, "", 90),
+      index: intValue(index, 0, 0, 500),
+      observacao: displayClean(input.observacao || input.observacoes || "", "", 240),
+    };
+  }
+  if (actionId === WORKOUT_ACTION_IDS.FINISH) {
+    return {
+      execution_id: clean(id, "", 90),
+      percepcao_esforco: intValue(input.percepcao_esforco || input.esforco, 5, 1, 10),
+      duracao_minutos: intValue(input.duracao_minutos || input.duracao || 30, 1, 1, 480),
+      observacoes: displayClean(input.observacoes || input.observacao || "Treino concluído pelo aluno.", "Treino concluído pelo aluno.", 600),
+    };
+  }
+  throw new Error("workout_action_unknown");
+}
+
 function publicExecution(row) {
   if (!row) return null;
   const progress = normalizeItems(row.exercise_progress || row.progresso || []);
@@ -91,8 +125,28 @@ function publicExecution(row) {
     exercise_progress: progress, observacoes: row.observacoes || null, orientacoes: row.orientacoes || row.payload?.orientacoes || null,
   };
 }
-export function createWorkoutExecutionManager(env = process.env) {
+export function createWorkoutExecutionManager(env = process.env, { executionKernel = null } = {}) {
   const enabled = boolEnv(env.FITCORE_WORKOUT_EXECUTION_ENABLED, true);
+  function requireExecutionCapability(context, actionId, binding, authority = {}) {
+    if (!executionKernel?.authorizeEffect) {
+      return { allowed: false, statusCode: 503, response: { erro: "execution_kernel_authority_unavailable" } };
+    }
+    try {
+      executionKernel.authorizeEffect(authority.capability, {
+        tenantId: context.tenant_id,
+        actorUserId: context.actor_id,
+        actionId,
+        binding,
+      });
+      return { allowed: true };
+    } catch (error) {
+      return {
+        allowed: false,
+        statusCode: error?.statusCode || 403,
+        response: { erro: error?.code || "execution_capability_invalid", mensagem: "A mutação exige capability válida do Execution Kernel." },
+      };
+    }
+  }
   function status(context = {}) {
     return { ok: true, mvp: "MVP-25 Workout Execution", enabled, tenant_slug: context?.tenant_slug || null, actor_role: context?.actor_role || null, tenant_scoped: true, aluno_starts_approved_workout: true, exercise_progress: true, staff_monitoring: true, audit_required: true, endpoints: ["GET /api/mvp-25/status", "POST /api/mvp-25/executions/start", "GET /api/mvp-25/my-executions", "GET /api/mvp-25/executions", "GET /api/mvp-25/executions/:id", "POST /api/mvp-25/executions/:id/exercises/:index/done", "POST /api/mvp-25/executions/:id/finish"] };
   }
@@ -147,11 +201,52 @@ export function createWorkoutExecutionManager(env = process.env) {
     const data = rowSelect(context, where, limit);
     return { ok: true, mvp: "MVP-25 Workout Execution", tenant_slug: context.tenant_slug, actor_role: role, own_only: ownOnly || role === "aluno", executions: data.executions.map(publicExecution), total: data.total || 0, em_execucao: data.em_execucao || 0, concluidos: data.concluidos || 0 };
   }
-  function startExecution(context = {}, input = {}) {
+  function validateAction(context = {}, actionId = "", binding = {}) {
+    if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "workout_execution_disabled" } } };
+    const guard = requireAluno(context); if (!guard.allowed) return { guard };
+    if (actionId === WORKOUT_ACTION_IDS.START) {
+      if (!isUuid(binding.workout_id)) return { guard: { allowed: false, statusCode: 400, response: { erro: "workout_id_invalido" } } };
+      const found = scalar(env, `
+        ${setTenantSession(context)}
+        WITH ${tenantScope(context)}
+        SELECT EXISTS(
+          SELECT 1 FROM fitcore_workouts w
+          JOIN fitcore_students s ON s.id=w.student_id AND s.tenant_id=w.tenant_id
+          JOIN scope ON true
+          WHERE w.tenant_id=${sqlText(context.tenant_id)}::uuid
+            AND w.id=${sqlText(binding.workout_id)}::uuid
+            AND w.status='aprovado'
+            AND s.user_id=${sqlText(context.actor_id)}::uuid
+        );
+      `);
+      if (found !== "t") return { guard: { allowed: false, statusCode: 404, response: { erro: "treino_aprovado_nao_encontrado" } } };
+      return { ok: true, summary: "Iniciar treino aprovado do aluno autenticado." };
+    }
+    if (![WORKOUT_ACTION_IDS.EXERCISE_COMPLETE, WORKOUT_ACTION_IDS.FINISH].includes(actionId)) {
+      return { guard: { allowed: false, statusCode: 404, response: { erro: "workout_action_unknown" } } };
+    }
+    if (!isUuid(binding.execution_id)) return { guard: { allowed: false, statusCode: 400, response: { erro: "execution_id_invalido" } } };
+    const current = getExecution(context, binding.execution_id);
+    if (current.guard) return current;
+    if (current.execution.status !== "em_execucao") {
+      return { guard: { allowed: false, statusCode: 409, response: { erro: "execucao_nao_esta_em_andamento" } } };
+    }
+    if (actionId === WORKOUT_ACTION_IDS.EXERCISE_COMPLETE) {
+      const exists = current.execution.exercise_progress.some((item) => item.index === binding.index);
+      if (!exists) return { guard: { allowed: false, statusCode: 404, response: { erro: "exercicio_da_execucao_nao_encontrado" } } };
+      return { ok: true, summary: `Marcar exercício ${binding.index + 1} como concluído.` };
+    }
+    return { ok: true, summary: "Concluir execução do treino com esforço e duração informados." };
+  }
+
+  function startExecution(context = {}, input = {}, authority = {}) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "workout_execution_disabled" } } };
     const guard = requireAluno(context); if (!guard.allowed) return { guard };
     const workoutId = clean(input.workout_id || input.prescription_id || "", "", 90);
     if (!workoutId) return { guard: { allowed: false, statusCode: 400, response: { erro: "workout_id_obrigatorio" } } };
+    const binding = buildWorkoutActionBinding(WORKOUT_ACTION_IDS.START, { input });
+    const capabilityGuard = requireExecutionCapability(context, WORKOUT_ACTION_IDS.START, binding, authority);
+    if (!capabilityGuard.allowed) return { guard: capabilityGuard };
     const sourceMvpId = `mvp25-${Date.now()}-${randomBytes(3).toString("hex")}`;
     const raw = scalar(env, `
       ${setTenantSession(context)}
@@ -183,10 +278,13 @@ export function createWorkoutExecutionManager(env = process.env) {
     if (!execution) return { guard: { allowed: false, statusCode: 404, response: { erro: "execucao_nao_encontrada" } } };
     return { ok: true, mvp: "MVP-25 Workout Execution", tenant_slug: context.tenant_slug, execution };
   }
-  function markExerciseDone(context = {}, id = "", index = 0, input = {}) {
+  function markExerciseDone(context = {}, id = "", index = 0, input = {}, authority = {}) {
     const guard = requireAluno(context); if (!guard.allowed) return { guard };
-    const executionId = clean(id, "", 90); const idx = intValue(index, 0, 0, 500);
-    const observacao = displayClean(input.observacao || input.observacoes || "", "", 240);
+    const binding = buildWorkoutActionBinding(WORKOUT_ACTION_IDS.EXERCISE_COMPLETE, { id, index, input });
+    const capabilityGuard = requireExecutionCapability(context, WORKOUT_ACTION_IDS.EXERCISE_COMPLETE, binding, authority);
+    if (!capabilityGuard.allowed) return { guard: capabilityGuard };
+    const executionId = binding.execution_id; const idx = binding.index;
+    const observacao = binding.observacao;
     const raw = scalar(env, `
       ${setTenantSession(context)}
       WITH ${tenantScope(context)}, allowed_execution AS (
@@ -207,12 +305,15 @@ export function createWorkoutExecutionManager(env = process.env) {
     const audit = recordEvent(context, execution, "exercise_marked_done", `exercício ${idx + 1} marcado como feito`, { index: idx, observacao }, idx);
     return { ok: true, mvp: "MVP-25 Workout Execution", exercise_done: true, index: idx, tenant_slug: context.tenant_slug, execution, audit };
   }
-  function finishExecution(context = {}, id = "", input = {}) {
+  function finishExecution(context = {}, id = "", input = {}, authority = {}) {
     const guard = requireAluno(context); if (!guard.allowed) return { guard };
-    const executionId = clean(id, "", 90);
-    const effort = intValue(input.percepcao_esforco || input.esforco, 5, 1, 10);
-    const duration = intValue(input.duracao_minutos || input.duracao || 30, 1, 1, 480);
-    const observacoes = displayClean(input.observacoes || input.observacao || "Treino concluído pelo aluno.", "Treino concluído pelo aluno.", 600);
+    const binding = buildWorkoutActionBinding(WORKOUT_ACTION_IDS.FINISH, { id, input });
+    const capabilityGuard = requireExecutionCapability(context, WORKOUT_ACTION_IDS.FINISH, binding, authority);
+    if (!capabilityGuard.allowed) return { guard: capabilityGuard };
+    const executionId = binding.execution_id;
+    const effort = binding.percepcao_esforco;
+    const duration = binding.duracao_minutos;
+    const observacoes = binding.observacoes;
     const raw = scalar(env, `
       ${setTenantSession(context)}
       WITH ${tenantScope(context)}, allowed_execution AS (
@@ -229,5 +330,5 @@ export function createWorkoutExecutionManager(env = process.env) {
     const audit = recordEvent(context, execution, "workout_execution_finished", `esforço=${effort}; duração=${duration}min`, { effort, duration });
     return { ok: true, mvp: "MVP-25 Workout Execution", finished: true, tenant_slug: context.tenant_slug, execution, audit };
   }
-  return { enabled, status, listExecutions, startExecution, getExecution, markExerciseDone, finishExecution };
+  return { enabled, status, listExecutions, validateAction, startExecution, getExecution, markExerciseDone, finishExecution };
 }

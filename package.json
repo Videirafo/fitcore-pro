@@ -118,7 +118,8 @@
     "platform-owner:check": "node tools/check-platform-owner.mjs",
     "platform-owner:bootstrap": "bash infra/scripts/bootstrap-platform-owner.sh",
     "platform-owner:root-email:migrate": "bash infra/scripts/migrate-platform-root-email.sh",
-    "execution:check": "node tools/check-execution-kernel.mjs"
+    "execution:check": "node tools/check-execution-kernel.mjs",
+    "execution:db:gate": "bash infra/scripts/gate-execution-kernel-v2-postgres17.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

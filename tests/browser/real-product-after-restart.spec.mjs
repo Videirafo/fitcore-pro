@@ -18,6 +18,18 @@ async function expectSuccess(page, title) {
   await expect(toast).toContainText("Concluído com sucesso.");
 }
 
+async function apiJson(page, path, { method = "GET", body, headers = {} } = {}) {
+  return page.evaluate(async ({ path, method, body, headers }) => {
+    const response = await fetch(path, {
+      method,
+      credentials: "same-origin",
+      headers: { ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: response.status, body: await response.json() };
+  }, { path, method, body, headers });
+}
+
 test("aluno entra após restart, executa treino e vê evolução", async ({
   page,
 }) => {
@@ -32,9 +44,63 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
 
   await page.goto("/execucao");
   await expect(page.getByText("Treino Browser QA").first()).toBeVisible();
+
+  const workouts = await apiJson(page, "/api/mvp-24/my-workouts");
+  expect(workouts.status).toBe(200);
+  const workoutId = workouts.body.prescriptions?.find((item) => item.status === "aprovado")?.id;
+  if (!workoutId) throw new Error("Treino aprovado não encontrado para o dry-run.");
+
+  const beforeDryRun = await apiJson(page, "/api/mvp-25/my-executions");
+  const dryRun = await apiJson(page, "/api/mvp-25/executions/start?mode=dry_run", {
+    method: "POST",
+    body: { workout_id: workoutId },
+  });
+  expect(dryRun.status).toBe(200);
+  expect(dryRun.body.dry_run).toBe(true);
+  expect(dryRun.body.mutationPerformed).toBe(false);
+  expect(dryRun.body.action_id).toBe("fitcore.workout.execution.start");
+  const afterDryRun = await apiJson(page, "/api/mvp-25/my-executions");
+  expect(afterDryRun.body.total).toBe(beforeDryRun.body.total);
+
+  const startKey = `browser-start-${slug}`;
+  await page.route("**/api/mvp-25/executions/start", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.continue();
+    await route.continue({
+      headers: { ...request.headers(), "idempotency-key": startKey },
+    });
+  });
+  const startResponsePromise = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/mvp-25/executions/start" &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Iniciar treino liberado" }).click();
+  const startResponse = await startResponsePromise;
+  const startBody = await startResponse.json();
+  await page.unroute("**/api/mvp-25/executions/start");
+  expect(startResponse.status()).toBe(201);
+  expect(startBody.execution_kernel.state).toBe("succeeded");
+  expect(startBody.execution_kernel.replayed).toBe(false);
   await expectSuccess(page, "Iniciar treino");
   await expect(page.getByText("1", { exact: true }).first()).toBeVisible();
+
+  const startReplay = await apiJson(page, "/api/mvp-25/executions/start", {
+    method: "POST",
+    headers: { "idempotency-key": startKey },
+    body: { workout_id: workoutId },
+  });
+  expect(startReplay.status).toBe(201);
+  expect(startReplay.body.execution.id).toBe(startBody.execution.id);
+  expect(startReplay.body.execution_kernel.replayed).toBe(true);
+
+  const bindingConflict = await apiJson(page, "/api/mvp-25/executions/start", {
+    method: "POST",
+    headers: { "idempotency-key": startKey },
+    body: { workout_id: workoutId, observacoes: "binding divergente" },
+  });
+  expect(bindingConflict.status).toBe(409);
+  expect(bindingConflict.body.mensagem).toContain("execution_binding_conflict");
 
   await page.getByRole("button", { name: "Marcar próximo exercício" }).click();
   await expectSuccess(page, "Marcar exercício");
@@ -44,9 +110,45 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
     .locator("option")
     .nth(0)
     .getAttribute("value");
-  if (firstValue) await executionSelect.selectOption(firstValue);
+  if (!firstValue) throw new Error("Execução em andamento não encontrada.");
+  await executionSelect.selectOption(firstValue);
+
+  const finishKey = `browser-finish-${slug}`;
+  let finishPayload = null;
+  await page.route("**/api/mvp-25/executions/*/finish", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.continue();
+    finishPayload = JSON.parse(request.postData() || "{}");
+    await route.continue({
+      headers: { ...request.headers(), "idempotency-key": finishKey },
+    });
+  });
+  const finishResponsePromise = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === `/api/mvp-25/executions/${firstValue}/finish` &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Concluir treino" }).click();
+  const finishResponse = await finishResponsePromise;
+  const finishBody = await finishResponse.json();
+  await page.unroute("**/api/mvp-25/executions/*/finish");
+  expect(finishResponse.status()).toBe(200);
+  expect(finishBody.execution_kernel.state).toBe("succeeded");
+  expect(finishBody.execution_kernel.replayed).toBe(false);
   await expectSuccess(page, "Concluir treino");
+
+  const finishReplay = await apiJson(
+    page,
+    `/api/mvp-25/executions/${firstValue}/finish`,
+    {
+      method: "POST",
+      headers: { "idempotency-key": finishKey },
+      body: finishPayload,
+    },
+  );
+  expect(finishReplay.status).toBe(200);
+  expect(finishReplay.body.execution.id).toBe(firstValue);
+  expect(finishReplay.body.execution_kernel.replayed).toBe(true);
 
   await page.goto("/evolucao");
   await expect(

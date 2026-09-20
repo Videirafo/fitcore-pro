@@ -28,6 +28,13 @@ export function hashExecutionIdempotencyKey(idempotencyKey) {
   return digest('idempotency', requireText(idempotencyKey, 'execution_idempotency_key_required'));
 }
 
+export function hashExecutionBinding(binding) {
+  if (!binding || typeof binding !== 'object' || Array.isArray(binding)) {
+    throw new Error('execution_binding_required');
+  }
+  return digest('binding', binding);
+}
+
 export function buildExecutionIdentity({
   tenantId,
   actionId,
