@@ -111,6 +111,7 @@ fi
 unset SERVICE_ENV
 [[ -n "$DB_URL" ]] || { echo "ERRO: FITCORE_DATABASE_URL não encontrado no serviço atual." >&2; false; }
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-execution-kernel-v2.sh
+FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-execution-analytics.sh
 unset DB_URL
 
 [[ -x infra/scripts/fitcore-api-with-hermes.sh ]] || {

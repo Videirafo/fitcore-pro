@@ -130,12 +130,18 @@ function dbFailure(error) {
     "execution_recovery_binding_invalid",
     "execution_recovery_not_stale",
     "execution_recovery_state_invalid",
+    "execution_analytics_window_invalid",
+    "execution_decision_invalid",
+    "execution_decision_binding_conflict",
+    "execution_decision_transition_invalid",
+    "execution_decision_transition_forbidden",
+    "execution_decision_not_found",
   ];
   const code = codes.find((candidate) => errorText.includes(candidate));
   if (!code) return new ExecutionKernelError("execution_kernel_database_failed", 503);
-  if (code === "execution_not_found") return new ExecutionKernelError(code, 404);
+  if (code === "execution_not_found" || code === "execution_decision_not_found") return new ExecutionKernelError(code, 404);
   if (code.includes("forbidden") || code === "execution_tenant_context_mismatch") return new ExecutionKernelError(code, 403);
-  if (code.startsWith("execution_recovery_")) return new ExecutionKernelError(code, 409);
+  if (code.startsWith("execution_recovery_") || code === "execution_decision_transition_forbidden") return new ExecutionKernelError(code, 409);
   if (code.includes("conflict") || code.includes("binding") || code === "execution_transition_resource_required") {
     return new ExecutionKernelError(code, 409);
   }
@@ -442,6 +448,77 @@ export function createExecutionKernelRuntime(env = process.env) {
     }
   }
 
+  function analytics(context, windowHours = 168) {
+    requireContext(context);
+    const hours = Math.min(Math.max(Number.parseInt(String(windowHours || 168), 10) || 168, 1), 720);
+    try {
+      const raw = scalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_analytics(${sqlText(context.tenant_id)}::uuid,${hours})::text;
+      `);
+      return JSON.parse(raw || "{}");
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function recordDecision(context, proposal = {}) {
+    requireContext(context);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_record_decision(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${context.actor_id ? `${sqlText(context.actor_id)}::uuid` : "NULL"},
+          ${sqlText(proposal.proposal_id)},
+          ${Number(proposal.rule_version) || 1},
+          ${proposal.action_id ? sqlText(proposal.action_id) : "NULL"},
+          ${sqlText(proposal.reason_code)},
+          ${sqlText(proposal.priority || "medium")},
+          ${proposal.resource_id ? `${sqlText(proposal.resource_id)}::uuid` : "NULL"}
+        )::text;
+      `);
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function validateDecision(context, { proposalId, actionId, resourceId } = {}) {
+    requireContext(context);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_validate_decision(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(proposalId)},
+          ${sqlText(actionId)},
+          ${sqlText(resourceId)}::uuid
+        )::text;
+      `);
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function transitionDecision(context, { proposalId, state, executionId = null, traceId = null } = {}) {
+    requireContext(context);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_transition_decision(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(proposalId)},
+          ${sqlText(state)},
+          ${executionId ? sqlText(executionId) : "NULL"},
+          ${traceId ? sqlText(traceId) : "NULL"}
+        )::text;
+      `);
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
   function status() {
     return {
       enabled,
@@ -451,10 +528,12 @@ export function createExecutionKernelRuntime(env = process.env) {
       dry_run: true,
       settlement: true,
       observability: true,
+      analytics: true,
+      next_best_action: true,
       stale_recovery: true,
       actions: Object.values(ACTION_DEFINITIONS).map((item) => item.id),
     };
   }
 
-  return { enabled, status, dryRun, execute, authorizeEffect, observability };
+  return { enabled, status, dryRun, execute, authorizeEffect, observability, analytics, recordDecision, validateDecision, transitionDecision };
 }

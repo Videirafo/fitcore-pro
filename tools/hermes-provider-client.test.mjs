@@ -109,6 +109,32 @@ test("#32 manager usa Hermes e preserva Evidence-First", async () => {
   assert.equal(result.safety.human_review, true);
 });
 
+test("#85 Hermes recebe Execution Analytics sanitizado sem capability/PII/raw payload", async () => {
+  let gatewayPrompt = "";
+  const manager = createAgentAssistantManager(baseEnv, { fetchImpl: async (_url, options) => {
+    gatewayPrompt = JSON.parse(options.body).prompt;
+    return new Response(JSON.stringify({ ok: true, contract: "hermes-provider-gateway-v1", output: "Priorize o alerta operacional.", provider: "ollama-native-local", model: "qwen3:1.7b" }), { status: 200 });
+  }});
+  const result = await manager.ask(
+    { session_signed: true, tenant_id: "11111111-1111-4111-8111-111111111111", actor_role: "gestor" },
+    { prompt: "O que devo priorizar?", module: "auditoria", operational_context: {
+      students: [],
+      execution_analytics: {
+        summary: { runs: 7, succeeded: 5, failed: 0, retry_wait: 1, dead_letter: 1, stale: 0, success_rate_pct: 71.43, avg_duration_ms: 1200 },
+        alerts: [{ code: "execution_dead_letter", severity: "critical", count: 1, raw_payload: "NAO_ENVIAR" }],
+        recent: [{ trace_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", execution_id: "exe_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", action_id: "fitcore.workout.execution.start", state: "dead_letter", error_code: "terminal_failure", actor_user_id: "PII_NAO_ENVIAR", idempotency_hash: "SECRET_NAO_ENVIAR" }],
+      },
+    } },
+  );
+  assert.equal(result.ok, true);
+  assert.match(gatewayPrompt, /Execution Analytics: runs=7/);
+  assert.match(gatewayPrompt, /execution_dead_letter/);
+  assert.match(gatewayPrompt, /aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\/exe_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/);
+  assert.doesNotMatch(gatewayPrompt, /NAO_ENVIAR|PII_NAO_ENVIAR|SECRET_NAO_ENVIAR|capability/i);
+  assert.equal(result.safety.capability_exposed, false);
+  assert.equal(result.safety.direct_database_access, false);
+});
+
 test("#32 manager mantém fallback local quando gateway está desligado", async () => {
   const manager = createAgentAssistantManager({ FITCORE_HERMES_GATEWAY_ENABLED: "false" });
   const result = await manager.ask(

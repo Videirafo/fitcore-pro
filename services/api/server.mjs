@@ -24,6 +24,7 @@ import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
 import { createWorkoutExecutionManager, buildWorkoutActionBinding, WORKOUT_ACTION_IDS } from "./security/workout-execution.mjs";
 import { createExecutionKernelRuntime, resolveExecutionIdempotencyKey } from "./security/execution-kernel-runtime.mjs";
+import { buildExecutionNextBestAction } from "./security/execution-next-best-action.mjs";
 import { createWorkoutSetSyncManager } from "./security/workout-set-sync.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
@@ -65,6 +66,31 @@ const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
 const executionKernelRuntime = createExecutionKernelRuntime(process.env);
 const workoutExecutionManager = createWorkoutExecutionManager(process.env, { executionKernel: executionKernelRuntime });
+function executionProposalId(req) {
+  const value = String(req?.headers?.["x-fitcore-proposal-id"] || "").trim();
+  if (!value) return "";
+  if (!/^nba_[0-9a-f]{32}$/.test(value)) {
+    const error = new Error("execution_decision_invalid");
+    error.statusCode = 400;
+    throw error;
+  }
+  return value;
+}
+function validateExecutionDecision(context, req, actionId, resourceId) {
+  const proposalId = executionProposalId(req);
+  if (!proposalId) return "";
+  executionKernelRuntime.validateDecision(context, { proposalId, actionId, resourceId });
+  return proposalId;
+}
+function linkExecutionDecision(context, proposalId, result) {
+  if (!proposalId || !result?.execution_kernel) return;
+  executionKernelRuntime.transitionDecision(context, {
+    proposalId,
+    state: result.execution_kernel.state === "succeeded" ? "executed" : "failed",
+    executionId: result.execution_kernel.execution_id || null,
+    traceId: result.execution_kernel.trace_id || null,
+  });
+}
 const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
@@ -1581,6 +1607,57 @@ const server = createServer(async (req, res) => {
       });
     }
 
+    if (url.pathname === "/api/mvp-25/analytics") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const role = String(accessContext?.actor_role || "").trim().toLowerCase();
+      if (!["gestor", "professor"].includes(role)) {
+        return sendJson(res, 403, { erro: "execution_analytics_forbidden", mensagem: "Analytics operacional disponível para gestor e professor." });
+      }
+      const analytics = executionKernelRuntime.analytics(accessContext, url.searchParams.get("window_hours") || 168);
+      return sendJson(res, 200, { ok: true, mvp: "Execution Analytics", tenant_scoped: true, analytics });
+    }
+
+    if (url.pathname === "/api/mvp-25/analytics/next-best-action") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const role = String(accessContext?.actor_role || "").trim().toLowerCase();
+      const ownOnly = role === "aluno";
+      const prescriptionsResult = workoutPrescriptionManager.listPrescriptions(
+        accessContext,
+        new URL("http://fitcore.local/api/mvp-24/prescriptions?status=aprovado&limit=60"),
+        ownOnly,
+      );
+      if (prescriptionsResult.guard && !prescriptionsResult.guard.allowed) {
+        return sendJson(res, prescriptionsResult.guard.statusCode, prescriptionsResult.guard.response);
+      }
+      const executionsResult = workoutExecutionManager.listExecutions(
+        accessContext,
+        new URL("http://fitcore.local/api/mvp-25/executions?limit=80"),
+        ownOnly,
+      );
+      if (executionsResult.guard && !executionsResult.guard.allowed) {
+        return sendJson(res, executionsResult.guard.statusCode, executionsResult.guard.response);
+      }
+      const analytics = ["gestor", "professor"].includes(role)
+        ? executionKernelRuntime.analytics(accessContext, 168)
+        : { summary: {}, alerts: [], recent: [] };
+      const proposal = buildExecutionNextBestAction({
+        context: accessContext,
+        analytics,
+        prescriptions: prescriptionsResult.prescriptions || prescriptionsResult.workouts || [],
+        executions: executionsResult.executions || [],
+      });
+      if (!proposal) {
+        return sendJson(res, 200, { ok: true, mvp: "Execution Next Best Action", proposal: null, reason: "no_action_required" });
+      }
+      const decision = executionKernelRuntime.recordDecision(accessContext, proposal);
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "Execution Next Best Action",
+        proposal: { ...proposal, audit_state: decision?.state || "proposed" },
+        safety: { proposal_only: true, capability_exposed: false, direct_database_access: false },
+      });
+    }
+
     if (url.pathname === "/api/mvp-25/executions") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = workoutExecutionManager.listExecutions(accessContext, url);
@@ -1610,6 +1687,7 @@ const server = createServer(async (req, res) => {
           summary: validation.summary,
         }));
       }
+      const proposalId = validateExecutionDecision(accessContext, req, actionId, binding.workout_id);
       const result = executionKernelRuntime.execute(accessContext, {
         actionId,
         idempotencyKey: resolveExecutionIdempotencyKey(req),
@@ -1624,6 +1702,7 @@ const server = createServer(async (req, res) => {
         ),
         resourceId: (effectResult) => effectResult.execution?.id,
       });
+      linkExecutionDecision(accessContext, proposalId, result);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
         ...result.guard.response,
         execution_kernel: result.execution_kernel,
@@ -1649,6 +1728,7 @@ const server = createServer(async (req, res) => {
           summary: validation.summary,
         }));
       }
+      const proposalId = validateExecutionDecision(accessContext, req, actionId, executionId);
       const result = executionKernelRuntime.execute(accessContext, {
         actionId,
         idempotencyKey: resolveExecutionIdempotencyKey(req),
@@ -1663,6 +1743,7 @@ const server = createServer(async (req, res) => {
         ),
         resourceId: (effectResult) => effectResult.execution?.id,
       });
+      linkExecutionDecision(accessContext, proposalId, result);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
         ...result.guard.response,
         execution_kernel: result.execution_kernel,
@@ -1687,6 +1768,7 @@ const server = createServer(async (req, res) => {
           summary: validation.summary,
         }));
       }
+      const proposalId = validateExecutionDecision(accessContext, req, actionId, executionId);
       const result = executionKernelRuntime.execute(accessContext, {
         actionId,
         idempotencyKey: resolveExecutionIdempotencyKey(req),
@@ -1701,6 +1783,7 @@ const server = createServer(async (req, res) => {
         ),
         resourceId: (effectResult) => effectResult.execution?.id,
       });
+      linkExecutionDecision(accessContext, proposalId, result);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
         ...result.guard.response,
         execution_kernel: result.execution_kernel,
@@ -1765,6 +1848,9 @@ const server = createServer(async (req, res) => {
           consentimento_lgpd: externalProviderAllowed,
         }] : [];
       }
+      const executionAnalyticsForAgent = ["gestor", "professor"].includes(actorRole)
+        ? executionKernelRuntime.analytics(accessContext, 168)
+        : null;
       const operationalContext = dashboardSnapshot?.guard ? {} : {
         source: dashboardSnapshot?.agent_context?.source || dashboardSnapshot?.source || "mvp37_consolidated_dashboard",
         facts: dashboardSnapshot?.agent_context?.facts || [],
@@ -1773,6 +1859,7 @@ const server = createServer(async (req, res) => {
         prescriptions: prescriptions.map((item) => ({ student_id: item.student_id, nome: item.nome_treino || item.objetivo, aluno: item.student_name || item.aluno_nome, status: item.status })),
         executions: executions.map((item) => ({ student_id: item.student_id, aluno: item.student_name || item.aluno_nome, status: item.status, esforco: item.percepcao_esforco ?? null, concluido_em: item.concluido_em || null })),
         evolution: evolutionStudents.map((item) => ({ student_id: item.student_id, aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
+        execution_analytics: executionAnalyticsForAgent,
       };
       const result = await agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext, external_provider_allowed: externalProviderAllowed });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
