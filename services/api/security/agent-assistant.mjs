@@ -71,6 +71,37 @@ function contextPack(value = {}) {
   const prescriptions = Array.isArray(value?.prescriptions) ? value.prescriptions.filter(studentAllowed).map((item) => ({ nome: clean(item?.nome, "", 120), aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40) })).slice(0, 20) : [];
   const executions = Array.isArray(value?.executions) ? value.executions.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), status: clean(item?.status, "", 40), esforco: item?.esforco ?? null, concluido_em: item?.concluido_em || null })).slice(0, 20) : [];
   const evolution = Array.isArray(value?.evolution) ? value.evolution.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), frequencia: item?.frequencia ?? 0, progresso: item?.progresso ?? 0, esforco: item?.esforco ?? null })).slice(0, 20) : [];
+  const analyticsRaw = value?.execution_analytics && typeof value.execution_analytics === "object"
+    ? value.execution_analytics
+    : (value?.executionAnalytics && typeof value.executionAnalytics === "object" ? value.executionAnalytics : {});
+  const executionAnalytics = {
+    summary: {
+      runs: Number(analyticsRaw?.summary?.runs || 0),
+      succeeded: Number(analyticsRaw?.summary?.succeeded || 0),
+      failed: Number(analyticsRaw?.summary?.failed || 0),
+      retry_wait: Number(analyticsRaw?.summary?.retry_wait || 0),
+      dead_letter: Number(analyticsRaw?.summary?.dead_letter || 0),
+      stale: Number(analyticsRaw?.summary?.stale || 0),
+      success_rate_pct: Number(analyticsRaw?.summary?.success_rate_pct || 0),
+      avg_duration_ms: Number(analyticsRaw?.summary?.avg_duration_ms || 0),
+    },
+    alerts: Array.isArray(analyticsRaw?.alerts)
+      ? analyticsRaw.alerts.slice(0, 8).map((item) => ({
+          code: clean(item?.code, "", 120),
+          severity: clean(item?.severity, "", 20),
+          count: Number(item?.count || 0),
+        }))
+      : [],
+    recent: Array.isArray(analyticsRaw?.recent)
+      ? analyticsRaw.recent.slice(0, 8).map((item) => ({
+          trace_id: clean(item?.trace_id, "", 40),
+          execution_id: clean(item?.execution_id, "", 40),
+          action_id: clean(item?.action_id, "", 160),
+          state: clean(item?.state, "", 40),
+          error_code: clean(item?.error_code, "", 120),
+        }))
+      : [],
+  };
   const facts = consentRegistrySupplied
     ? [
         `Equipe disponível para IA: ${team.length}`,
@@ -78,9 +109,10 @@ function contextPack(value = {}) {
         `Prescrições disponíveis para IA: ${prescriptions.length}`,
         `Execuções disponíveis para IA: ${executions.length}`,
         `Evoluções disponíveis para IA: ${evolution.length}`,
+        `Execution Kernel: ${executionAnalytics.summary.runs} runs; success=${executionAnalytics.summary.succeeded}; retry_wait=${executionAnalytics.summary.retry_wait}; dead_letter=${executionAnalytics.summary.dead_letter}`,
       ]
     : (Array.isArray(value?.facts) ? value.facts.map((item) => clean(item, "", 180)).filter(Boolean).slice(0, 12) : []);
-  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution };
+  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution, executionAnalytics };
 }
 
 function summarizeContext(pack) {
@@ -108,6 +140,15 @@ function buildGatewayPrompt(role, moduleName, prompt, pack) {
   if (prescriptions) sections.push(`Prescrições: ${prescriptions}`);
   if (executions) sections.push(`Execuções: ${executions}`);
   if (evolution) sections.push(`Evolução: ${evolution}`);
+  const exec = pack.executionAnalytics || { summary: {}, alerts: [], recent: [] };
+  if (Number(exec.summary?.runs || 0) > 0 || exec.alerts?.length) {
+    sections.push(`Execution Analytics: runs=${exec.summary.runs || 0}; succeeded=${exec.summary.succeeded || 0}; failed=${exec.summary.failed || 0}; retry_wait=${exec.summary.retry_wait || 0}; dead_letter=${exec.summary.dead_letter || 0}; stale=${exec.summary.stale || 0}; success_rate_pct=${exec.summary.success_rate_pct || 0}.`);
+    const alertText = compactItems(exec.alerts || [], (item) => `${item.code}[severity=${item.severity};count=${item.count}]`, 6);
+    if (alertText) sections.push(`Alertas de execução: ${alertText}`);
+    const traceText = compactItems(exec.recent || [], (item) => `${item.trace_id}/${item.execution_id} [action=${item.action_id};state=${item.state};error=${item.error_code || "none"}]`, 5);
+    if (traceText) sections.push(`Correlação sanitizada: ${traceText}`);
+  }
+  sections.push("Nunca trate proposta NBA como autorização. Qualquer side effect deve voltar ao Execution Kernel server-side.");
   sections.push("Entregue apenas a orientação final.");
   return clean(sections.join("\n"), "", 3_900);
 }
@@ -180,7 +221,7 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
         ) SELECT id::text FROM event;
       `);
     } catch {}
-    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, lgpd: "dados mínimos e auditoria por unidade" } };
+    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length, execution_analytics: operationalContext.executionAnalytics }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, capability_exposed: false, direct_database_access: false, lgpd: "dados mínimos e auditoria por unidade" } };
   }
   return { enabled, status, ask };
 }

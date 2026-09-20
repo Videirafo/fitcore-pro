@@ -11,10 +11,13 @@ assert.match(script, /npm run mvp32:check/);
 assert.match(script, /npm run all:ui-gates/);
 assert.match(script, /npm run site:next:build/);
 assert.match(script, /bash infra\/scripts\/apply-execution-kernel-v2\.sh/);
+assert.match(script, /bash infra\/scripts\/apply-execution-analytics\.sh/);
 assert.ok(
   script.indexOf("bash infra/scripts/apply-execution-kernel-v2.sh") <
-    script.indexOf('install -m 0644 "$API_TMP" "$API_DROPIN"'),
-  "migration 023 deve ser aplicada antes da troca de tráfego",
+    script.indexOf("bash infra/scripts/apply-execution-analytics.sh") &&
+    script.indexOf("bash infra/scripts/apply-execution-analytics.sh") <
+      script.indexOf('install -m 0644 "$API_TMP" "$API_DROPIN"'),
+  "migrations 023/024 devem ser aplicadas em ordem antes da troca de tráfego",
 );
 assert.match(script, /install -m 0700 infra\/scripts\/fitcore-api-with-hermes\.sh "\$WRAPPER"/);
 assert.match(script, /trap rollback ERR/);

@@ -45,6 +45,10 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
   await page.goto("/execucao");
   await expect(page.getByText("Treino Browser QA").first()).toBeVisible();
 
+  const tenantAnalytics = await apiJson(page, "/api/mvp-25/analytics");
+  expect(tenantAnalytics.status).toBe(403);
+  expect(tenantAnalytics.body.erro).toBe("execution_analytics_forbidden");
+
   const workouts = await apiJson(page, "/api/mvp-24/my-workouts");
   expect(workouts.status).toBe(200);
   const workoutId = workouts.body.prescriptions?.find((item) => item.status === "aprovado")?.id;
@@ -71,10 +75,15 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
   const afterMissingKey = await apiJson(page, "/api/mvp-25/my-executions");
   expect(afterMissingKey.body.total).toBe(beforeDryRun.body.total);
 
+  await expect(page.getByText("Next Best Action").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Iniciar treino recomendado" })).toBeVisible();
+
   const startKey = `browser-start-${slug}`;
+  let proposalId = "";
   await page.route("**/api/mvp-25/executions/start", async (route) => {
     const request = route.request();
     if (request.method() !== "POST") return route.continue();
+    proposalId = request.headers()["x-fitcore-proposal-id"] || "";
     await route.continue({
       headers: { ...request.headers(), "idempotency-key": startKey },
     });
@@ -84,19 +93,20 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
       new URL(response.url()).pathname === "/api/mvp-25/executions/start" &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Iniciar treino liberado" }).click();
+  await page.getByRole("button", { name: "Iniciar treino recomendado" }).click();
   const startResponse = await startResponsePromise;
   const startBody = await startResponse.json();
   await page.unroute("**/api/mvp-25/executions/start");
   expect(startResponse.status()).toBe(201);
   expect(startBody.execution_kernel.state).toBe("succeeded");
   expect(startBody.execution_kernel.replayed).toBe(false);
+  expect(proposalId).toMatch(/^nba_[0-9a-f]{32}$/);
   await expectSuccess(page, "Iniciar treino");
   await expect(page.getByText("1", { exact: true }).first()).toBeVisible();
 
   const startReplay = await apiJson(page, "/api/mvp-25/executions/start", {
     method: "POST",
-    headers: { "idempotency-key": startKey },
+    headers: { "idempotency-key": startKey, "x-fitcore-proposal-id": proposalId },
     body: { workout_id: workoutId },
   });
   expect(startReplay.status).toBe(201);
