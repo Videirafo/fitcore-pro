@@ -11,13 +11,32 @@ async function api<T = JsonMap>(path: string, init: RequestInit = {}): Promise<T
   const response = await fetch(path, {
     cache: "no-store",
     credentials: "include",
-    headers: { "content-type": "application/json", ...(init.headers || {}) },
     ...init,
+    headers: { "content-type": "application/json", ...(init.headers || {}) },
   });
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
   if (!response.ok) throw new Error(data.mensagem || data.erro || `HTTP ${response.status}`);
   return data as T;
+}
+
+function mutationKey(scope: string): { storageKey: string; value: string } {
+  const storageKey = `fitcore.execution.legacy.${scope}`;
+  const existing = window.sessionStorage.getItem(storageKey);
+  if (existing) return { storageKey, value: existing };
+  const value = `web:${crypto.randomUUID()}`;
+  window.sessionStorage.setItem(storageKey, value);
+  return { storageKey, value };
+}
+
+async function executionMutation<T = JsonMap>(scope: string, path: string, init: RequestInit): Promise<T> {
+  const operation = mutationKey(scope);
+  const result = await api<T>(path, {
+    ...init,
+    headers: { ...(init.headers || {}), "Idempotency-Key": operation.value },
+  });
+  window.sessionStorage.removeItem(operation.storageKey);
+  return result;
 }
 
 function value(form: HTMLFormElement, key: string) {
@@ -132,7 +151,7 @@ export function ExecutionPanel() {
   const [workouts, setWorkouts] = useState<any>(null); const [execs, setExecs] = useState<any>(null); const [out, setOut] = useState<any>(null);
   const load = async () => { try { setWorkouts(await api("/api/mvp-24/my-workouts?status=aprovado&limit=20")); setExecs(await api("/api/mvp-25/my-executions?limit=20")); } catch (error:any) { setOut({ ok:false, erro:error.message }); } };
   useEffect(() => { load(); }, []);
-  const start = async (id:string) => { try { setOut(await api("/api/mvp-25/executions/start", { method:"POST", body: JSON.stringify({ workout_id:id }) })); await load(); } catch(error:any) { setOut({ ok:false, erro:error.message }); } };
+  const start = async (id:string) => { try { setOut(await executionMutation(`start:${id}`, "/api/mvp-25/executions/start", { method:"POST", body: JSON.stringify({ workout_id:id }) })); await load(); } catch(error:any) { setOut({ ok:false, erro:error.message }); } };
   return <div className="two-col"><section className="panel"><span className="label">Execução</span><h2>Treinos liberados</h2><div className="list">{(workouts?.workouts || []).slice(0,8).map((w:any)=><article className="list-row" key={w.id}><strong>{w.nome_treino}</strong><span>{w.status}</span><button type="button" onClick={()=>start(w.id)}>Iniciar</button></article>)}</div></section><DataList title="Minhas execuções" data={execs?.executions || []} /><JsonBlock data={out || execs || workouts} /></div>;
 }
 

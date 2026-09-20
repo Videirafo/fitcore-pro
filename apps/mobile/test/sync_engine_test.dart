@@ -49,7 +49,7 @@ class FakeRemote implements FitCoreRemote {
   }
 
   @override
-  Future<String> startWorkout(String workoutId) async {
+  Future<String> startWorkout(String workoutId, {required String clientOperationId}) async {
     _maybeFail();
     calls.add('start:$workoutId');
     return 'remote-1';
@@ -73,6 +73,7 @@ class FakeRemote implements FitCoreRemote {
   Future<void> completeExercise(
     String executionId,
     int index, {
+    required String clientOperationId,
     String? observation,
   }) async {
     _maybeFail();
@@ -82,6 +83,7 @@ class FakeRemote implements FitCoreRemote {
   @override
   Future<void> finishWorkout(
     String executionId, {
+    required String clientOperationId,
     required int effort,
     required int durationMinutes,
   }) async {

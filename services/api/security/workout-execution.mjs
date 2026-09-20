@@ -2,7 +2,6 @@
 // Execução real do treino pelo aluno: iniciar, marcar exercício, registrar esforço/duração e concluir.
 
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { normalizeRole } from "./access-context.mjs";
 
 const EXECUTION_STATUS = new Set(["em_execucao", "concluido", "cancelado"]);
@@ -132,13 +131,13 @@ export function createWorkoutExecutionManager(env = process.env, { executionKern
       return { allowed: false, statusCode: 503, response: { erro: "execution_kernel_authority_unavailable" } };
     }
     try {
-      executionKernel.authorizeEffect(authority.capability, {
+      const execution = executionKernel.authorizeEffect(authority.capability, {
         tenantId: context.tenant_id,
         actorUserId: context.actor_id,
         actionId,
         binding,
       });
-      return { allowed: true };
+      return { allowed: true, execution };
     } catch (error) {
       return {
         allowed: false,
@@ -247,7 +246,7 @@ export function createWorkoutExecutionManager(env = process.env, { executionKern
     const binding = buildWorkoutActionBinding(WORKOUT_ACTION_IDS.START, { input });
     const capabilityGuard = requireExecutionCapability(context, WORKOUT_ACTION_IDS.START, binding, authority);
     if (!capabilityGuard.allowed) return { guard: capabilityGuard };
-    const sourceMvpId = `mvp25-${Date.now()}-${randomBytes(3).toString("hex")}`;
+    const sourceMvpId = "execution-kernel:" + capabilityGuard.execution.executionId;
     const raw = scalar(env, `
       ${setTenantSession(context)}
       WITH ${tenantScope(context)}, workout_row AS (
@@ -259,7 +258,10 @@ export function createWorkoutExecutionManager(env = process.env, { executionKern
         SELECT ${sqlText(context.tenant_id)}::uuid, ${sqlText(sourceMvpId)}, workout_row.id, workout_row.student_id, 'em_execucao', NULL, NULL, ${sqlText(displayClean(input.observacoes || "", "", 500))}, now(), ${sqlText(context.actor_id)}::uuid, ${sqlText(context.actor_id)}::uuid,
           COALESCE((SELECT jsonb_agg(jsonb_build_object('index', (ord - 1), 'nome', COALESCE(ex->>'nome', ex->>'name', 'Exercício ' || ord), 'status', 'pendente', 'feito_em', NULL, 'observacao', COALESCE(ex->>'observacao',''))) FROM jsonb_array_elements(workout_row.exercicios) WITH ORDINALITY AS arr(ex, ord)), '[]'::jsonb),
           jsonb_build_object('origem','mvp25_execution','nome_treino', COALESCE(workout_row.payload->>'nome_treino','Treino'), 'orientacoes', COALESCE(workout_row.payload->>'orientacoes','')), now()
-        FROM workout_row RETURNING *
+        FROM workout_row
+        ON CONFLICT (tenant_id, source_mvp_id) DO UPDATE
+          SET atualizado_em = fitcore_workout_executions.atualizado_em
+        RETURNING *
       )
       SELECT jsonb_build_object('id', created.id, 'tenant_id', created.tenant_id, 'tenant_slug', ${sqlText(context.tenant_slug || "")}, 'workout_id', created.workout_id, 'student_id', created.student_id, 'student_name', (SELECT student_name FROM workout_row), 'student_user_id', (SELECT student_user_id FROM workout_row), 'nome_treino', created.payload->>'nome_treino', 'objetivo', (SELECT objetivo FROM workout_row), 'status', created.status, 'percepcao_esforco', created.percepcao_esforco, 'duracao_minutos', created.duracao_minutos, 'observacoes', created.observacoes, 'iniciado_em', created.iniciado_em, 'concluido_em', created.concluido_em, 'criado_em', created.criado_em, 'atualizado_em', created.atualizado_em, 'exercise_progress', created.exercise_progress, 'orientacoes', created.payload->>'orientacoes', 'payload', created.payload)::text FROM created;
     `);
@@ -305,6 +307,36 @@ export function createWorkoutExecutionManager(env = process.env, { executionKern
     const audit = recordEvent(context, execution, "exercise_marked_done", `exercício ${idx + 1} marcado como feito`, { index: idx, observacao }, idx);
     return { ok: true, mvp: "MVP-25 Workout Execution", exercise_done: true, index: idx, tenant_slug: context.tenant_slug, execution, audit };
   }
+  function reconcileAction(context = {}, actionId = "", binding = {}, executionIdentity = {}) {
+    const guard = requireAluno(context); if (!guard.allowed) return null;
+    if (actionId === WORKOUT_ACTION_IDS.START) {
+      const logicalId = clean(executionIdentity.executionId || "", "", 90);
+      if (!logicalId) return null;
+      const sourceMvpId = "execution-kernel:" + logicalId;
+      const data = rowSelect(
+        context,
+        `e.tenant_id = ${sqlText(context.tenant_id)}::uuid AND e.source_mvp_id = ${sqlText(sourceMvpId)} AND s.user_id = ${sqlText(context.actor_id)}::uuid`,
+        1,
+      );
+      const execution = publicExecution((data.executions || [])[0]);
+      return execution ? { ok: true, mvp: "MVP-25 Workout Execution", started: true, recovered: true, execution } : null;
+    }
+    const current = getExecution(context, binding.execution_id || "");
+    if (current.guard || !current.execution) return null;
+    if (actionId === WORKOUT_ACTION_IDS.EXERCISE_COMPLETE) {
+      const item = current.execution.exercise_progress.find((entry) => entry.index === binding.index);
+      return item?.status === "feito"
+        ? { ...current, exercise_done: true, recovered: true, index: binding.index }
+        : null;
+    }
+    if (actionId === WORKOUT_ACTION_IDS.FINISH) {
+      return current.execution.status === "concluido"
+        ? { ...current, finished: true, recovered: true }
+        : null;
+    }
+    return null;
+  }
+
   function finishExecution(context = {}, id = "", input = {}, authority = {}) {
     const guard = requireAluno(context); if (!guard.allowed) return { guard };
     const binding = buildWorkoutActionBinding(WORKOUT_ACTION_IDS.FINISH, { id, input });
@@ -330,5 +362,5 @@ export function createWorkoutExecutionManager(env = process.env, { executionKern
     const audit = recordEvent(context, execution, "workout_execution_finished", `esforço=${effort}; duração=${duration}min`, { effort, duration });
     return { ok: true, mvp: "MVP-25 Workout Execution", finished: true, tenant_slug: context.tenant_slug, execution, audit };
   }
-  return { enabled, status, listExecutions, validateAction, startExecution, getExecution, markExerciseDone, finishExecution };
+  return { enabled, status, listExecutions, validateAction, startExecution, getExecution, markExerciseDone, finishExecution, reconcileAction };
 }

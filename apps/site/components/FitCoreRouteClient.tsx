@@ -43,11 +43,28 @@ const exerciseMedia = [
 const agentPrompts = ["Criar treino personalizado", "Ajustar volume e intensidade", "Revisar progresso de um aluno", "Gerar orientação para o aluno"];
 
 async function api(path: string, options: RequestInit = {}): Promise<Json> {
-  const res = await fetch(path, { cache: "no-store", credentials: "include", headers: { "content-type": "application/json", ...(options.headers || {}) }, ...options });
+  const res = await fetch(path, { cache: "no-store", credentials: "include", ...options, headers: { "content-type": "application/json", ...(options.headers || {}) } });
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.mensagem || data.erro || data.reason || `HTTP ${res.status}`);
   return data;
+}
+function idempotencyKey(scope: string): { storageKey: string; value: string } {
+  const storageKey = `fitcore.execution.idempotency.${scope}`;
+  const existing = window.sessionStorage.getItem(storageKey);
+  if (existing) return { storageKey, value: existing };
+  const value = `web:${crypto.randomUUID()}`;
+  window.sessionStorage.setItem(storageKey, value);
+  return { storageKey, value };
+}
+async function executionMutation(scope: string, path: string, options: RequestInit): Promise<Json> {
+  const operation = idempotencyKey(scope);
+  const result = await api(path, {
+    ...options,
+    headers: { ...(options.headers || {}), "Idempotency-Key": operation.value },
+  });
+  window.sessionStorage.removeItem(operation.storageKey);
+  return result;
 }
 function safe(value: any): string { return value === undefined || value === null || value === "" ? "—" : String(value); }
 function numberText(value: any): string { const n = Number(value ?? 0); return Number.isFinite(n) ? n.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "0"; }
@@ -139,9 +156,9 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
   async function submitStudent(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const payload = formPayload(event.currentTarget); const result = await runAction("Cadastrar aluno", () => api("/api/mvp-23/students", { method: "POST", body: JSON.stringify(payload) }), "students"); const studentId = result?.student?.id || result?.created?.id; if (studentId) router.push(`/treinos?student=${encodeURIComponent(studentId)}`); }
   async function submitPrescription(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const payload = formPayload(event.currentTarget); payload.exercicios = String(payload.exercicios || "").split("\n").map((item) => item.trim()).filter(Boolean); const result = await runAction("Criar prescrição", () => api("/api/mvp-24/prescriptions", { method: "POST", body: JSON.stringify(payload) }), "training"); if (result?.prescription?.id) setDetail(result); }
   async function reviewPrescription(id: string, status: "aprovado" | "ajustes_solicitados") { await runAction(status === "aprovado" ? "Aprovar treino" : "Solicitar ajustes", () => api(`/api/mvp-24/prescriptions/${encodeURIComponent(id)}/review`, { method: "POST", body: JSON.stringify({ status, observacoes: status === "aprovado" ? "Treino aprovado no painel." : "Ajustes solicitados no painel." }) }), "training"); }
-  async function startExecution(workoutId: string) { await runAction("Iniciar treino", () => api("/api/mvp-25/executions/start", { method: "POST", body: JSON.stringify({ workout_id: workoutId }) }), "execution"); }
-  async function markExerciseDone(executionId: string, index: number) { await runAction("Marcar exercício", () => api(`/api/mvp-25/executions/${encodeURIComponent(executionId)}/exercises/${index}/done`, { method: "POST", body: JSON.stringify({ observacao: "Marcado no painel." }) }), "execution"); }
-  async function finishExecution(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const payload = formPayload(event.currentTarget); const id = String(payload.execution_id || ""); delete payload.execution_id; await runAction("Concluir treino", () => api(`/api/mvp-25/executions/${encodeURIComponent(id)}/finish`, { method: "POST", body: JSON.stringify(payload) }), "execution"); }
+  async function startExecution(workoutId: string) { await runAction("Iniciar treino", () => executionMutation(`start:${workoutId}`, "/api/mvp-25/executions/start", { method: "POST", body: JSON.stringify({ workout_id: workoutId }) }), "execution"); }
+  async function markExerciseDone(executionId: string, index: number) { await runAction("Marcar exercício", () => executionMutation(`exercise:${executionId}:${index}`, `/api/mvp-25/executions/${encodeURIComponent(executionId)}/exercises/${index}/done`, { method: "POST", body: JSON.stringify({ observacao: "Marcado no painel." }) }), "execution"); }
+  async function finishExecution(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const payload = formPayload(event.currentTarget); const id = String(payload.execution_id || ""); delete payload.execution_id; await runAction("Concluir treino", () => executionMutation(`finish:${id}`, `/api/mvp-25/executions/${encodeURIComponent(id)}/finish`, { method: "POST", body: JSON.stringify(payload) }), "execution"); }
   async function loadStudentEvolution(studentId: string) { await runAction("Carregar evolução", () => api(`/api/mvp-26/students/${encodeURIComponent(studentId)}/evolution?limit=100`), "evolution"); }
   async function askAgent(prompt: string) { const result = await runAction("Assistente IA", () => api("/api/mvp-32/agent", { method: "POST", body: JSON.stringify({ prompt, module: mode }) }), mode); if (result) setAgentAnswer(result); }
 

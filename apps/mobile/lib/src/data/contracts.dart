@@ -24,7 +24,7 @@ abstract class FitCoreRemote {
   Future<FitCoreUser> profile();
   Future<void> logout();
   Future<List<WorkoutPlan>> myWorkouts();
-  Future<String> startWorkout(String workoutId);
+  Future<String> startWorkout(String workoutId, {required String clientOperationId});
   Future<void> upsertSet(
     String executionId,
     int exerciseIndex,
@@ -35,10 +35,12 @@ abstract class FitCoreRemote {
   Future<void> completeExercise(
     String executionId,
     int index, {
+    required String clientOperationId,
     String? observation,
   });
   Future<void> finishWorkout(
     String executionId, {
+    required String clientOperationId,
     required int effort,
     required int durationMinutes,
   });

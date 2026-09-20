@@ -177,7 +177,8 @@ RETURNS TABLE(
   operation_row_id uuid,
   created boolean,
   replayed boolean,
-  resource_id uuid
+  resource_id uuid,
+  updated_at timestamptz
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -190,6 +191,9 @@ DECLARE
   v_created boolean := false;
 BEGIN
   IF p_tenant_id IS NULL THEN RAISE EXCEPTION 'execution_tenant_required'; END IF;
+  IF current_setting('app.tenant_id', true) IS DISTINCT FROM p_tenant_id::text THEN
+    RAISE EXCEPTION 'execution_tenant_context_mismatch';
+  END IF;
   IF p_submission_id !~ '^sub_[0-9a-f]{32}$'
      OR p_execution_id !~ '^exe_[0-9a-f]{32}$'
      OR p_attempt_id !~ '^att_[0-9a-f]{32}$'
@@ -249,7 +253,7 @@ BEGIN
     IF NOT FOUND THEN RAISE EXCEPTION 'execution_operation_binding_conflict'; END IF;
 
     IF v_run.state IN ('admitted','executing','settlement_pending','succeeded') THEN
-      RETURN QUERY SELECT v_run.id,v_run.state,v_attempt.id,v_operation.id,false,true,v_run.resource_id;
+      RETURN QUERY SELECT v_run.id,v_run.state,v_attempt.id,v_operation.id,false,true,v_run.resource_id,v_run.atualizado_em;
       RETURN;
     END IF;
     RAISE EXCEPTION 'execution_state_conflict';
@@ -311,7 +315,7 @@ BEGIN
     'execution.admitted','validated','admitted','{}'::jsonb
   );
 
-  RETURN QUERY SELECT v_run.id,v_run.state,v_attempt.id,v_operation.id,v_created,false,v_run.resource_id;
+  RETURN QUERY SELECT v_run.id,v_run.state,v_attempt.id,v_operation.id,v_created,false,v_run.resource_id,v_run.atualizado_em;
 END;
 $function$;
 
@@ -345,8 +349,11 @@ DECLARE
   v_allowed boolean := false;
   v_now timestamptz := now();
 BEGIN
-  IF p_tenant_id IS NULL
-     OR p_execution_id !~ '^exe_[0-9a-f]{32}$'
+  IF p_tenant_id IS NULL THEN RAISE EXCEPTION 'execution_tenant_required'; END IF;
+  IF current_setting('app.tenant_id', true) IS DISTINCT FROM p_tenant_id::text THEN
+    RAISE EXCEPTION 'execution_tenant_context_mismatch';
+  END IF;
+  IF p_execution_id !~ '^exe_[0-9a-f]{32}$'
      OR p_attempt_id !~ '^att_[0-9a-f]{32}$'
      OR p_operation_id !~ '^op_[0-9a-f]{32}$'
      OR p_to_state NOT IN ('executing','settlement_pending','succeeded','failed','retry_wait','dead_letter') THEN
@@ -438,6 +445,103 @@ BEGIN
 END;
 $function$;
 
+
+CREATE OR REPLACE FUNCTION fitcore_execution_recover(
+  p_tenant_id uuid,
+  p_execution_id text,
+  p_attempt_id text,
+  p_operation_id text,
+  p_to_state text,
+  p_stale_before timestamptz
+)
+RETURNS TABLE(
+  run_id uuid,
+  run_state text,
+  attempt_state text,
+  operation_state text,
+  replayed boolean,
+  resource_id uuid
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_run fitcore_execution_runs%rowtype;
+  v_attempt fitcore_execution_attempts%rowtype;
+  v_operation fitcore_execution_operations%rowtype;
+  v_from text;
+  v_now timestamptz := now();
+BEGIN
+  IF p_tenant_id IS NULL THEN RAISE EXCEPTION 'execution_tenant_required'; END IF;
+  IF current_setting('app.tenant_id', true) IS DISTINCT FROM p_tenant_id::text THEN
+    RAISE EXCEPTION 'execution_tenant_context_mismatch';
+  END IF;
+  IF p_execution_id !~ '^exe_[0-9a-f]{32}$'
+     OR p_attempt_id !~ '^att_[0-9a-f]{32}$'
+     OR p_operation_id !~ '^op_[0-9a-f]{32}$'
+     OR p_to_state NOT IN ('admitted','dead_letter')
+     OR p_stale_before IS NULL THEN
+    RAISE EXCEPTION 'execution_recovery_invalid';
+  END IF;
+
+  SELECT * INTO v_run FROM fitcore_execution_runs r
+  WHERE r.tenant_id=p_tenant_id AND r.execution_id=p_execution_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'execution_not_found'; END IF;
+  SELECT * INTO v_attempt FROM fitcore_execution_attempts a
+  WHERE a.tenant_id=p_tenant_id AND a.execution_run_id=v_run.id AND a.attempt_id=p_attempt_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'execution_recovery_binding_invalid'; END IF;
+  SELECT * INTO v_operation FROM fitcore_execution_operations o
+  WHERE o.tenant_id=p_tenant_id AND o.execution_run_id=v_run.id
+    AND o.execution_attempt_id=v_attempt.id AND o.operation_id=p_operation_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'execution_recovery_binding_invalid'; END IF;
+
+  IF v_run.state<>v_attempt.state OR v_attempt.state<>v_operation.state THEN
+    RAISE EXCEPTION 'execution_recovery_binding_invalid';
+  END IF;
+  IF v_run.atualizado_em > p_stale_before THEN
+    RAISE EXCEPTION 'execution_recovery_not_stale';
+  END IF;
+  IF v_run.state NOT IN ('executing','settlement_pending') THEN
+    RAISE EXCEPTION 'execution_recovery_state_invalid';
+  END IF;
+  IF p_to_state='admitted' AND v_run.state<>'executing' THEN
+    RAISE EXCEPTION 'execution_recovery_state_invalid';
+  END IF;
+
+  v_from := v_run.state;
+  UPDATE fitcore_execution_runs SET
+    state=p_to_state,
+    error_code=CASE WHEN p_to_state='dead_letter' THEN 'recovery_unresolved' ELSE NULL END,
+    completed_at=CASE WHEN p_to_state='dead_letter' THEN v_now ELSE NULL END,
+    atualizado_em=v_now
+  WHERE id=v_run.id RETURNING * INTO v_run;
+  UPDATE fitcore_execution_attempts SET
+    state=p_to_state,
+    error_code=CASE WHEN p_to_state='dead_letter' THEN 'recovery_unresolved' ELSE NULL END,
+    completed_at=CASE WHEN p_to_state='dead_letter' THEN v_now ELSE NULL END,
+    atualizado_em=v_now
+  WHERE id=v_attempt.id RETURNING * INTO v_attempt;
+  UPDATE fitcore_execution_operations SET
+    state=p_to_state,
+    error_code=CASE WHEN p_to_state='dead_letter' THEN 'recovery_unresolved' ELSE NULL END,
+    completed_at=CASE WHEN p_to_state='dead_letter' THEN v_now ELSE NULL END,
+    atualizado_em=v_now
+  WHERE id=v_operation.id RETURNING * INTO v_operation;
+
+  INSERT INTO fitcore_execution_events(
+    tenant_id,execution_run_id,execution_attempt_id,execution_operation_id,
+    event_type,from_state,to_state,metadata
+  ) VALUES (
+    p_tenant_id,v_run.id,v_attempt.id,v_operation.id,
+    CASE WHEN p_to_state='admitted' THEN 'execution.recovered' ELSE 'execution.dead_letter' END,
+    v_from,p_to_state,jsonb_build_object('reason','stale_in_progress')
+  );
+
+  RETURN QUERY SELECT v_run.id,v_run.state,v_attempt.state,v_operation.state,false,v_run.resource_id;
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION fitcore_execution_observability(p_tenant_id uuid)
 RETURNS TABLE(
   action_id text,
@@ -457,7 +561,7 @@ AS $function$
 BEGIN
   IF p_tenant_id IS NULL THEN RAISE EXCEPTION 'execution_tenant_required'; END IF;
   IF current_setting('app.tenant_id', true) IS DISTINCT FROM p_tenant_id::text THEN
-    RAISE EXCEPTION 'execution_tenant_forbidden';
+    RAISE EXCEPTION 'execution_tenant_context_mismatch';
   END IF;
   RETURN QUERY
   SELECT
@@ -484,6 +588,9 @@ REVOKE ALL ON FUNCTION fitcore_execution_admit(
 REVOKE ALL ON FUNCTION fitcore_execution_transition(
   uuid,text,text,text,text,text,uuid,jsonb
 ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION fitcore_execution_recover(
+  uuid,text,text,text,text,timestamptz
+) FROM PUBLIC;
 REVOKE ALL ON FUNCTION fitcore_execution_observability(uuid) FROM PUBLIC;
 
 DO $$
@@ -494,6 +601,9 @@ BEGIN
     ) TO fitcore_app;
     GRANT EXECUTE ON FUNCTION fitcore_execution_transition(
       uuid,text,text,text,text,text,uuid,jsonb
+    ) TO fitcore_app;
+    GRANT EXECUTE ON FUNCTION fitcore_execution_recover(
+      uuid,text,text,text,text,timestamptz
     ) TO fitcore_app;
     GRANT EXECUTE ON FUNCTION fitcore_execution_observability(uuid) TO fitcore_app;
   END IF;

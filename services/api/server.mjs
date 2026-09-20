@@ -1619,6 +1619,9 @@ const server = createServer(async (req, res) => {
           const replayed = workoutExecutionManager.getExecution(accessContext, resourceId);
           return replayed.guard ? replayed : { ...replayed, started: true };
         },
+        reconcile: ({ executionId }) => workoutExecutionManager.reconcileAction(
+          accessContext, actionId, binding, { executionId },
+        ),
         resourceId: (effectResult) => effectResult.execution?.id,
       });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
@@ -1655,6 +1658,9 @@ const server = createServer(async (req, res) => {
           const replayed = workoutExecutionManager.getExecution(accessContext, resourceId);
           return replayed.guard ? replayed : { ...replayed, exercise_done: true, index: binding.index };
         },
+        reconcile: ({ executionId: kernelExecutionId }) => workoutExecutionManager.reconcileAction(
+          accessContext, actionId, binding, { executionId: kernelExecutionId },
+        ),
         resourceId: (effectResult) => effectResult.execution?.id,
       });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
@@ -1690,6 +1696,9 @@ const server = createServer(async (req, res) => {
           const replayed = workoutExecutionManager.getExecution(accessContext, resourceId);
           return replayed.guard ? replayed : { ...replayed, finished: true };
         },
+        reconcile: ({ executionId: kernelExecutionId }) => workoutExecutionManager.reconcileAction(
+          accessContext, actionId, binding, { executionId: kernelExecutionId },
+        ),
         resourceId: (effectResult) => effectResult.execution?.id,
       });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {

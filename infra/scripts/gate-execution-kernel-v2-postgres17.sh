@@ -67,12 +67,12 @@ ADMIT_SQL="SELECT * FROM fitcore_execution_admit(
 );"
 
 FIRST="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "SET ROLE fitcore_app; SELECT set_config('app.tenant_id','$TENANT_A',false); $ADMIT_SQL" | tail -1)"
-IFS='|' read -r RUN_ID RUN_STATE ATTEMPT_ROW OP_ROW CREATED REPLAYED RESOURCE_ID <<<"$FIRST"
+IFS='|' read -r RUN_ID RUN_STATE ATTEMPT_ROW OP_ROW CREATED REPLAYED RESOURCE_ID UPDATED_AT <<<"$FIRST"
 [[ "$RUN_STATE" == "admitted" && "$CREATED" == "t" && "$REPLAYED" == "f" ]]
 echo "OK admission: admitted/created"
 
 SECOND="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "SET ROLE fitcore_app; SELECT set_config('app.tenant_id','$TENANT_A',false); $ADMIT_SQL" | tail -1)"
-IFS='|' read -r _ STATE2 _ _ CREATED2 REPLAYED2 _ <<<"$SECOND"
+IFS='|' read -r _ STATE2 _ _ CREATED2 REPLAYED2 _ _ <<<"$SECOND"
 [[ "$STATE2" == "admitted" && "$CREATED2" == "f" && "$REPLAYED2" == "t" ]]
 echo "OK replay pre-effect: mesma execução"
 
@@ -96,6 +96,26 @@ fi
 grep -q 'execution_binding_conflict' /tmp/fitcore-exec79-conflict.log
 echo "OK binding conflict: fail-closed"
 
+if docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
+  SET ROLE fitcore_app;
+  SELECT set_config('app.tenant_id','$TENANT_A',false);
+  SELECT * FROM fitcore_execution_admit(
+    '$TENANT_B'::uuid,'$ACTOR_B'::uuid,
+    'sub_99999999999999999999999999999999',
+    'exe_88888888888888888888888888888888',
+    'att_77777777777777777777777777777777',
+    'op_66666666666666666666666666666666',
+    '55555555555555555555555555555555',
+    'fitcore.workout.execution.start',1,'ui',
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+  );" >/tmp/fitcore-exec79-tenant.log 2>&1; then
+  echo "ERRO: SECURITY DEFINER aceitou tenant divergente." >&2
+  exit 5
+fi
+grep -q 'execution_tenant_context_mismatch' /tmp/fitcore-exec79-tenant.log
+echo "OK SECURITY DEFINER: contexto tenant fail-closed"
+
 transition() {
   local state="$1" error="${2:-NULL}" resource="${3:-NULL}"
   docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -v ON_ERROR_STOP=1 -c "
@@ -116,7 +136,7 @@ transition() {
 echo "OK lifecycle: admitted → executing → settlement_pending → succeeded"
 
 THIRD="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "SET ROLE fitcore_app; SELECT set_config('app.tenant_id','$TENANT_A',false); $ADMIT_SQL" | tail -1)"
-IFS='|' read -r _ STATE3 _ _ CREATED3 REPLAYED3 RESOURCE3 <<<"$THIRD"
+IFS='|' read -r _ STATE3 _ _ CREATED3 REPLAYED3 RESOURCE3 _ <<<"$THIRD"
 [[ "$STATE3" == "succeeded" && "$REPLAYED3" == "t" && "$RESOURCE3" == "$RESOURCE" ]]
 echo "OK replay terminal: resource original preservado"
 
@@ -219,6 +239,43 @@ settlement_case \
   'dead_letter' "'retry_exhausted'"
 
 echo "OK settlement outcomes: failed/retry_wait/dead_letter"
+
+REC_SUB="sub_10101010101010101010101010101010"
+REC_EXE="exe_20202020202020202020202020202020"
+REC_ATT="att_30303030303030303030303030303030"
+REC_OP="op_40404040404040404040404040404040"
+REC_TRACE="50505050505050505050505050505050"
+REC_IDEM="7777777777777777777777777777777777777777777777777777777777777777"
+REC_BIND="8888888888888888888888888888888888888888888888888888888888888888"
+docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 >/dev/null <<SQL
+SET ROLE fitcore_app;
+SELECT set_config('app.tenant_id','$TENANT_A',false);
+SELECT * FROM fitcore_execution_admit('$TENANT_A'::uuid,'$ACTOR_A'::uuid,
+  '$REC_SUB','$REC_EXE','$REC_ATT','$REC_OP','$REC_TRACE',
+  'fitcore.workout.execution.start',1,'ui','$REC_IDEM','$REC_BIND');
+SELECT * FROM fitcore_execution_transition('$TENANT_A'::uuid,'$REC_EXE','$REC_ATT','$REC_OP','executing',NULL,NULL,'{}'::jsonb);
+SQL
+if docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
+  SET ROLE fitcore_app;
+  SELECT set_config('app.tenant_id','$TENANT_A',false);
+  SELECT * FROM fitcore_execution_recover('$TENANT_A'::uuid,'$REC_EXE','$REC_ATT','$REC_OP','admitted',now()-interval '30 seconds');
+" >/tmp/fitcore-exec79-recovery-fresh.log 2>&1; then
+  echo "ERRO: recovery aceitou execução ainda fresca." >&2
+  exit 6
+fi
+grep -q 'execution_recovery_not_stale' /tmp/fitcore-exec79-recovery-fresh.log
+docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
+  UPDATE fitcore_execution_runs SET atualizado_em=now()-interval '2 minutes' WHERE tenant_id='$TENANT_A'::uuid AND execution_id='$REC_EXE';
+  UPDATE fitcore_execution_attempts SET atualizado_em=now()-interval '2 minutes' WHERE tenant_id='$TENANT_A'::uuid AND attempt_id='$REC_ATT';
+  UPDATE fitcore_execution_operations SET atualizado_em=now()-interval '2 minutes' WHERE tenant_id='$TENANT_A'::uuid AND operation_id='$REC_OP';
+" >/dev/null
+RECOVERED="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -v ON_ERROR_STOP=1 -c "
+  SET ROLE fitcore_app;
+  SELECT set_config('app.tenant_id','$TENANT_A',false);
+  SELECT * FROM fitcore_execution_recover('$TENANT_A'::uuid,'$REC_EXE','$REC_ATT','$REC_OP','admitted',now()-interval '30 seconds');
+" | tail -1)"
+[[ "$(printf '%s' "$RECOVERED" | cut -d'|' -f2)" == "admitted" ]]
+echo "OK stale recovery: fresh bloqueado e stale retomado para admitted"
 
 apply_sql infra/sql/rollback-023-execution-kernel-v2.sql
 ABSENT="$(docker exec "$NAME" psql -U postgres -d "$DB" -Atqc "SELECT to_regclass('public.fitcore_execution_runs') IS NULL")"

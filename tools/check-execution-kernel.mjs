@@ -7,7 +7,7 @@ import {
   hashExecutionBinding,
   isExecutionTerminal,
 } from '../packages/execution-core/index.mjs';
-import { createExecutionKernelRuntime } from '../services/api/security/execution-kernel-runtime.mjs';
+import { createExecutionKernelRuntime, resolveExecutionIdempotencyKey } from '../services/api/security/execution-kernel-runtime.mjs';
 import { createWorkoutExecutionManager, buildWorkoutActionBinding, WORKOUT_ACTION_IDS } from '../services/api/security/workout-execution.mjs';
 
 const base = {
@@ -76,6 +76,15 @@ assert.equal(dryRun.dry_run, true);
 assert.equal(dryRun.mutationPerformed, false);
 assert.equal(dryRun.action_id, WORKOUT_ACTION_IDS.START);
 assert.equal(runtime.status().capability, 'server-only-single-use');
+assert.equal(runtime.status().stale_recovery, true);
+assert.throws(
+  () => resolveExecutionIdempotencyKey({ headers: {} }),
+  /missing_idempotency_key/,
+);
+assert.equal(
+  resolveExecutionIdempotencyKey({ headers: { 'idempotency-key': 'focused-operation-12345678' } }),
+  'focused-operation-12345678',
+);
 assert.deepEqual(runtime.status().actions, Object.values(WORKOUT_ACTION_IDS));
 assert.throws(
   () => runtime.dryRun(signedAluno, { actionId: 'fitcore.unknown', binding: {} }),

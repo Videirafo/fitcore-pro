@@ -2,6 +2,7 @@
 BEGIN;
 
 DROP FUNCTION IF EXISTS fitcore_execution_observability(uuid);
+DROP FUNCTION IF EXISTS fitcore_execution_recover(uuid,text,text,text,text,timestamptz);
 DROP FUNCTION IF EXISTS fitcore_execution_transition(uuid,text,text,text,text,text,uuid,jsonb);
 DROP FUNCTION IF EXISTS fitcore_execution_admit(uuid,uuid,text,text,text,text,text,text,integer,text,text,text);
 DROP TABLE IF EXISTS fitcore_execution_events;

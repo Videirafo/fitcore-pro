@@ -2,7 +2,6 @@
 // Server-only authority for admission, capability, settlement and replay.
 
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import {
   buildExecutionIdentity,
   hashExecutionBinding,
@@ -126,11 +125,17 @@ function dbFailure(error) {
     "execution_source_invalid",
     "execution_transition_invalid",
     "execution_transition_metadata_invalid",
+    "execution_tenant_context_mismatch",
+    "execution_recovery_invalid",
+    "execution_recovery_binding_invalid",
+    "execution_recovery_not_stale",
+    "execution_recovery_state_invalid",
   ];
   const code = codes.find((candidate) => errorText.includes(candidate));
   if (!code) return new ExecutionKernelError("execution_kernel_database_failed", 503);
   if (code === "execution_not_found") return new ExecutionKernelError(code, 404);
-  if (code.includes("forbidden")) return new ExecutionKernelError(code, 403);
+  if (code.includes("forbidden") || code === "execution_tenant_context_mismatch") return new ExecutionKernelError(code, 403);
+  if (code.startsWith("execution_recovery_")) return new ExecutionKernelError(code, 409);
   if (code.includes("conflict") || code.includes("binding") || code === "execution_transition_resource_required") {
     return new ExecutionKernelError(code, 409);
   }
@@ -164,7 +169,7 @@ export class ExecutionKernelError extends Error {
 
 export function resolveExecutionIdempotencyKey(req) {
   const supplied = req?.headers?.["idempotency-key"] || req?.headers?.["x-idempotency-key"] || "";
-  if (!supplied) return `http:${randomUUID()}`;
+  if (!supplied) throw new ExecutionKernelError("missing_idempotency_key", 400);
   const key = validIdempotencyKey(supplied);
   if (!key) throw new ExecutionKernelError("invalid_idempotency_key", 400);
   return key;
@@ -239,6 +244,37 @@ export function createExecutionKernelRuntime(env = process.env) {
     }
   }
 
+  function recoverState(context, prepared, toState) {
+    const staleMs = Math.min(Math.max(Number(env.FITCORE_EXECUTION_STALE_MS) || 30_000, 5_000), 300_000);
+    const staleBefore = new Date(Date.now() - staleMs).toISOString();
+    try {
+      const result = jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT row_to_json(x)::text
+        FROM fitcore_execution_recover(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(prepared.identity.logicalExecutionId)},
+          ${sqlText(prepared.identity.attemptId)},
+          ${sqlText(prepared.identity.operationId)},
+          ${sqlText(toState)},
+          ${sqlText(staleBefore)}::timestamptz
+        ) x;
+      `);
+      if (!result) throw new ExecutionKernelError("execution_recovery_failed", 503);
+      return result;
+    } catch (error) {
+      if (error instanceof ExecutionKernelError) throw error;
+      throw dbFailure(error);
+    }
+  }
+
+  function isStaleAdmission(admission) {
+    const updatedAt = Date.parse(admission?.updated_at || "");
+    if (!Number.isFinite(updatedAt)) return false;
+    const staleMs = Math.min(Math.max(Number(env.FITCORE_EXECUTION_STALE_MS) || 30_000, 5_000), 300_000);
+    return updatedAt <= Date.now() - staleMs;
+  }
+
   function issueCapability(context, prepared, source = "ui", ttlMs = 30_000) {
     if (prepared.admission.run_state !== "admitted") {
       throw new ExecutionKernelError("execution_capability_requires_admission", 409);
@@ -305,8 +341,8 @@ export function createExecutionKernelRuntime(env = process.env) {
     };
   }
 
-  function execute(context, { actionId, source = "ui", idempotencyKey, binding, effect, replay, resourceId }) {
-    const prepared = admit(context, { actionId, source, idempotencyKey, binding });
+  function execute(context, { actionId, source = "ui", idempotencyKey, binding, effect, replay, reconcile, resourceId }) {
+    let prepared = admit(context, { actionId, source, idempotencyKey, binding });
     const currentState = prepared.admission.run_state;
 
     if (currentState === "succeeded") {
@@ -318,9 +354,36 @@ export function createExecutionKernelRuntime(env = process.env) {
       };
     }
     if (["executing", "settlement_pending"].includes(currentState)) {
-      throw new ExecutionKernelError("execution_in_progress", 409);
+      if (!isStaleAdmission(prepared.admission)) {
+        throw new ExecutionKernelError("execution_in_progress", 409);
+      }
+      const reconciled = typeof reconcile === "function"
+        ? reconcile({ actionId, binding, executionId: prepared.identity.logicalExecutionId, state: currentState })
+        : null;
+      if (reconciled && !reconciled.guard) {
+        const recoveredResourceId = resourceId(reconciled);
+        if (!recoveredResourceId) throw new ExecutionKernelError("execution_recovery_resource_missing", 409);
+        if (currentState === "executing") transition(context, prepared.identity, "settlement_pending");
+        transition(context, prepared.identity, "succeeded", { resourceId: recoveredResourceId });
+        return {
+          ...reconciled,
+          execution_kernel: {
+            ...executionEnvelope(prepared.identity, prepared.admission, "succeeded", true),
+            recovered: true,
+          },
+        };
+      }
+      if (currentState === "settlement_pending") {
+        recoverState(context, prepared, "dead_letter");
+        throw new ExecutionKernelError("execution_recovery_unresolved", 409);
+      }
+      recoverState(context, prepared, "admitted");
+      prepared = {
+        ...prepared,
+        admission: { ...prepared.admission, run_state: "admitted", replayed: true },
+      };
     }
-    if (currentState !== "admitted") throw new ExecutionKernelError("execution_state_conflict", 409);
+    if (prepared.admission.run_state !== "admitted") throw new ExecutionKernelError("execution_state_conflict", 409);
 
     const started = transition(context, prepared.identity, "executing");
     if (started.replayed) throw new ExecutionKernelError("execution_in_progress", 409);
@@ -388,6 +451,7 @@ export function createExecutionKernelRuntime(env = process.env) {
       dry_run: true,
       settlement: true,
       observability: true,
+      stale_recovery: true,
       actions: Object.values(ACTION_DEFINITIONS).map((item) => item.id),
     };
   }

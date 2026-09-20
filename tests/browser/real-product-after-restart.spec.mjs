@@ -62,6 +62,15 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
   const afterDryRun = await apiJson(page, "/api/mvp-25/my-executions");
   expect(afterDryRun.body.total).toBe(beforeDryRun.body.total);
 
+  const missingIdempotency = await apiJson(page, "/api/mvp-25/executions/start", {
+    method: "POST",
+    body: { workout_id: workoutId },
+  });
+  expect(missingIdempotency.status).toBe(400);
+  expect(missingIdempotency.body.mensagem).toBe("missing_idempotency_key");
+  const afterMissingKey = await apiJson(page, "/api/mvp-25/my-executions");
+  expect(afterMissingKey.body.total).toBe(beforeDryRun.body.total);
+
   const startKey = `browser-start-${slug}`;
   await page.route("**/api/mvp-25/executions/start", async (route) => {
     const request = route.request();

@@ -103,6 +103,16 @@ npm run mvp32:check
 npm run all:ui-gates
 npm run site:next:build
 
+SERVICE_ENV="$(systemctl show "$API_SERVICE" -p Environment --value)"
+DB_URL=""
+if [[ "$SERVICE_ENV" =~ FITCORE_DATABASE_URL=([^\"\ ]+) ]]; then
+  DB_URL="${BASH_REMATCH[1]}"
+fi
+unset SERVICE_ENV
+[[ -n "$DB_URL" ]] || { echo "ERRO: FITCORE_DATABASE_URL não encontrado no serviço atual." >&2; false; }
+FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-execution-kernel-v2.sh
+unset DB_URL
+
 [[ -x infra/scripts/fitcore-api-with-hermes.sh ]] || {
   echo "ERRO: wrapper Hermes versionado ausente." >&2
   false
