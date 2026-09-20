@@ -35,5 +35,7 @@ assert.doesNotMatch(script, /docker volume rm|down -v/);
 assert.match(setup, /EXISTING_VERSION/);
 assert.match(setup, /promote-fitcore-postgres-17-6\.sh/);
 assert.match(setup, /setup não troca volume de produção/);
+assert.match(setup, /versão não pôde ser validada.*fail-closed/);
+assert.match(setup, /EXISTING_VERSION.*!= 17\.6/s);
 
 console.log("PostgreSQL 17.6 promotion contract: OK");

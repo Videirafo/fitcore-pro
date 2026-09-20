@@ -55,8 +55,16 @@ DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_HOST}:${DB
 EXISTING_CID="$(docker ps -qf "name=^fitcore_postgres$" | head -1 || true)"
 if [ -n "$EXISTING_CID" ]; then
   EXISTING_VERSION="$(docker exec "$EXISTING_CID" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc "show server_version" 2>/dev/null || true)"
+  if [ -z "$EXISTING_VERSION" ]; then
+    echo "ERRO: PostgreSQL existente detectado, mas a versão não pôde ser validada; setup abortado fail-closed." >&2
+    exit 12
+  fi
   if [[ "$EXISTING_VERSION" == 16.* ]]; then
     echo "ERRO: instalação existente PostgreSQL $EXISTING_VERSION detectada. Use infra/scripts/promote-fitcore-postgres-17-6.sh; setup não troca volume de produção." >&2
+    exit 12
+  fi
+  if [[ "$EXISTING_VERSION" != 17.6* ]]; then
+    echo "ERRO: versão PostgreSQL existente não suportada pelo setup: $EXISTING_VERSION." >&2
     exit 12
   fi
 fi
