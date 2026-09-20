@@ -65,8 +65,9 @@ export function buildExecutionNextBestAction({ context = {}, analytics = {}, pre
       const actionId = ACTION_START;
       const resourceId = clean(approved.id, "", 90);
       const reasonCode = "approved_workout_ready";
+      const cycle = executions.filter((item) => clean(item?.workout_id, "", 90) === resourceId).length;
       return {
-        proposal_id: proposalId([context.tenant_id, context.actor_id, RULE_VERSION, actionId, reasonCode, resourceId]),
+        proposal_id: proposalId([context.tenant_id, context.actor_id, RULE_VERSION, actionId, reasonCode, resourceId, cycle]),
         rule_version: RULE_VERSION,
         type: "fitness_action",
         governed: true,

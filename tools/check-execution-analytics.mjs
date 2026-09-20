@@ -31,6 +31,8 @@ assert.match(agent, /capability_exposed: false/);
 assert.match(agent, /Execution Analytics/);
 assert.match(ui, /Next Best Action/);
 assert.match(ui, /Execution Analytics/);
+assert.match(ui, /const result = await api\(`\/api\/mvp-25\/analytics\?window_hours=168&v=\$\{Date\.now\(\)\}`\);/);
+assert.match(ui, /const nba = await api\("\/api\/mvp-25\/analytics\/next-best-action"/);
 assert.match(deploy, /apply-execution-analytics\.sh/);
 
 const aluno = { tenant_id: "t1", actor_id: "a1", actor_role: "aluno" };
@@ -43,6 +45,20 @@ const start = buildExecutionNextBestAction({
 assert.equal(start.action_id, "fitcore.workout.execution.start");
 assert.equal(start.governed, true);
 assert.match(start.proposal_id, /^nba_[0-9a-f]{32}$/);
+const sameCycle = buildExecutionNextBestAction({
+  context: aluno,
+  analytics: {},
+  prescriptions: [{ id: "85333333-3333-4333-8333-333333333333", status: "aprovado" }],
+  executions: [],
+});
+assert.equal(sameCycle.proposal_id, start.proposal_id);
+const nextCycle = buildExecutionNextBestAction({
+  context: aluno,
+  analytics: {},
+  prescriptions: [{ id: "85333333-3333-4333-8333-333333333333", status: "aprovado" }],
+  executions: [{ id: "85999999-9999-4999-8999-999999999999", workout_id: "85333333-3333-4333-8333-333333333333", status: "concluido" }],
+});
+assert.notEqual(nextCycle.proposal_id, start.proposal_id);
 
 const complete = buildExecutionNextBestAction({
   context: aluno,

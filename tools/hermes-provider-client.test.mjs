@@ -135,6 +135,23 @@ test("#85 Hermes recebe Execution Analytics sanitizado sem capability/PII/raw pa
   assert.equal(result.safety.direct_database_access, false);
 });
 
+test("#85 fallback local preserva Execution Analytics já sanitizado", async () => {
+  const manager = createAgentAssistantManager({ FITCORE_HERMES_GATEWAY_ENABLED: "false" });
+  const result = await manager.ask(
+    { session_signed: true, tenant_id: "11111111-1111-4111-8111-111111111111", actor_role: "gestor" },
+    { prompt: "O que devo priorizar?", module: "auditoria", operational_context: {
+      students: [],
+      execution_analytics: {
+        summary: { runs: 7, succeeded: 5, retry_wait: 1, dead_letter: 1, success_rate_pct: 71.43 },
+        alerts: [{ code: "execution_dead_letter", severity: "critical", count: 1 }],
+      },
+    } },
+  );
+  assert.equal(result.provider.engine, "local-evidence-fallback");
+  assert.match(result.reply, /Execution Kernel: 7 runs/);
+  assert.match(result.reply, /dead_letter=1/);
+});
+
 test("#32 manager mantém fallback local quando gateway está desligado", async () => {
   const manager = createAgentAssistantManager({ FITCORE_HERMES_GATEWAY_ENABLED: "false" });
   const result = await manager.ask(

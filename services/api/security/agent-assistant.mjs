@@ -73,7 +73,7 @@ function contextPack(value = {}) {
   const evolution = Array.isArray(value?.evolution) ? value.evolution.filter(studentAllowed).map((item) => ({ aluno: clean(item?.aluno, "", 100), frequencia: item?.frequencia ?? 0, progresso: item?.progresso ?? 0, esforco: item?.esforco ?? null })).slice(0, 20) : [];
   const analyticsRaw = value?.execution_analytics && typeof value.execution_analytics === "object"
     ? value.execution_analytics
-    : {};
+    : (value?.executionAnalytics && typeof value.executionAnalytics === "object" ? value.executionAnalytics : {});
   const executionAnalytics = {
     summary: {
       runs: Number(analyticsRaw?.summary?.runs || 0),

@@ -143,11 +143,11 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
         if (currentRole === "aluno") setEvolution(await api(`/api/mvp-26/my-evolution?limit=100&v=${Date.now()}`));
       }
       if (staff && ["audit", "reports", "agents", "execution"].includes(target)) {
-        const result = await api(`/api/mvp-25/analytics?window_hours=168&v=${Date.now()}`).catch(() => ({ analytics: { summary: {}, alerts: [], by_action: [], recent: [] } }));
+        const result = await api(`/api/mvp-25/analytics?window_hours=168&v=${Date.now()}`);
         setExecutionAnalytics(result.analytics || { summary: {}, alerts: [], by_action: [], recent: [] });
       }
       if (currentRole !== "visitante" && target === "execution") {
-        const nba = await api("/api/mvp-25/analytics/next-best-action", { method: "POST", body: "{}" }).catch(() => ({ proposal: null }));
+        const nba = await api("/api/mvp-25/analytics/next-best-action", { method: "POST", body: "{}" });
         setNextBestAction(nba.proposal || null);
       }
       setState("success");
