@@ -6,9 +6,23 @@ const els = {
 let currentExecutionId = null;
 function safe(value) { return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"); }
 async function api(path, options = {}) {
-  const res = await fetch(path, { cache: "no-store", credentials: "include", headers: { "content-type": "application/json", ...(options.headers || {}) }, ...options });
+  const res = await fetch(path, { cache: "no-store", credentials: "include", ...options, headers: { "content-type": "application/json", ...(options.headers || {}) } });
   const text = await res.text(); const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.mensagem || data.erro || `HTTP ${res.status}`); return data;
+}
+function operationKey(scope) {
+  const storageKey = `fitcore.execution.static.${scope}`;
+  const existing = sessionStorage.getItem(storageKey);
+  if (existing) return { storageKey, value: existing };
+  const value = `web:${crypto.randomUUID()}`;
+  sessionStorage.setItem(storageKey, value);
+  return { storageKey, value };
+}
+async function executionMutation(scope, path, options) {
+  const operation = operationKey(scope);
+  const data = await api(path, { ...options, headers: { ...(options.headers || {}), "Idempotency-Key": operation.value } });
+  sessionStorage.removeItem(operation.storageKey);
+  return data;
 }
 function formBody(form) { const raw = Object.fromEntries(new FormData(form).entries()); return Object.fromEntries(Object.entries(raw).map(([k,v]) => [k, String(v || "").trim()]).filter(([,v]) => v)); }
 async function refreshSession() {
@@ -34,10 +48,10 @@ function renderExecution(execution) {
 async function loadWorkouts() { try { renderWorkouts(await api('/api/mvp-24/my-workouts?status=aprovado&limit=30')); } catch(e) { els.workoutsOut.innerHTML = `<div class="item"><strong>Não carregou</strong><span>${safe(e.message)}</span><a class="button secondary" href="/mvp-19.html">Entrar</a></div>`; } }
 async function loadExecutions() { try { const p = new URLSearchParams(); if (els.search.value.trim()) p.set('search', els.search.value.trim()); if (els.status.value) p.set('status', els.status.value); p.set('limit','40'); renderExecutions(await api(`/api/mvp-25/executions?${p}`)); } catch(e) { els.executionsOut.innerHTML = `<div class="item"><strong>Acompanhamento indisponível</strong><span>${safe(e.message)}</span></div>`; } }
 async function loadMyExecutions() { try { renderExecutions(await api('/api/mvp-25/my-executions?limit=20'), els.executionsOut); } catch {} }
-async function startWorkout(id) { const data = await api('/api/mvp-25/executions/start', { method:'POST', body: JSON.stringify({ workout_id: id }) }); renderExecution(data.execution); await loadMyExecutions(); }
+async function startWorkout(id) { const data = await executionMutation(`start:${id}`, '/api/mvp-25/executions/start', { method:'POST', body: JSON.stringify({ workout_id: id }) }); renderExecution(data.execution); await loadMyExecutions(); }
 async function loadExecution(id) { const data = await api(`/api/mvp-25/executions/${encodeURIComponent(id)}?v=${Date.now()}`); renderExecution(data.execution); }
-async function markDone(index) { const data = await api(`/api/mvp-25/executions/${encodeURIComponent(currentExecutionId)}/exercises/${index}/done`, { method:'POST', body: JSON.stringify({ observacao: 'marcado na interface do aluno' }) }); renderExecution(data.execution); await loadMyExecutions(); }
-async function finish(e) { e.preventDefault(); if (!currentExecutionId) { els.finishOut.textContent = 'Inicie ou selecione uma execução.'; return; } try { const data = await api(`/api/mvp-25/executions/${encodeURIComponent(currentExecutionId)}/finish`, { method:'POST', body: JSON.stringify(formBody(els.finishForm)) }); renderExecution(data.execution); els.finishOut.innerHTML = `<strong>Treino concluído</strong><span>${safe(data.execution.duracao_minutos)} min · esforço ${safe(data.execution.percepcao_esforco)}/10</span>`; await loadMyExecutions(); } catch(err) { els.finishOut.innerHTML = `<strong>Erro</strong><span>${safe(err.message)}</span>`; } }
+async function markDone(index) { const data = await executionMutation(`exercise:${currentExecutionId}:${index}`, `/api/mvp-25/executions/${encodeURIComponent(currentExecutionId)}/exercises/${index}/done`, { method:'POST', body: JSON.stringify({ observacao: 'marcado na interface do aluno' }) }); renderExecution(data.execution); await loadMyExecutions(); }
+async function finish(e) { e.preventDefault(); if (!currentExecutionId) { els.finishOut.textContent = 'Inicie ou selecione uma execução.'; return; } try { const data = await executionMutation(`finish:${currentExecutionId}`, `/api/mvp-25/executions/${encodeURIComponent(currentExecutionId)}/finish`, { method:'POST', body: JSON.stringify(formBody(els.finishForm)) }); renderExecution(data.execution); els.finishOut.innerHTML = `<strong>Treino concluído</strong><span>${safe(data.execution.duracao_minutos)} min · esforço ${safe(data.execution.percepcao_esforco)}/10</span>`; await loadMyExecutions(); } catch(err) { els.finishOut.innerHTML = `<strong>Erro</strong><span>${safe(err.message)}</span>`; } }
 document.addEventListener('click', async (event) => { const start = event.target.closest('[data-start-workout]'); if (start) await startWorkout(start.dataset.startWorkout); const done = event.target.closest('[data-done-index]'); if (done) await markDone(done.dataset.doneIndex); const ex = event.target.closest('[data-execution-id]'); if (ex) await loadExecution(ex.dataset.executionId); });
 els.refresh?.addEventListener('click', loadExecutions); els.loadWorkouts?.addEventListener('click', loadWorkouts); els.finishForm?.addEventListener('submit', finish);
 refreshSession().then((s) => { if (s?.actor_role === 'aluno') { loadWorkouts(); loadMyExecutions(); } else { loadExecutions(); } });

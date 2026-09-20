@@ -22,7 +22,8 @@ import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs"
 import { createTenantUserManagement } from "./security/tenant-user-management.mjs";
 import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
-import { createWorkoutExecutionManager } from "./security/workout-execution.mjs";
+import { createWorkoutExecutionManager, buildWorkoutActionBinding, WORKOUT_ACTION_IDS } from "./security/workout-execution.mjs";
+import { createExecutionKernelRuntime, resolveExecutionIdempotencyKey } from "./security/execution-kernel-runtime.mjs";
 import { createWorkoutSetSyncManager } from "./security/workout-set-sync.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
@@ -62,7 +63,8 @@ const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessi
 const tenantUserManagement = createTenantUserManagement(process.env, sessionManager);
 const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
-const workoutExecutionManager = createWorkoutExecutionManager(process.env);
+const executionKernelRuntime = createExecutionKernelRuntime(process.env);
+const workoutExecutionManager = createWorkoutExecutionManager(process.env, { executionKernel: executionKernelRuntime });
 const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
@@ -1573,7 +1575,10 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/mvp-25/status") {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
-      return sendJson(res, 200, workoutExecutionManager.status(accessContext));
+      return sendJson(res, 200, {
+        ...workoutExecutionManager.status(accessContext),
+        execution_kernel: executionKernelRuntime.status(),
+      });
     }
 
     if (url.pathname === "/api/mvp-25/executions") {
@@ -1593,8 +1598,36 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/mvp-25/executions/start") {
       if (req.method !== "POST") return sendMethodNotAllowed(res);
       const input = await readJsonBody(req);
-      const result = workoutExecutionManager.startExecution(accessContext, input);
-      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      const actionId = WORKOUT_ACTION_IDS.START;
+      const binding = buildWorkoutActionBinding(actionId, { input });
+      const dryRun = url.searchParams.get("mode") === "dry_run" || url.searchParams.get("dry_run") === "true";
+      if (dryRun) {
+        const validation = workoutExecutionManager.validateAction(accessContext, actionId, binding);
+        if (validation.guard && !validation.guard.allowed) return sendJson(res, validation.guard.statusCode, validation.guard.response);
+        return sendJson(res, 200, executionKernelRuntime.dryRun(accessContext, {
+          actionId,
+          binding,
+          summary: validation.summary,
+        }));
+      }
+      const result = executionKernelRuntime.execute(accessContext, {
+        actionId,
+        idempotencyKey: resolveExecutionIdempotencyKey(req),
+        binding,
+        effect: (capability) => workoutExecutionManager.startExecution(accessContext, input, { capability }),
+        replay: (resourceId) => {
+          const replayed = workoutExecutionManager.getExecution(accessContext, resourceId);
+          return replayed.guard ? replayed : { ...replayed, started: true };
+        },
+        reconcile: ({ executionId }) => workoutExecutionManager.reconcileAction(
+          accessContext, actionId, binding, { executionId },
+        ),
+        resourceId: (effectResult) => effectResult.execution?.id,
+      });
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
+        ...result.guard.response,
+        execution_kernel: result.execution_kernel,
+      });
       return sendJson(res, 201, result);
     }
 
@@ -1602,8 +1635,38 @@ const server = createServer(async (req, res) => {
     if (mvp25ExerciseDoneMatch) {
       if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
       const input = await readJsonBody(req);
-      const result = workoutExecutionManager.markExerciseDone(accessContext, decodeURIComponent(mvp25ExerciseDoneMatch[1]), mvp25ExerciseDoneMatch[2], input);
-      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      const executionId = decodeURIComponent(mvp25ExerciseDoneMatch[1]);
+      const exerciseIndex = mvp25ExerciseDoneMatch[2];
+      const actionId = WORKOUT_ACTION_IDS.EXERCISE_COMPLETE;
+      const binding = buildWorkoutActionBinding(actionId, { id: executionId, index: exerciseIndex, input });
+      const dryRun = url.searchParams.get("mode") === "dry_run" || url.searchParams.get("dry_run") === "true";
+      if (dryRun) {
+        const validation = workoutExecutionManager.validateAction(accessContext, actionId, binding);
+        if (validation.guard && !validation.guard.allowed) return sendJson(res, validation.guard.statusCode, validation.guard.response);
+        return sendJson(res, 200, executionKernelRuntime.dryRun(accessContext, {
+          actionId,
+          binding,
+          summary: validation.summary,
+        }));
+      }
+      const result = executionKernelRuntime.execute(accessContext, {
+        actionId,
+        idempotencyKey: resolveExecutionIdempotencyKey(req),
+        binding,
+        effect: (capability) => workoutExecutionManager.markExerciseDone(accessContext, executionId, exerciseIndex, input, { capability }),
+        replay: (resourceId) => {
+          const replayed = workoutExecutionManager.getExecution(accessContext, resourceId);
+          return replayed.guard ? replayed : { ...replayed, exercise_done: true, index: binding.index };
+        },
+        reconcile: ({ executionId: kernelExecutionId }) => workoutExecutionManager.reconcileAction(
+          accessContext, actionId, binding, { executionId: kernelExecutionId },
+        ),
+        resourceId: (effectResult) => effectResult.execution?.id,
+      });
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
+        ...result.guard.response,
+        execution_kernel: result.execution_kernel,
+      });
       return sendJson(res, 200, result);
     }
 
@@ -1611,8 +1674,37 @@ const server = createServer(async (req, res) => {
     if (mvp25FinishMatch) {
       if (req.method !== "POST" && req.method !== "PATCH") return sendMethodNotAllowed(res);
       const input = await readJsonBody(req);
-      const result = workoutExecutionManager.finishExecution(accessContext, decodeURIComponent(mvp25FinishMatch[1]), input);
-      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      const executionId = decodeURIComponent(mvp25FinishMatch[1]);
+      const actionId = WORKOUT_ACTION_IDS.FINISH;
+      const binding = buildWorkoutActionBinding(actionId, { id: executionId, input });
+      const dryRun = url.searchParams.get("mode") === "dry_run" || url.searchParams.get("dry_run") === "true";
+      if (dryRun) {
+        const validation = workoutExecutionManager.validateAction(accessContext, actionId, binding);
+        if (validation.guard && !validation.guard.allowed) return sendJson(res, validation.guard.statusCode, validation.guard.response);
+        return sendJson(res, 200, executionKernelRuntime.dryRun(accessContext, {
+          actionId,
+          binding,
+          summary: validation.summary,
+        }));
+      }
+      const result = executionKernelRuntime.execute(accessContext, {
+        actionId,
+        idempotencyKey: resolveExecutionIdempotencyKey(req),
+        binding,
+        effect: (capability) => workoutExecutionManager.finishExecution(accessContext, executionId, input, { capability }),
+        replay: (resourceId) => {
+          const replayed = workoutExecutionManager.getExecution(accessContext, resourceId);
+          return replayed.guard ? replayed : { ...replayed, finished: true };
+        },
+        reconcile: ({ executionId: kernelExecutionId }) => workoutExecutionManager.reconcileAction(
+          accessContext, actionId, binding, { executionId: kernelExecutionId },
+        ),
+        resourceId: (effectResult) => effectResult.execution?.id,
+      });
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
+        ...result.guard.response,
+        execution_kernel: result.execution_kernel,
+      });
       return sendJson(res, 200, result);
     }
 

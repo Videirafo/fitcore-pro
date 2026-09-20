@@ -28,12 +28,14 @@ class FitCoreApi implements FitCoreRemote {
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
-  Future<Map<String, String>> _headers() async {
+  Future<Map<String, String>> _headers({String? idempotencyKey}) async {
     final cookie = await store.readCookie();
     return {
       'accept': 'application/json',
       'content-type': 'application/json',
       if (cookie != null && cookie.isNotEmpty) 'cookie': cookie,
+      if (idempotencyKey != null && idempotencyKey.isNotEmpty)
+        'Idempotency-Key': idempotencyKey,
     };
   }
 
@@ -66,9 +68,10 @@ class FitCoreApi implements FitCoreRemote {
   Future<http.Response> _post(
     String path, [
     Map<String, dynamic> body = const {},
+    String? idempotencyKey,
   ]) async => _client.post(
     _uri(path),
-    headers: await _headers(),
+    headers: await _headers(idempotencyKey: idempotencyKey),
     body: jsonEncode(body),
   );
 
@@ -117,9 +120,9 @@ class FitCoreApi implements FitCoreRemote {
   }
 
   @override
-  Future<String> startWorkout(String workoutId) async {
+  Future<String> startWorkout(String workoutId, {required String clientOperationId}) async {
     final body = await _decode(
-      await _post('/api/mvp-25/executions/start', {'workout_id': workoutId}),
+      await _post('/api/mvp-25/executions/start', {'workout_id': workoutId}, clientOperationId),
     );
     final execution = Map<String, dynamic>.from(
       body['execution'] as Map? ?? const {},
@@ -155,19 +158,21 @@ class FitCoreApi implements FitCoreRemote {
   Future<void> completeExercise(
     String executionId,
     int index, {
+    required String clientOperationId,
     String? observation,
   }) async {
     await _decode(
       await _post('/api/mvp-25/executions/$executionId/exercises/$index/done', {
         if (observation != null && observation.isNotEmpty)
           'observacao': observation,
-      }),
+      }, clientOperationId),
     );
   }
 
   @override
   Future<void> finishWorkout(
     String executionId, {
+    required String clientOperationId,
     required int effort,
     required int durationMinutes,
   }) async {
@@ -175,7 +180,7 @@ class FitCoreApi implements FitCoreRemote {
       await _post('/api/mvp-25/executions/$executionId/finish', {
         'percepcao_esforco': effort,
         'duracao_minutos': durationMinutes,
-      }),
+      }, clientOperationId),
     );
   }
 

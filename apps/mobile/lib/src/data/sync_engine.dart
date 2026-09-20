@@ -40,7 +40,7 @@ class WorkoutSyncEngine {
     switch (operation.type) {
       case SyncOperationType.startWorkout:
         final workoutId = '${operation.payload['workout_id'] ?? ''}';
-        final remoteId = await remote.startWorkout(workoutId);
+        final remoteId = await remote.startWorkout(workoutId, clientOperationId: operation.id);
         await store.mapExecutionId(operation.localExecutionId, remoteId);
       case SyncOperationType.upsertSet:
         final remoteId = _requireRemoteId(operation.localExecutionId);
@@ -56,12 +56,14 @@ class WorkoutSyncEngine {
         await remote.completeExercise(
           remoteId,
           (operation.payload['index'] as num?)?.toInt() ?? 0,
+          clientOperationId: operation.id,
           observation: operation.payload['observation']?.toString(),
         );
       case SyncOperationType.finishWorkout:
         final remoteId = _requireRemoteId(operation.localExecutionId);
         await remote.finishWorkout(
           remoteId,
+          clientOperationId: operation.id,
           effort: (operation.payload['effort'] as num?)?.toInt() ?? 5,
           durationMinutes:
               (operation.payload['duration_minutes'] as num?)?.toInt() ?? 1,
