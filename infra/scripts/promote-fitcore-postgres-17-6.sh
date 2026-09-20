@@ -58,7 +58,7 @@ wait_postgres17_stable() {
       sleep 2
       version2="$(docker exec "$OLD_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -Atqc "show server_version" 2>/dev/null || true)"
       if [[ "$version2" == 17.6* ]]; then
-        printf '%s' "$version2"
+        NEW_VERSION="$version2"
         return 0
       fi
     fi
@@ -121,7 +121,8 @@ docker rm -f "$OLD_CONTAINER" >/dev/null
 ROLLBACK_REQUIRED=1
 
 docker compose -p docker -f "$COMPOSE" up -d fitcore_postgres >/dev/null
-NEW_VERSION="$(wait_postgres17_stable 160)"
+NEW_VERSION=""
+wait_postgres17_stable 160
 [[ "$NEW_VERSION" == 17.6* ]] || { echo "ERRO: destino PostgreSQL 17.6 não ficou estável/healthy." >&2; false; }
 echo "postgres17_readiness=PASS version=$NEW_VERSION"
 
