@@ -7,7 +7,7 @@ ENV_FILE="${FITCORE_POSTGRES_ENV_FILE:-/opt/fitcore-pro/storage/secrets/fitcore-
 API_SERVICE="${FITCORE_API_SERVICE:-fitcore-api.service}"
 PUBLIC_URL="${FITCORE_PUBLIC_URL:-https://fitcore.marcaia.app}"
 OLD_CONTAINER="fitcore_postgres"
-OLD_VOLUME="docker_fitcore-postgres-data"
+OLD_VOLUME=""
 OLD_IMAGE=""
 NEW_VOLUME="docker_fitcore-postgres17-data"
 BACKUP_ROOT="${FITCORE_POSTGRES_BACKUP_ROOT:-/opt/backups/fitcore-postgres}"
@@ -26,6 +26,9 @@ DB_NAME="$(sed -n 's/^POSTGRES_DB=//p' "$ENV_FILE" | head -1)"
 OLD_CID="$(docker ps -qf "name=^${OLD_CONTAINER}$" | head -1)"
 [[ -n "$OLD_CID" ]] || { echo "ERRO: container PostgreSQL atual não está ativo." >&2; exit 6; }
 OLD_IMAGE="$(docker inspect "$OLD_CID" --format "{{.Image}}")"
+OLD_VOLUME="$(docker inspect "$OLD_CID" --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{if eq .Type "volume"}}{{.Name}}{{end}}{{end}}{{end}}')"
+[[ -n "$OLD_VOLUME" ]] || { echo "ERRO: volume real do PostgreSQL 16 não pôde ser determinado." >&2; exit 8; }
+docker volume inspect "$OLD_VOLUME" >/dev/null
 OLD_VERSION="$(docker exec "$OLD_CID" psql -U "$DB_USER" -d "$DB_NAME" -Atqc "show server_version")"
 [[ "$OLD_VERSION" == 16.* ]] || { echo "ERRO: origem esperada PostgreSQL 16; encontrado $OLD_VERSION." >&2; exit 7; }
 
@@ -120,7 +123,7 @@ echo "backup_path=$BACKUP_DIR"
 docker rm -f "$OLD_CONTAINER" >/dev/null
 ROLLBACK_REQUIRED=1
 
-docker compose -p docker -f "$COMPOSE" up -d fitcore_postgres >/dev/null
+FITCORE_POSTGRES_ENV_FILE="$ENV_FILE" docker compose -p docker -f "$COMPOSE" up -d fitcore_postgres >/dev/null
 NEW_VERSION=""
 wait_postgres17_stable 160
 [[ "$NEW_VERSION" == 17.6* ]] || { echo "ERRO: destino PostgreSQL 17.6 não ficou estável/healthy." >&2; false; }

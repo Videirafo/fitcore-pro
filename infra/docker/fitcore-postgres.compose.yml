@@ -4,7 +4,7 @@ services:
     container_name: fitcore_postgres
     restart: unless-stopped
     env_file:
-      - /opt/fitcore-pro/storage/secrets/fitcore-postgres.env
+      - ${FITCORE_POSTGRES_ENV_FILE:-/opt/fitcore-pro/storage/secrets/fitcore-postgres.env}
     ports:
       - "127.0.0.1:55435:5432"
     volumes:
