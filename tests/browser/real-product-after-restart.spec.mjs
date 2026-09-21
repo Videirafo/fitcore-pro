@@ -174,6 +174,28 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
     page.getByRole("heading", { name: "Minha evolução" }),
   ).toBeVisible();
   await expect(page.getByText("Sem histórico")).toHaveCount(0);
+
+  await page.goto("/atleta");
+  await expect(page.getByText("Athlete 360 · fonte operacional única")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aluno Browser QA" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Perfil autorizado" })).toBeVisible();
+  await expect(page.getByText(/IA sem consentimento/)).toBeVisible();
+
+  await page.getByLabel("Meta").fill("Manter 3 treinos por semana");
+  await page.getByLabel("Tipo").selectOption("weekly_frequency");
+  await page.getByLabel("Valor alvo").fill("3");
+  await page.getByLabel("Unidade").fill("treinos/semana");
+  await page.getByRole("button", { name: "Adicionar meta" }).click();
+  await expectSuccess(page, "Criar meta");
+  await expect(page.getByText("Manter 3 treinos por semana")).toBeVisible();
+
+  const athlete = await apiJson(page, "/api/vnext/athlete-360/me");
+  expect(athlete.status).toBe(200);
+  expect(athlete.body.athlete.profile.name).toBe("Aluno Browser QA");
+  expect(athlete.body.athlete.goals.length).toBeGreaterThanOrEqual(1);
+  expect(athlete.body.athlete.privacy.medical_data_included).toBe(false);
+  expect(athlete.body.athlete.availability.physical_assessments).toBe(false);
+  expect(athlete.body.athlete.availability.pr_engine).toBe(false);
 });
 
 test("viewport Android não tem overflow horizontal nas telas centrais", async ({
@@ -181,7 +203,7 @@ test("viewport Android não tem overflow horizontal nas telas centrais", async (
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAluno(page);
-  for (const path of ["/dashboard", "/treinos", "/execucao", "/evolucao"]) {
+  for (const path of ["/dashboard", "/atleta", "/treinos", "/execucao", "/evolucao"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     const overflow = await page.evaluate(

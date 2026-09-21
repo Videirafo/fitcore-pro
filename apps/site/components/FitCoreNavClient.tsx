@@ -40,7 +40,8 @@ const nav: NavItem[] = [
   { href: "/agents", label: "Assistente IA", roles: ["visitante", "gestor", "professor"], hint: "Coach e operação", icon: Bot, group: "principal" },
   { href: "/cadastro", label: "Criar negócio", roles: ["visitante"], hint: "Nova unidade", icon: UserPlus, group: "principal" },
 
-  { href: "/alunos", label: "Alunos", roles: ["gestor", "professor"], hint: "Athlete 360", icon: Users, group: "performance" },
+  { href: "/atleta", label: "Athlete 360", roles: ["gestor", "professor", "aluno"], hint: "Perfil, metas e histórico", icon: Users, group: "performance" },
+  { href: "/alunos", label: "Alunos", roles: ["gestor", "professor"], hint: "Cadastro operacional", icon: Users, group: "performance" },
   { href: "/treinos", label: "Treinos", roles: ["gestor", "professor", "aluno"], hint: "Prescrição e protocolos", icon: Dumbbell, group: "performance" },
   { href: "/evolucao", label: "Evolução", roles: ["gestor", "professor", "aluno"], hint: "Histórico e progresso", icon: BarChart3, group: "performance" },
   { href: "/biblioteca", label: "Biblioteca", roles: ["visitante", "gestor", "professor", "aluno"], hint: "Demonstrações", icon: Library, group: "performance" },

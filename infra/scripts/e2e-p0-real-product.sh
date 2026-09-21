@@ -179,29 +179,53 @@ assert items[0]['status']=='aprovado', j
 print('OK gestor/professor/aluno + treino real antes do restart')
 PY
 
+curl -fsS -b "$ALUNO_JAR" -H 'content-type: application/json' \
+  -d '{"title":"Treinar 3 vezes por semana","goal_code":"weekly_frequency","target_value":3,"target_unit":"treinos/semana","priority":"high"}' \
+  "$BASE/api/vnext/athlete-360/me/goals" > "/tmp/${NAME}-athlete-goal.json"
+curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/athlete-360/me" > "/tmp/${NAME}-athlete360-before.json"
+python3 - <<PY
+import json
+g=json.load(open('/tmp/${NAME}-athlete-goal.json'))
+a=json.load(open('/tmp/${NAME}-athlete360-before.json'))['athlete']
+assert g['goal']['status']=='active', g
+assert a['student_id']=='$STUDENT_ID', a
+assert a['profile']['name']=='Aluno P0', a
+assert a['relationships']['coach_id']=='$PROF_ID', a
+assert len(a['goals'])==1, a
+assert a['training']['approved_workouts']==1, a
+assert a['privacy']['medical_data_included'] is False, a
+assert a['availability']['physical_assessments'] is False, a
+assert a['availability']['pr_engine'] is False, a
+print('OK Athlete 360 aluno: perfil + coach + meta + treino + LGPD')
+PY
+
 stop_api
 start_api
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/mvp-24/my-workouts" > "/tmp/${NAME}-my-workouts-after.json"
 curl -fsS -b "$OWNER_JAR" "$BASE/api/mvp-22/users" > "/tmp/${NAME}-users-after.json"
+curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/athlete-360/me" > "/tmp/${NAME}-athlete360-after.json"
 python3 - <<PY
 import json
 workouts=json.load(open('/tmp/${NAME}-my-workouts-after.json'))
 users=json.load(open('/tmp/${NAME}-users-after.json'))
+athlete=json.load(open('/tmp/${NAME}-athlete360-after.json'))['athlete']
 items=workouts.get('prescriptions') or []
 assert len(items)==1 and items[0]['id']=='$PRESCRIPTION_ID', workouts
 assert users.get('total_users')==3, users
-print('OK dados e sessões sobreviveram ao restart')
+assert athlete['student_id']=='$STUDENT_ID' and len(athlete['goals'])==1, athlete
+print('OK dados, sessões e Athlete 360 sobreviveram ao restart')
 PY
 
 TENANT_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-onboarding.json'))['tenant']['id'])")"
-COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT jsonb_build_object('users',(SELECT count(*) FROM fitcore_users WHERE tenant_id='$TENANT_ID'),'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='$TENANT_ID'),'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='$TENANT_ID'))::text")"
+COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT jsonb_build_object('users',(SELECT count(*) FROM fitcore_users WHERE tenant_id='$TENANT_ID'),'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='$TENANT_ID'),'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='$TENANT_ID'),'athlete_goals',(SELECT count(*) FROM fitcore_athlete_goals WHERE tenant_id='$TENANT_ID'))::text")"
 python3 - <<PY
 import json
 j=json.loads('''$COUNTS''')
 assert j['users']==3, j
 assert j['students']==1, j
 assert j['workouts']>=1, j
-print('OK PostgreSQL canônico:', j)
+assert j['athlete_goals']==1, j
+print('OK PostgreSQL canônico + Athlete 360:', j)
 PY
 
 echo "P0 E2E aprovado: cadastro → gestor → professor → aluno → treino → restart → persistência."

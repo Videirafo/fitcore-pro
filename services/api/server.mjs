@@ -28,6 +28,7 @@ import { buildExecutionNextBestAction } from "./security/execution-next-best-act
 import { attachDecisionEvidence, outcomeForExecutionAction, terminalDecisionState } from "./security/decision-intelligence.mjs";
 import { createWorkoutSetSyncManager } from "./security/workout-set-sync.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
+import { createAthlete360Manager } from "./security/athlete-360.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
 import { createOpenSourceCapabilityManager } from "./security/open-source-capabilities.mjs";
 import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
@@ -213,6 +214,7 @@ function runExecutionRemediation(context, remediationId, input = {}, dryRun = fa
 
 const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
+const athlete360Manager = createAthlete360Manager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
 const openSourceCapabilityManager = createOpenSourceCapabilityManager(process.env);
 const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager);
@@ -2147,6 +2149,52 @@ const server = createServer(async (req, res) => {
     if (mvp33StudentCoachMatch) {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
       const result = evidenceCoachManager.studentCoach(accessContext, decodeURIComponent(mvp33StudentCoachMatch[1]), url, false);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/vnext/athlete-360/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, athlete360Manager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/vnext/athlete-360/me") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = athlete360Manager.snapshot(accessContext, "");
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/vnext/athlete-360/me/goals") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = athlete360Manager.createGoal(accessContext, "", input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    const athlete360StudentMatch = url.pathname.match(/^\/api\/vnext\/athlete-360\/students\/([^/]+)$/);
+    if (athlete360StudentMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = athlete360Manager.snapshot(accessContext, decodeURIComponent(athlete360StudentMatch[1]));
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const athlete360StudentGoalMatch = url.pathname.match(/^\/api\/vnext\/athlete-360\/students\/([^/]+)\/goals$/);
+    if (athlete360StudentGoalMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = athlete360Manager.createGoal(accessContext, decodeURIComponent(athlete360StudentGoalMatch[1]), input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    const athlete360GoalMatch = url.pathname.match(/^\/api\/vnext\/athlete-360\/goals\/([^/]+)$/);
+    if (athlete360GoalMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = athlete360Manager.updateGoal(accessContext, decodeURIComponent(athlete360GoalMatch[1]), input);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
     }
