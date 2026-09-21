@@ -76,7 +76,7 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
   expect(afterMissingKey.body.total).toBe(beforeDryRun.body.total);
 
   await expect(page.getByText("Next Best Action").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Iniciar treino recomendado" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Aceitar e iniciar treino recomendado/i })).toBeVisible();
 
   const startKey = `browser-start-${slug}`;
   let proposalId = "";
@@ -93,7 +93,7 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
       new URL(response.url()).pathname === "/api/mvp-25/executions/start" &&
       response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Iniciar treino recomendado" }).click();
+  await page.getByRole("button", { name: /Aceitar e iniciar treino recomendado/i }).click();
   const startResponse = await startResponsePromise;
   const startBody = await startResponse.json();
   await page.unroute("**/api/mvp-25/executions/start");

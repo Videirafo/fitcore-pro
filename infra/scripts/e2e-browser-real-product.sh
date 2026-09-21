@@ -138,7 +138,7 @@ COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT j
   'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='${TENANT_ID}' AND user_id IS NOT NULL AND professor_id IS NOT NULL),
   'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='${TENANT_ID}' AND status='aprovado'),
   'completed',(SELECT count(*) FROM fitcore_workout_executions WHERE tenant_id='${TENANT_ID}' AND status='concluido'),
-  'nba_executed',(SELECT count(*) FROM fitcore_execution_decisions WHERE tenant_id='${TENANT_ID}' AND state='executed' AND execution_id IS NOT NULL AND trace_id IS NOT NULL)
+  'nba_outcomes',(SELECT count(*) FROM fitcore_execution_decisions WHERE tenant_id='${TENANT_ID}' AND state='outcome_recorded' AND execution_id IS NOT NULL AND trace_id IS NOT NULL AND outcome_code IS NOT NULL)
 )::text")"
 python3 - <<PY
 import json
@@ -147,7 +147,7 @@ assert j['users']==3, j
 assert j['students']==1, j
 assert j['workouts']==1, j
 assert j['completed']==1, j
-assert j['nba_executed'] >= 1, j
+assert j['nba_outcomes'] >= 1, j
 print('BROWSER_DB_ASSERTIONS=PASS', j)
 PY
 

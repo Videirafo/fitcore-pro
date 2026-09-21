@@ -102,6 +102,33 @@ function contextPack(value = {}) {
         }))
       : [],
   };
+  const decisionRaw = value?.decision_intelligence && typeof value.decision_intelligence === "object"
+    ? value.decision_intelligence
+    : (value?.decisionIntelligence && typeof value.decisionIntelligence === "object" ? value.decisionIntelligence : {});
+  const decisionIntelligence = {
+    summary: {
+      proposed: Number(decisionRaw?.summary?.proposed || 0),
+      accepted: Number(decisionRaw?.summary?.accepted || 0),
+      rejected: Number(decisionRaw?.summary?.rejected || 0),
+      execution_started: Number(decisionRaw?.summary?.execution_started || 0),
+      settled: Number(decisionRaw?.summary?.settled || 0),
+      outcomes: Number(decisionRaw?.summary?.outcomes || 0),
+      acceptance_rate_pct: Number(decisionRaw?.summary?.acceptance_rate_pct || 0),
+      outcome_rate_pct: Number(decisionRaw?.summary?.outcome_rate_pct || 0),
+    },
+    evidence: Array.isArray(decisionRaw?.evidence)
+      ? decisionRaw.evidence.slice(0, 6).map((item) => ({
+          rank: Number(item?.rank || 0),
+          reason_code: clean(item?.reason_code, "", 120),
+          action_id: clean(item?.action_id, "", 160),
+          tier: clean(item?.tier, "none", 20),
+          accepted_count: Number(item?.accepted_count || 0),
+          settled_count: Number(item?.settled_count || 0),
+          outcome_count: Number(item?.outcome_count || 0),
+          positive_outcome_count: Number(item?.positive_outcome_count || 0),
+        }))
+      : [],
+  };
   const facts = consentRegistrySupplied
     ? [
         `Equipe disponível para IA: ${team.length}`,
@@ -110,9 +137,10 @@ function contextPack(value = {}) {
         `Execuções disponíveis para IA: ${executions.length}`,
         `Evoluções disponíveis para IA: ${evolution.length}`,
         `Execution Kernel: ${executionAnalytics.summary.runs} runs; success=${executionAnalytics.summary.succeeded}; retry_wait=${executionAnalytics.summary.retry_wait}; dead_letter=${executionAnalytics.summary.dead_letter}`,
+        `Decision Intelligence: propostas=${decisionIntelligence.summary.proposed}; aceitas=${decisionIntelligence.summary.accepted}; rejeitadas=${decisionIntelligence.summary.rejected}; settled=${decisionIntelligence.summary.settled}; outcomes=${decisionIntelligence.summary.outcomes}`,
       ]
     : (Array.isArray(value?.facts) ? value.facts.map((item) => clean(item, "", 180)).filter(Boolean).slice(0, 12) : []);
-  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution, executionAnalytics };
+  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution, executionAnalytics, decisionIntelligence };
 }
 
 function summarizeContext(pack) {
@@ -148,6 +176,13 @@ function buildGatewayPrompt(role, moduleName, prompt, pack) {
     const traceText = compactItems(exec.recent || [], (item) => `${item.trace_id}/${item.execution_id} [action=${item.action_id};state=${item.state};error=${item.error_code || "none"}]`, 5);
     if (traceText) sections.push(`Correlação sanitizada: ${traceText}`);
   }
+  const decision = pack.decisionIntelligence || { summary: {}, evidence: [] };
+  if (Number(decision.summary?.proposed || 0) > 0 || decision.evidence?.length) {
+    sections.push(`Decision Intelligence: proposed=${decision.summary.proposed || 0}; accepted=${decision.summary.accepted || 0}; rejected=${decision.summary.rejected || 0}; execution_started=${decision.summary.execution_started || 0}; settled=${decision.summary.settled || 0}; outcomes=${decision.summary.outcomes || 0}; acceptance_rate_pct=${decision.summary.acceptance_rate_pct || 0}; outcome_rate_pct=${decision.summary.outcome_rate_pct || 0}.`);
+    const decisionEvidence = compactItems(decision.evidence || [], (item) => `#${item.rank || 0} ${item.reason_code}[action=${item.action_id || "none"};tier=${item.tier || "none"};accepted=${item.accepted_count || 0};settled=${item.settled_count || 0};outcomes=${item.outcome_count || 0};positive=${item.positive_outcome_count || 0}]`, 6);
+    if (decisionEvidence) sections.push(`Evidência de decisão sanitizada: ${decisionEvidence}`);
+  }
+  sections.push("Decision Intelligence é apenas contexto explicativo para Hermes. Hermes não aceita/rejeita propostas, não executa ações e não grava outcomes.");
   sections.push("Nunca trate proposta NBA como autorização. Qualquer side effect deve voltar ao Execution Kernel server-side.");
   sections.push("Entregue apenas a orientação final.");
   return clean(sections.join("\n"), "", 3_900);
@@ -221,7 +256,7 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
         ) SELECT id::text FROM event;
       `);
     } catch {}
-    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length, execution_analytics: operationalContext.executionAnalytics }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, capability_exposed: false, direct_database_access: false, lgpd: "dados mínimos e auditoria por unidade" } };
+    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length, execution_analytics: operationalContext.executionAnalytics, decision_intelligence: operationalContext.decisionIntelligence }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, capability_exposed: false, direct_database_access: false, decision_mutation: false, lgpd: "dados mínimos e auditoria por unidade" } };
   }
   return { enabled, status, ask };
 }
