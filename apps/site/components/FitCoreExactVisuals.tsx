@@ -30,12 +30,12 @@ function Icon({ name }: { name: IconName }) {
 }
 
 const features: Array<[string, string, IconName, string]> = [
-  ["Criar negócio", "Configure academia, studio, box, personal ou consultório.", "chart", "/cadastro"],
-  ["Agenda e aulas", "Organize aulas, avaliações, retornos e capacidade.", "calendar", "/agenda"],
-  ["Equipe", "Gerencie dono, professores, nutri e permissões.", "users", "/equipe"],
-  ["Alunos e anamnese", "Cadastre objetivos, restrições, medidas e evolução.", "user", "/alunos"],
-  ["Treinos e nutrição", "Prescreva treinos, hábitos e orientação profissional.", "dumbbell", "/treinos"],
-  ["Execução e evolução", "Acompanhe GIFs, check-ins, progresso e retenção.", "play", "/execucao"],
+  ["App do aluno", "Treino de hoje, execução, check-in, histórico e evolução em uma experiência direta.", "play", "/execucao"],
+  ["Coach / Personal", "Alunos e anamnese, prescrição, protocolos, biblioteca e acompanhamento.", "users", "/alunos"],
+  ["AI Coach", "Assistente IA para prescrição, evolução e retenção com contexto operacional.", "bot", "/agents"],
+  ["Execution Kernel", "Execução governada, idempotência, auditoria, analytics e Next Best Action.", "shield", "/execucao"],
+  ["Performance", "Treinos e nutrição entram em uma visão única de evolução do atleta.", "chart", "/evolucao"],
+  ["Business", "Agenda e aulas, equipe, financeiro e indicadores para a operação fitness.", "wallet", "/dashboard"],
 ];
 const kpis = [["Alunos ativos", "124", "↑ 12%", "em relação ao mês anterior", "users"], ["Treinos executados", "892", "↑ 18%", "em relação ao mês anterior", "dumbbell"], ["Evolução média", "+28%", "", "nos últimos 3 meses", "chart"], ["Alunos em dia", "92%", "", "frequência nas últimas 4 semanas", "calendar"]] as const;
 
@@ -52,20 +52,20 @@ export function FitCoreExactLanding() {
     </header>
     <section className="fcx-hero" id="inicio">
       <div className="fcx-hero-copy">
-        <span className="fcx-badge"><i />Fitness, educação física, nutrição esportiva e cross training</span>
-        <h1>Gerencie sua operação fitness, <em>treinos, nutrição e evolução</em> em um só lugar.</h1>
-        <p>Uma plataforma premium para academias, studios, boxes de cross training, personal trainers, nutrição esportiva e profissionais de educação física operarem com dados, IA e segurança.</p>
+        <span className="fcx-badge"><i />Fitness OS para educação física, nutrição esportiva e cross training</span>
+        <h1>O sistema operacional para <em>treino, evolução e negócio fitness</em>.</h1>
+        <p>FitCore conecta aluno, coach, IA, execução e gestão em um fluxo único. Menos telas, menos retrabalho e mais contexto para decidir a próxima ação.</p>
         <div className="fcx-actions"><Link className="fcx-cta" href="/cadastro">Começar gratuitamente <span>→</span></Link><Link className="fcx-secondary" href="/dashboard"><b>▶</b> Ver demonstração</Link></div>
-        <div className="fcx-checks"><span>Agenda, aulas e avaliações</span><span>Treinos, nutrição e retenção</span><span>LGPD e acesso por perfil</span></div>
+        <div className="fcx-checks"><span>Aluno e Coach no mesmo ecossistema</span><span>Execution Kernel + Hermes</span><span>LGPD e acesso por perfil</span></div>
       </div>
       <FitCoreExactPreview />
     </section>
     <section className="fcx-feature-row" id="funcionalidades">{features.map(([title, text, icon, href]) => <Link href={href} className="fcx-mini-card" key={title}><i><Icon name={icon} /></i><strong>{title}</strong><p>{text}</p><span>→</span></Link>)}</section>
-    <section className="fcx-lower-grid" id="planos"><article className="fcx-ai-banner"><span>NOVO</span><h2>Assistente IA para prescrição, evolução e retenção</h2><p>Crie treinos, ajuste cargas, acompanhe adesão, organize retornos e gere orientações com contexto do aluno, do professor e da unidade.</p><div className="fcx-agent-input"><div><b>✦</b><p>Olá, sou o assistente FitCore. Posso apoiar treino, nutrição esportiva, avaliação física, retenção e acompanhamento profissional.</p></div><form action="/agents"><input name="q" placeholder="Digite sua solicitação..."/><button>➤</button></form></div></article><article className="fcx-security-panel" id="seguranca"><i><Icon name="shield" /></i><h2>Seus dados, sempre protegidos</h2><p>Privacidade, controle de acesso por papel, registro de auditoria e operação preparada para LGPD em cada unidade.</p><ul><li><strong>LGPD</strong><span>Conformidade operacional</span></li><li><strong>Criptografia</strong><span>TLS 1.3</span></li><li><strong>Ambiente seguro</strong><span>Sessão, logs e backups</span></li></ul></article></section>
+    <section className="fcx-lower-grid" id="planos"><article className="fcx-ai-banner"><span>FITCORE AI</span><h2>Assistente IA para prescrição, evolução e retenção</h2><p>Hermes usa contexto do aluno, coach e execução para apoiar prescrição, progressão, revisão e Next Best Action sem substituir a decisão profissional.</p><div className="fcx-agent-input"><div><b>✦</b><p>Olá, sou o assistente FitCore. Posso apoiar treino, nutrição esportiva, avaliação física, retenção e acompanhamento profissional.</p></div><form action="/agents"><input name="q" placeholder="Digite sua solicitação..."/><button>➤</button></form></div></article><article className="fcx-security-panel" id="seguranca"><i><Icon name="shield" /></i><h2>Seus dados, sempre protegidos</h2><p>Privacidade, controle de acesso por papel, registro de auditoria e operação preparada para LGPD em cada unidade.</p><ul><li><strong>LGPD</strong><span>Conformidade operacional</span></li><li><strong>Criptografia</strong><span>TLS 1.3</span></li><li><strong>Ambiente seguro</strong><span>Sessão, logs e backups</span></li></ul></article></section>
     <footer className="fcx-footer"><Link href="/" className="fcx-brand fcx-brand-official"><FitCoreBrandLockup compact className="fcx-footer-lockup" /></Link><nav><a>Sobre</a><a>Soluções</a><a>Planos</a><a>Segurança</a><a>Contato</a></nav><span>Feito para quem transforma vidas. ♥</span></footer>
   </main>;
 }
 
 function FitCoreExactPreview() {
-  return <aside className="fcx-preview"><div className="fcx-preview-inner"><div className="fcx-preview-side"><FitCoreExactLogo compact /><nav>{["Visão geral", "Alunos", "Treinos", "Execução", "Evolução", "Financeiro", "Equipe", "Relatórios"].map((item, index) => <span className={index === 0 ? "active" : ""} key={item}>{item}</span>)}</nav></div><div className="fcx-preview-main"><div className="fcx-preview-head"><div><strong>👋 Olá, Fernando</strong><small>Aqui está o resumo do seu negócio hoje.</small></div><span>Seg, 9 de set de 2026</span></div><div className="fcx-preview-kpis">{kpis.map(([label, value, change, hint, icon]) => <article key={label}><i><Icon name={icon} /></i><small>{label}</small><b>{value}</b>{change ? <em>{change}</em> : null}<span>{hint}</span></article>)}</div><div className="fcx-preview-body"><section><header><b>Evolução dos alunos</b><span>Últimos 8 meses⌄</span></header><div className="fcx-line"><i/><i/><i/><i/><i/><i/><i/></div></section><aside><b>Alunos em destaque</b>{["Camila Rocha  ↑ 32%", "Bruno Almeida  ↑ 28%", "Letícia Santos  ↑ 41%"].map(x => <span key={x}>{x}</span>)}</aside></div></div></div></aside>;
+  return <aside className="fcx-preview"><div className="fcx-preview-inner"><div className="fcx-preview-side"><FitCoreExactLogo compact /><nav>{["Hoje", "Alunos", "Treinos", "Execução", "Evolução", "AI Coach", "Financeiro", "Analytics"].map((item, index) => <span className={index === 0 ? "active" : ""} key={item}>{item}</span>)}</nav></div><div className="fcx-preview-main"><div className="fcx-preview-head"><div><strong>Hoje no FitCore</strong><small>Treino, atletas e operação em uma única visão.</small></div><span>Seg, 9 de set de 2026</span></div><div className="fcx-preview-kpis">{kpis.map(([label, value, change, hint, icon]) => <article key={label}><i><Icon name={icon} /></i><small>{label}</small><b>{value}</b>{change ? <em>{change}</em> : null}<span>{hint}</span></article>)}</div><div className="fcx-preview-body"><section><header><b>Evolução dos alunos</b><span>Últimos 8 meses⌄</span></header><div className="fcx-line"><i/><i/><i/><i/><i/><i/><i/></div></section><aside><b>Alunos em destaque</b>{["Camila Rocha  ↑ 32%", "Bruno Almeida  ↑ 28%", "Letícia Santos  ↑ 41%"].map(x => <span key={x}>{x}</span>)}</aside></div></div></div></aside>;
 }
