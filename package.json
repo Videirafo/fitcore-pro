@@ -84,7 +84,7 @@
     "mvp37:verify": "bash infra/scripts/verify-mvp-37-real-role-dashboard.sh",
     "mvp38:check": "node tools/check-mvp-38-shell-polish.mjs",
     "mvp40:check": "node tools/check-mvp-40-product-needs.mjs",
-    "all:ui-gates": "npm run site:next:check && npm run mvp16:check && npm run mvp28:check && npm run mvp29:check && npm run mvp30:check && npm run mvp31:check && npm run mvp32:check && npm run mvp33:check && npm run mvp34:check && npm run mvp35:check && npm run mvp36:check && npm run mvp37:check && npm run mvp38:check && npm run mvp40:check && npm run mvp41:check && npm run mvp42:check && npm run mvp43:check && npm run mvp45:check && npm run brand:check && npm run mvp48:check && npm run mvp56:check && npm run platform-owner:check",
+    "all:ui-gates": "npm run site:next:check && npm run mvp16:check && npm run mvp28:check && npm run mvp29:check && npm run mvp30:check && npm run mvp31:check && npm run mvp32:check && npm run mvp33:check && npm run mvp34:check && npm run mvp35:check && npm run mvp36:check && npm run mvp37:check && npm run mvp38:check && npm run mvp40:check && npm run mvp41:check && npm run mvp42:check && npm run mvp43:check && npm run mvp45:check && npm run brand:check && npm run mvp48:check && npm run mvp56:check && npm run platform-owner:check && npm run fitcore:vnext:check",
     "mvp41:check": "node tools/check-mvp-41-enterprise-assets.mjs",
     "mvp42:check": "node tools/check-mvp-42-exact-approved-preview.mjs",
     "mvp43:check": "node tools/check-mvp-43-product-scope-theme-polish.mjs",
@@ -120,7 +120,8 @@
     "platform-owner:root-email:migrate": "bash infra/scripts/migrate-platform-root-email.sh",
     "execution:check": "node tools/check-execution-kernel.mjs && npm run execution:db:gate && npm run execution:analytics:check",
     "execution:db:gate": "bash infra/scripts/gate-execution-kernel-v2-postgres17.sh",
-    "execution:analytics:check": "node tools/check-execution-analytics.mjs && bash infra/scripts/gate-execution-analytics-postgres17.sh"
+    "execution:analytics:check": "node tools/check-execution-analytics.mjs && bash infra/scripts/gate-execution-analytics-postgres17.sh",
+    "fitcore:vnext:check": "node tools/check-fitcore-os-vnext.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

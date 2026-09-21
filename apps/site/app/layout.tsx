@@ -11,10 +11,11 @@ import "./mvp-45-mobile-brand.css";
 import "./mvp-48-premium-product.css";
 import "./mvp-54-logo-contrast.css";
 import "./fitcore-immersive-hero.css";
+import "./fitcore-vnext.css";
 
 export const metadata: Metadata = {
-  title: "FitCore Pro | Gestão fitness",
-  description: "Sistema profissional para gestão fitness, alunos, treinos, execução e evolução.",
+  title: "FitCore Pro | Fitness Operating System",
+  description: "Treino, evolução, Coach IA, operação e gestão fitness em um único sistema.",
   icons: {
     icon: "/icon.png",
     shortcut: "/icon.png",
