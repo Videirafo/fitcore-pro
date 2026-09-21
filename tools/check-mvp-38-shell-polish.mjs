@@ -14,7 +14,7 @@ const client = readFileSync(files.client, "utf8");
 const css = readFileSync(files.css, "utf8");
 const shell = readFileSync(files.shell, "utf8");
 const layout = readFileSync(files.layout, "utf8");
-for (const pattern of ["focusedEntry", "entry-route", "Console inteligente", "Dados da unidade"]) {
+for (const pattern of ["focusedEntry", "entry-route", "Hoje no FitCore", "Contexto atual"]) {
   if (!client.includes(pattern)) throw new Error(`Contrato visual ausente no client: ${pattern}`);
 }
 for (const pattern of ["MVP-38", "overflow: visible", "entry-route", "shell-arrow"]) {
