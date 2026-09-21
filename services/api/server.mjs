@@ -140,6 +140,77 @@ function executeDecisionBound(context, proposalId, actionId, execute) {
     throw error;
   }
 }
+function runExecutionRemediation(context, remediationId, input = {}, dryRun = false) {
+  const actionId = String(input?.action_id || "").trim();
+  let binding;
+  let effect;
+  let reconcile;
+  let resourceId;
+
+  if (actionId === WORKOUT_ACTION_IDS.START) {
+    binding = buildWorkoutActionBinding(actionId, { input });
+    effect = (capability) => workoutExecutionManager.startExecution(context, input, { capability });
+    reconcile = ({ executionId }) => workoutExecutionManager.reconcileAction(
+      context, actionId, binding, { executionId },
+    );
+    resourceId = (result) => result.execution?.id;
+  } else if (actionId === WORKOUT_ACTION_IDS.EXERCISE_COMPLETE) {
+    const executionId = String(input?.execution_id || "");
+    const index = Number(input?.index || 0);
+    binding = buildWorkoutActionBinding(actionId, { id: executionId, index, input });
+    effect = (capability) => workoutExecutionManager.markExerciseDone(
+      context, executionId, index, input, { capability },
+    );
+    reconcile = ({ executionId: kernelExecutionId }) => workoutExecutionManager.reconcileAction(
+      context, actionId, binding, { executionId: kernelExecutionId },
+    );
+    resourceId = (result) => result.execution?.id;
+  } else if (actionId === WORKOUT_ACTION_IDS.FINISH) {
+    const executionId = String(input?.execution_id || "");
+    binding = buildWorkoutActionBinding(actionId, { id: executionId, input });
+    effect = (capability) => workoutExecutionManager.finishExecution(
+      context, executionId, input, { capability },
+    );
+    reconcile = ({ executionId: kernelExecutionId }) => workoutExecutionManager.reconcileAction(
+      context, actionId, binding, { executionId: kernelExecutionId },
+    );
+    resourceId = (result) => result.execution?.id;
+  } else {
+    const error = new Error("execution_remediation_action_invalid");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const preview = executionKernelRuntime.remediationPreview(context, { remediationId, binding });
+  if (preview.action_id !== actionId) {
+    const error = new Error("execution_remediation_binding_conflict");
+    error.statusCode = 409;
+    throw error;
+  }
+  if (dryRun) {
+    return {
+      ok: true,
+      mvp: "Execution Remediation",
+      dry_run: true,
+      mutationPerformed: false,
+      remediation: preview,
+      safety: {
+        capability_exposed: false,
+        payload_persisted: false,
+        side_effect_authority: "execution-kernel",
+      },
+    };
+  }
+
+  return executionKernelRuntime.retryRemediation(context, {
+    remediationId,
+    binding,
+    effect,
+    reconcile,
+    resourceId,
+  });
+}
+
 const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
 const agentAssistantManager = createAgentAssistantManager(process.env);
@@ -1665,13 +1736,72 @@ const server = createServer(async (req, res) => {
       const windowHours = url.searchParams.get("window_hours") || 168;
       const analytics = executionKernelRuntime.analytics(accessContext, windowHours);
       const decisionIntelligence = executionKernelRuntime.decisionIntelligence(accessContext, Math.max(Number(windowHours) || 168, 720));
+      const executionRemediation = executionKernelRuntime.remediationDashboard(accessContext, Math.max(Number(windowHours) || 168, 168));
       return sendJson(res, 200, {
         ok: true,
         mvp: "Execution Analytics",
         tenant_scoped: true,
         analytics,
         decision_intelligence: decisionIntelligence,
+        execution_remediation: executionRemediation,
       });
+    }
+
+    if (url.pathname === "/api/mvp-25/remediation") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const role = String(accessContext?.actor_role || "").trim().toLowerCase();
+      if (!["gestor", "professor"].includes(role)) {
+        return sendJson(res, 403, { erro: "execution_remediation_forbidden", mensagem: "Remediation operacional disponível para gestor e professor." });
+      }
+      const remediation = executionKernelRuntime.remediationDashboard(accessContext, url.searchParams.get("window_hours") || 168);
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "Execution Remediation",
+        tenant_scoped: true,
+        remediation,
+        safety: {
+          capability_exposed: false,
+          payload_persisted: false,
+          side_effect_authority: "execution-kernel",
+        },
+      });
+    }
+
+    const remediationActionMatch = url.pathname.match(/^\/api\/mvp-25\/remediation\/(rem_[0-9a-f]{32})\/(ready|dismiss)$/);
+    if (remediationActionMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const role = String(accessContext?.actor_role || "").trim().toLowerCase();
+      if (role !== "gestor") {
+        return sendJson(res, 403, { erro: "execution_remediation_operator_forbidden", mensagem: "Somente gestor pode alterar a fila de remediation." });
+      }
+      const [, remediationId, command] = remediationActionMatch;
+      const input = await readJsonBody(req);
+      const remediation = executionKernelRuntime.remediationAction(accessContext, {
+        remediationId,
+        action: command === "ready" ? "mark_ready" : "dismiss",
+        reasonCode: String(input?.reason_code || (command === "ready" ? "operator_ready" : "operator_dismissed")),
+      });
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "Execution Remediation",
+        remediation,
+        safety: { capability_exposed: false, side_effect_authority: "execution-kernel" },
+      });
+    }
+
+    const remediationRetryMatch = url.pathname.match(/^\/api\/mvp-25\/remediation\/(rem_[0-9a-f]{32})\/retry$/);
+    if (remediationRetryMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const dryRun = url.searchParams.get("mode") === "dry_run" || url.searchParams.get("dry_run") === "true";
+      const result = runExecutionRemediation(accessContext, remediationRetryMatch[1], input, dryRun);
+      if (result?.guard && !result.guard.allowed) {
+        return sendJson(res, result.guard.statusCode, {
+          ...result.guard.response,
+          execution_kernel: result.execution_kernel,
+        });
+      }
+      return sendJson(res, dryRun ? 200 : 202, result);
     }
 
     if (url.pathname === "/api/mvp-25/analytics/decision-intelligence") {
@@ -1956,6 +2086,9 @@ const server = createServer(async (req, res) => {
       const decisionIntelligenceForAgent = ["gestor", "professor"].includes(actorRole)
         ? executionKernelRuntime.decisionIntelligence(accessContext, 720)
         : null;
+      const executionRemediationForAgent = ["gestor", "professor"].includes(actorRole)
+        ? executionKernelRuntime.remediationDashboard(accessContext, 168)
+        : null;
       const operationalContext = dashboardSnapshot?.guard ? {} : {
         source: dashboardSnapshot?.agent_context?.source || dashboardSnapshot?.source || "mvp37_consolidated_dashboard",
         facts: dashboardSnapshot?.agent_context?.facts || [],
@@ -1966,6 +2099,7 @@ const server = createServer(async (req, res) => {
         evolution: evolutionStudents.map((item) => ({ student_id: item.student_id, aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
         execution_analytics: executionAnalyticsForAgent,
         decision_intelligence: decisionIntelligenceForAgent,
+        execution_remediation: executionRemediationForAgent,
       };
       const result = await agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext, external_provider_allowed: externalProviderAllowed });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);

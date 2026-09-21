@@ -141,12 +141,22 @@ function dbFailure(error) {
     "execution_decision_outcome_invalid",
     "execution_decision_outcome_conflict",
     "execution_decision_window_invalid",
+    "execution_remediation_invalid",
+    "execution_remediation_not_found",
+    "execution_remediation_actor_mismatch",
+    "execution_remediation_binding_conflict",
+    "execution_remediation_state_forbidden",
+    "execution_remediation_status_forbidden",
+    "execution_remediation_backoff_active",
+    "execution_remediation_retry_exhausted",
+    "execution_remediation_action_invalid",
+    "execution_remediation_window_invalid",
   ];
   const code = codes.find((candidate) => errorText.includes(candidate));
   if (!code) return new ExecutionKernelError("execution_kernel_database_failed", 503);
-  if (code === "execution_not_found" || code === "execution_decision_not_found") return new ExecutionKernelError(code, 404);
-  if (code.includes("forbidden") || code === "execution_tenant_context_mismatch") return new ExecutionKernelError(code, 403);
-  if (code.startsWith("execution_recovery_") || code === "execution_decision_transition_forbidden" || code === "execution_decision_accept_required" || code === "execution_decision_outcome_conflict") return new ExecutionKernelError(code, 409);
+  if (code === "execution_not_found" || code === "execution_decision_not_found" || code === "execution_remediation_not_found") return new ExecutionKernelError(code, 404);
+  if (code.includes("forbidden") || code === "execution_tenant_context_mismatch" || code === "execution_remediation_actor_mismatch") return new ExecutionKernelError(code, 403);
+  if (code.startsWith("execution_recovery_") || code === "execution_decision_transition_forbidden" || code === "execution_decision_accept_required" || code === "execution_decision_outcome_conflict" || code === "execution_remediation_backoff_active" || code === "execution_remediation_retry_exhausted" || code === "execution_remediation_state_forbidden" || code === "execution_remediation_status_forbidden") return new ExecutionKernelError(code, 409);
   if (code.includes("conflict") || code.includes("binding") || code === "execution_transition_resource_required") {
     return new ExecutionKernelError(code, 409);
   }
@@ -573,6 +583,177 @@ export function createExecutionKernelRuntime(env = process.env) {
     }
   }
 
+  function remediationDashboard(context, windowHours = 168) {
+    requireContext(context);
+    const hours = Math.min(Math.max(Number.parseInt(String(windowHours || 168), 10) || 168, 1), 8760);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_remediation_dashboard(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${hours}
+        )::text;
+      `) || {};
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function remediationPreview(context, { remediationId, binding } = {}) {
+    requireContext(context);
+    const bindingHash = hashExecutionBinding(binding);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_remediation_preview(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(remediationId)},
+          ${sqlText(bindingHash)}
+        )::text;
+      `) || {};
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function remediationAction(context, { remediationId, action, reasonCode = null } = {}) {
+    requireContext(context);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_remediation_action(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(remediationId)},
+          ${sqlText(action)},
+          ${reasonCode ? sqlText(clean(reasonCode, "", 120)) : "NULL"}
+        )::text;
+      `) || {};
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function prepareRemediationRetry(context, remediationId, binding) {
+    requireContext(context);
+    const bindingHash = hashExecutionBinding(binding);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_execution_prepare_remediation_retry(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(remediationId)},
+          ${sqlText(bindingHash)}
+        )::text;
+      `) || {};
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function retryRemediation(context, { remediationId, binding, effect, reconcile, resourceId }) {
+    const retry = prepareRemediationRetry(context, remediationId, binding);
+    if (!retry?.allowed) {
+      throw new ExecutionKernelError(retry?.code || "execution_remediation_state_forbidden", 409);
+    }
+    const definition = definitionFor(retry.action_id);
+    const identity = {
+      submissionId: "sub_remediation",
+      logicalExecutionId: retry.execution_id,
+      attemptId: retry.attempt_id,
+      operationId: retry.operation_id,
+      traceId: retry.trace_id,
+      idempotencyHash: "",
+    };
+    const prepared = {
+      definition,
+      identity,
+      bindingHash: hashExecutionBinding(binding),
+      admission: {
+        run_id: retry.run_id,
+        run_state: "admitted",
+        replayed: Boolean(retry.replayed),
+        resource_id: null,
+      },
+    };
+
+    const reconciled = typeof reconcile === "function"
+      ? reconcile({ actionId: retry.action_id, binding, executionId: retry.execution_id, state: "retry_wait" })
+      : null;
+    if (reconciled && !reconciled.guard) {
+      const recoveredResourceId = resourceId(reconciled);
+      if (!recoveredResourceId) throw new ExecutionKernelError("execution_recovery_resource_missing", 409);
+      transition(context, identity, "executing");
+      transition(context, identity, "settlement_pending");
+      transition(context, identity, "succeeded", { resourceId: recoveredResourceId });
+      return {
+        ...reconciled,
+        execution_kernel: {
+          ...executionEnvelope(identity, prepared.admission, "succeeded", true),
+          remediated: true,
+          remediation_id: remediationId,
+          occurrence: retry.occurrence,
+        },
+      };
+    }
+
+    const started = transition(context, identity, "executing");
+    if (started.replayed) throw new ExecutionKernelError("execution_in_progress", 409);
+    const capability = issueCapability(context, prepared, "remediation");
+
+    let result;
+    try {
+      result = effect(capability);
+      if (result?.guard) {
+        transition(context, identity, "failed", {
+          errorCode: clean(result.guard?.response?.erro || "execution_effect_rejected", "execution_effect_rejected", 120),
+        });
+        return {
+          ...result,
+          execution_kernel: {
+            ...executionEnvelope(identity, prepared.admission, "failed", false),
+            remediated: true,
+            remediation_id: remediationId,
+            occurrence: retry.occurrence,
+          },
+        };
+      }
+      const boundResourceId = resourceId(result);
+      if (!boundResourceId) throw new ExecutionKernelError("execution_effect_resource_missing", 500);
+      transition(context, identity, "settlement_pending");
+      transition(context, identity, "succeeded", { resourceId: boundResourceId });
+      return {
+        ...result,
+        execution_kernel: {
+          ...executionEnvelope(identity, prepared.admission, "succeeded", false),
+          remediated: true,
+          remediation_id: remediationId,
+          occurrence: retry.occurrence,
+        },
+      };
+    } catch (error) {
+      if (!result?.guard) {
+        const exhausted = Number(retry.retry_count || 0) >= Number(retry.max_attempts || 0);
+        try {
+          transition(context, identity, exhausted ? "dead_letter" : "retry_wait", {
+            errorCode: clean(error?.code || error?.message || "execution_retry_failed", "execution_retry_failed", 120)
+              .toLowerCase()
+              .replace(/[^a-z0-9_.:-]+/g, "_"),
+          });
+        } catch (settlementError) {
+          console.error("[fitcore:execution:remediation-settlement-failed]", {
+            executionId: retry.execution_id,
+            remediationId,
+            error: settlementError instanceof Error ? settlementError.message : String(settlementError),
+          });
+        }
+      }
+      throw error;
+    }
+  }
+
   function status() {
     return {
       enabled,
@@ -588,9 +769,13 @@ export function createExecutionKernelRuntime(env = process.env) {
       decision_lifecycle: "proposal-accept-execution-settlement-outcome",
       evidence_ranking: "transparent-deterministic",
       stale_recovery: true,
+      remediation: true,
+      remediation_policy: "bounded-retry-backoff-dead-letter",
+      remediation_authority: "execution-kernel",
+      remediation_payload_persistence: false,
       actions: Object.values(ACTION_DEFINITIONS).map((item) => item.id),
     };
   }
 
-  return { enabled, status, dryRun, execute, authorizeEffect, observability, analytics, recordDecision, validateDecision, transitionDecision, decisionIntelligence, recordDecisionOutcome };
+  return { enabled, status, dryRun, execute, authorizeEffect, observability, analytics, recordDecision, validateDecision, transitionDecision, decisionIntelligence, recordDecisionOutcome, remediationDashboard, remediationPreview, remediationAction, retryRemediation };
 }

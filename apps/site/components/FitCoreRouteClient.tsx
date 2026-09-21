@@ -144,7 +144,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
       }
       if (staff && ["audit", "reports", "agents", "execution"].includes(target)) {
         const result = await api(`/api/mvp-25/analytics?window_hours=168&v=${Date.now()}`);
-        setExecutionAnalytics({ ...(result.analytics || { summary: {}, alerts: [], by_action: [], recent: [] }), decision_intelligence: result.decision_intelligence || {} });
+        setExecutionAnalytics({ ...(result.analytics || { summary: {}, alerts: [], by_action: [], recent: [] }), decision_intelligence: result.decision_intelligence || {}, execution_remediation: result.execution_remediation || {} });
       }
       if (currentRole !== "visitante" && target === "execution") {
         const nba = await api("/api/mvp-25/analytics/next-best-action", { method: "POST", body: "{}" });
@@ -412,11 +412,18 @@ function AuditPanel({ session, executions, analytics }: { session: Json | null; 
   const decision = analytics?.decision_intelligence || {};
   const ds = decision.summary || {};
   const evidence = decision.evidence || [];
+  const remediation = analytics?.execution_remediation || {};
+  const rs = remediation.summary || {};
+  const routes = remediation.routes || [];
+  const remediationItems = remediation.items || [];
   return <div className="dashboard-grid">
     <section className="panel wide"><h2>Execution Analytics</h2><div className="metric-grid"><Metric label="Runs" value={summary.runs || 0} /><Metric label="Sucesso" value={`${numberText(summary.success_rate_pct || 0)}%`} /><Metric label="Retry wait" value={summary.retry_wait || 0} /><Metric label="Dead-letter" value={summary.dead_letter || 0} /></div><p className="muted-note">Latência média: {numberText(summary.avg_duration_ms || 0)} ms · settlement: {numberText(summary.avg_settlement_ms || 0)} ms · janela 7 dias.</p></section>
     <section className="panel wide"><h2>Decision Intelligence</h2><div className="metric-grid"><Metric label="Propostas" value={ds.proposed || 0} /><Metric label="Aceite" value={`${numberText(ds.acceptance_rate_pct || 0)}%`} /><Metric label="Execução" value={`${numberText(ds.execution_rate_pct || 0)}%`} /><Metric label="Outcomes" value={ds.outcomes || 0} /></div><p className="muted-note">Ranking determinístico por outcomes → settlements → aceites; sem score opaco como autoridade.</p></section>
     <section className="panel"><h2>Evidência por decisão</h2><List empty="Ainda sem histórico suficiente." items={evidence.slice(0, 6)} pick={(item) => [`#${item.rank || "—"} · ${item.reason_code || "reason"}`, item.tier || "none", `${item.outcome_count || 0} outcome(s) · ${item.settled_count || 0} settlement(s)`]} /></section>
     <section className="panel"><h2>Alertas operacionais</h2><List empty="Nenhum alerta do Execution Kernel." items={alerts} pick={(item) => [item.code || "alerta", item.severity || "info", `${item.count || 0} ocorrência(s)`]} /></section>
+    <section className="panel wide"><h2>Execution Remediation</h2><div className="metric-grid"><Metric label="Aguardando retry" value={rs.awaiting_retry || 0} /><Metric label="Processing" value={rs.processing || 0} /><Metric label="Dead-letter" value={rs.dead_letter || 0} /><Metric label="MTTR" value={`${numberText(rs.avg_mttr_ms || 0)} ms`} /></div><p className="muted-note">Retry governado com backoff, limite de tentativas e capability server-only. Nenhum payload é exposto na fila.</p></section>
+    <section className="panel"><h2>Roteamento de remediation</h2><List empty="Nenhum item roteado." items={routes} pick={(item) => [item.route || "ops_standard", item.severity || "medium", `${item.count || 0} item(ns)`]} /></section>
+    <section className="panel"><h2>Fila de remediation</h2><List empty="Fila vazia." items={remediationItems.slice(0, 8)} pick={(item) => [item.action_id || item.remediation_id || "remediation", `${item.status || "unknown"} · ${item.route || "ops_standard"}`, `retry ${item.retry_count || 0}/${item.max_attempts || 0} · ${item.error_code || "sem erro"}`]} /></section>
     <section className="panel wide"><h2>Correlação recente</h2><List empty="Sem runs recentes." items={recent} pick={(item) => [item.action_id || "action", item.state || "state", `${item.trace_id || "trace"} · ${item.execution_id || "execution"}`]} /></section>
     <section className="panel"><h2>Auditoria da operação</h2><Metric label="Sessão" value={session ? "Ativa" : "—"} /><Metric label="Execuções de treino" value={executions?.total || 0} /></section>
   </div>;
