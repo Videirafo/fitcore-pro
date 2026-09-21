@@ -59,7 +59,7 @@ body::before {
 
 .app-shell .brand.brand-official-transparent {
   margin: 0 0 8px !important;
-  padding: 2px 8px !important;
+  padding: 0 !important;
 }
 
 .fitcore-shell-lockup {
