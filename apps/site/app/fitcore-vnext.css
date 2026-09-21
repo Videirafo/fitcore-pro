@@ -409,7 +409,9 @@ button:hover,
   padding: 8px 10px 8px 16px !important;
   border: 1px solid var(--fc-line) !important;
   border-radius: 18px !important;
-  background: rgba(9, 15, 24, .90) !important;
+  background:
+    linear-gradient(90deg, rgba(201, 244, 246, .94) 0, rgba(119, 214, 221, .84) 14rem, rgba(28, 91, 113, .68) 22rem, rgba(9, 15, 24, .90) 32rem),
+    rgba(9, 15, 24, .90) !important;
   box-shadow: none !important;
 }
 
