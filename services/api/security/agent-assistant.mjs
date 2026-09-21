@@ -129,6 +129,39 @@ function contextPack(value = {}) {
         }))
       : [],
   };
+  const remediationRaw = value?.execution_remediation && typeof value.execution_remediation === "object"
+    ? value.execution_remediation
+    : (value?.executionRemediation && typeof value.executionRemediation === "object" ? value.executionRemediation : {});
+  const executionRemediation = {
+    summary: {
+      total: Number(remediationRaw?.summary?.total || 0),
+      awaiting_retry: Number(remediationRaw?.summary?.awaiting_retry || 0),
+      processing: Number(remediationRaw?.summary?.processing || 0),
+      dead_letter: Number(remediationRaw?.summary?.dead_letter || 0),
+      resolved: Number(remediationRaw?.summary?.resolved || 0),
+      retries: Number(remediationRaw?.summary?.retries || 0),
+      avg_mttr_ms: Number(remediationRaw?.summary?.avg_mttr_ms || 0),
+    },
+    routes: Array.isArray(remediationRaw?.routes)
+      ? remediationRaw.routes.slice(0, 6).map((item) => ({
+          route: clean(item?.route, "", 40),
+          severity: clean(item?.severity, "", 20),
+          count: Number(item?.count || 0),
+        }))
+      : [],
+    items: Array.isArray(remediationRaw?.items)
+      ? remediationRaw.items.slice(0, 8).map((item) => ({
+          remediation_id: clean(item?.remediation_id, "", 80),
+          action_id: clean(item?.action_id, "", 160),
+          status: clean(item?.status, "", 40),
+          severity: clean(item?.severity, "", 20),
+          route: clean(item?.route, "", 40),
+          error_code: clean(item?.error_code, "", 120),
+          retry_count: Number(item?.retry_count || 0),
+          max_attempts: Number(item?.max_attempts || 0),
+        }))
+      : [],
+  };
   const facts = consentRegistrySupplied
     ? [
         `Equipe disponível para IA: ${team.length}`,
@@ -138,9 +171,10 @@ function contextPack(value = {}) {
         `Evoluções disponíveis para IA: ${evolution.length}`,
         `Execution Kernel: ${executionAnalytics.summary.runs} runs; success=${executionAnalytics.summary.succeeded}; retry_wait=${executionAnalytics.summary.retry_wait}; dead_letter=${executionAnalytics.summary.dead_letter}`,
         `Decision Intelligence: propostas=${decisionIntelligence.summary.proposed}; aceitas=${decisionIntelligence.summary.accepted}; rejeitadas=${decisionIntelligence.summary.rejected}; settled=${decisionIntelligence.summary.settled}; outcomes=${decisionIntelligence.summary.outcomes}`,
+        `Execution Remediation: fila=${executionRemediation.summary.awaiting_retry}; processing=${executionRemediation.summary.processing}; dead_letter=${executionRemediation.summary.dead_letter}; resolved=${executionRemediation.summary.resolved}; retries=${executionRemediation.summary.retries}; mttr_ms=${executionRemediation.summary.avg_mttr_ms}`,
       ]
     : (Array.isArray(value?.facts) ? value.facts.map((item) => clean(item, "", 180)).filter(Boolean).slice(0, 12) : []);
-  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution, executionAnalytics, decisionIntelligence };
+  return { source: clean(value?.source, "mvp37_consolidated_dashboard", 80), facts, team, students, prescriptions, executions, evolution, executionAnalytics, decisionIntelligence, executionRemediation };
 }
 
 function summarizeContext(pack) {
@@ -182,8 +216,17 @@ function buildGatewayPrompt(role, moduleName, prompt, pack) {
     const decisionEvidence = compactItems(decision.evidence || [], (item) => `#${item.rank || 0} ${item.reason_code}[action=${item.action_id || "none"};tier=${item.tier || "none"};accepted=${item.accepted_count || 0};settled=${item.settled_count || 0};outcomes=${item.outcome_count || 0};positive=${item.positive_outcome_count || 0}]`, 6);
     if (decisionEvidence) sections.push(`Evidência de decisão sanitizada: ${decisionEvidence}`);
   }
+  const remediation = pack.executionRemediation || { summary: {}, routes: [], items: [] };
+  if (Number(remediation.summary?.total || 0) > 0 || remediation.routes?.length) {
+    sections.push(`Execution Remediation: awaiting_retry=${remediation.summary.awaiting_retry || 0}; processing=${remediation.summary.processing || 0}; dead_letter=${remediation.summary.dead_letter || 0}; resolved=${remediation.summary.resolved || 0}; retries=${remediation.summary.retries || 0}; avg_mttr_ms=${remediation.summary.avg_mttr_ms || 0}.`);
+    const routing = compactItems(remediation.routes || [], (item) => `${item.route}[severity=${item.severity};count=${item.count}]`, 6);
+    if (routing) sections.push(`Roteamento de remediation: ${routing}`);
+    const remediationItems = compactItems(remediation.items || [], (item) => `${item.remediation_id}[action=${item.action_id};status=${item.status};severity=${item.severity};route=${item.route};retry=${item.retry_count}/${item.max_attempts};error=${item.error_code || "none"}]`, 6);
+    if (remediationItems) sections.push(`Fila de remediation sanitizada: ${remediationItems}`);
+  }
   sections.push("Decision Intelligence é apenas contexto explicativo para Hermes. Hermes não aceita/rejeita propostas, não executa ações e não grava outcomes.");
-  sections.push("Nunca trate proposta NBA como autorização. Qualquer side effect deve voltar ao Execution Kernel server-side.");
+  sections.push("Execution Remediation é apenas contexto explicativo para Hermes. Hermes não marca ready/dismiss, não dispara retry e não recebe payload/binding.");
+  sections.push("Nunca trate proposta NBA ou remediation como autorização. Qualquer side effect deve voltar ao Execution Kernel server-side.");
   sections.push("Entregue apenas a orientação final.");
   return clean(sections.join("\n"), "", 3_900);
 }
@@ -256,7 +299,7 @@ export function createAgentAssistantManager(env = process.env, deps = {}) {
         ) SELECT id::text FROM event;
       `);
     } catch {}
-    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length, execution_analytics: operationalContext.executionAnalytics, decision_intelligence: operationalContext.decisionIntelligence }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, capability_exposed: false, direct_database_access: false, decision_mutation: false, lgpd: "dados mínimos e auditoria por unidade" } };
+    return { ok: true, mvp: "MVP-32 Agent Assistant", role, module: moduleName, reply, actions, provider: providerAudit, context: { source: operationalContext.source, facts: operationalContext.facts, team_count: operationalContext.team.length, student_count: operationalContext.students.length, prescription_count: operationalContext.prescriptions.length, execution_count: operationalContext.executions.length, execution_analytics: operationalContext.executionAnalytics, decision_intelligence: operationalContext.decisionIntelligence, execution_remediation: operationalContext.executionRemediation }, safety: { tenant_scoped: true, evidence_only: true, insufficient_data_is_explicit: true, human_review: true, medical_autonomy: false, capability_exposed: false, direct_database_access: false, decision_mutation: false, remediation_mutation: false, lgpd: "dados mínimos e auditoria por unidade" } };
   }
   return { enabled, status, ask };
 }
