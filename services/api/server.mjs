@@ -25,6 +25,7 @@ import { createWorkoutPrescriptionManager } from "./security/workout-prescriptio
 import { createWorkoutExecutionManager, buildWorkoutActionBinding, WORKOUT_ACTION_IDS } from "./security/workout-execution.mjs";
 import { createExecutionKernelRuntime, resolveExecutionIdempotencyKey } from "./security/execution-kernel-runtime.mjs";
 import { buildExecutionNextBestAction } from "./security/execution-next-best-action.mjs";
+import { attachDecisionEvidence, outcomeForExecutionAction, terminalDecisionState } from "./security/decision-intelligence.mjs";
 import { createWorkoutSetSyncManager } from "./security/workout-set-sync.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
@@ -79,17 +80,65 @@ function executionProposalId(req) {
 function validateExecutionDecision(context, req, actionId, resourceId) {
   const proposalId = executionProposalId(req);
   if (!proposalId) return "";
-  executionKernelRuntime.validateDecision(context, { proposalId, actionId, resourceId });
+  const decision = executionKernelRuntime.validateDecision(context, { proposalId, actionId, resourceId });
+  if (decision?.state === "accepted") {
+    executionKernelRuntime.transitionDecision(context, {
+      proposalId,
+      state: "executing",
+      reasonCode: "accepted_for_execution",
+    });
+  }
   return proposalId;
 }
-function linkExecutionDecision(context, proposalId, result) {
+function linkExecutionDecision(context, proposalId, result, actionId) {
   if (!proposalId || !result?.execution_kernel) return;
+  const succeeded = result.execution_kernel.state === "succeeded";
   executionKernelRuntime.transitionDecision(context, {
     proposalId,
-    state: result.execution_kernel.state === "succeeded" ? "executed" : "failed",
+    state: succeeded ? "settled" : "failed",
     executionId: result.execution_kernel.execution_id || null,
     traceId: result.execution_kernel.trace_id || null,
+    reasonCode: succeeded ? "execution_settled" : "execution_failed",
   });
+  const outcome = outcomeForExecutionAction(actionId, succeeded);
+  executionKernelRuntime.recordDecisionOutcome(context, {
+    proposalId,
+    outcomeCode: outcome.outcome_code,
+    metricName: outcome.metric_name,
+    metricValue: outcome.metric_value,
+    windowHours: outcome.window_hours,
+  });
+}
+function executeDecisionBound(context, proposalId, actionId, execute) {
+  try {
+    const result = execute();
+    linkExecutionDecision(context, proposalId, result, actionId);
+    return result;
+  } catch (error) {
+    if (proposalId) {
+      try {
+        executionKernelRuntime.transitionDecision(context, {
+          proposalId,
+          state: "failed",
+          reasonCode: "execution_threw",
+        });
+        const outcome = outcomeForExecutionAction(actionId, false);
+        executionKernelRuntime.recordDecisionOutcome(context, {
+          proposalId,
+          outcomeCode: outcome.outcome_code,
+          metricName: outcome.metric_name,
+          metricValue: outcome.metric_value,
+          windowHours: outcome.window_hours,
+        });
+      } catch (decisionError) {
+        console.error("[fitcore:decision:failure-link]", {
+          proposal_id: proposalId,
+          error: decisionError instanceof Error ? decisionError.message : String(decisionError),
+        });
+      }
+    }
+    throw error;
+  }
 }
 const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
@@ -1613,8 +1662,48 @@ const server = createServer(async (req, res) => {
       if (!["gestor", "professor"].includes(role)) {
         return sendJson(res, 403, { erro: "execution_analytics_forbidden", mensagem: "Analytics operacional disponível para gestor e professor." });
       }
-      const analytics = executionKernelRuntime.analytics(accessContext, url.searchParams.get("window_hours") || 168);
-      return sendJson(res, 200, { ok: true, mvp: "Execution Analytics", tenant_scoped: true, analytics });
+      const windowHours = url.searchParams.get("window_hours") || 168;
+      const analytics = executionKernelRuntime.analytics(accessContext, windowHours);
+      const decisionIntelligence = executionKernelRuntime.decisionIntelligence(accessContext, Math.max(Number(windowHours) || 168, 720));
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "Execution Analytics",
+        tenant_scoped: true,
+        analytics,
+        decision_intelligence: decisionIntelligence,
+      });
+    }
+
+    if (url.pathname === "/api/mvp-25/analytics/decision-intelligence") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const role = String(accessContext?.actor_role || "").trim().toLowerCase();
+      if (!["gestor", "professor"].includes(role)) {
+        return sendJson(res, 403, { erro: "decision_intelligence_forbidden", mensagem: "Decision Intelligence disponível para gestor e professor." });
+      }
+      const intelligence = executionKernelRuntime.decisionIntelligence(accessContext, url.searchParams.get("window_hours") || 720);
+      return sendJson(res, 200, { ok: true, mvp: "Decision Intelligence", tenant_scoped: true, intelligence });
+    }
+
+    const decisionActionMatch = url.pathname.match(/^\/api\/mvp-25\/analytics\/decisions\/(nba_[0-9a-f]{32})\/(accept|reject)$/);
+    if (decisionActionMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const [, proposalId, action] = decisionActionMatch;
+      const decision = executionKernelRuntime.transitionDecision(accessContext, {
+        proposalId,
+        state: action === "accept" ? "accepted" : "rejected",
+        reasonCode: action === "accept" ? "user_accepted" : "user_rejected",
+      });
+      return sendJson(res, 200, {
+        ok: true,
+        mvp: "Decision Intelligence",
+        decision: {
+          proposal_id: decision?.proposal_id,
+          state: decision?.state,
+          accepted_at: decision?.accepted_at || null,
+          rejected_at: decision?.rejected_at || null,
+        },
+        safety: { capability_exposed: false, side_effect_authority: "execution-kernel" },
+      });
     }
 
     if (url.pathname === "/api/mvp-25/analytics/next-best-action") {
@@ -1640,21 +1729,37 @@ const server = createServer(async (req, res) => {
       const analytics = ["gestor", "professor"].includes(role)
         ? executionKernelRuntime.analytics(accessContext, 168)
         : { summary: {}, alerts: [], recent: [] };
-      const proposal = buildExecutionNextBestAction({
+      const intelligence = executionKernelRuntime.decisionIntelligence(accessContext, 720);
+      const proposal = attachDecisionEvidence(buildExecutionNextBestAction({
         context: accessContext,
         analytics,
         prescriptions: prescriptionsResult.prescriptions || prescriptionsResult.workouts || [],
         executions: executionsResult.executions || [],
-      });
+      }), intelligence);
       if (!proposal) {
         return sendJson(res, 200, { ok: true, mvp: "Execution Next Best Action", proposal: null, reason: "no_action_required" });
       }
       const decision = executionKernelRuntime.recordDecision(accessContext, proposal);
+      if (terminalDecisionState(decision?.state)) {
+        return sendJson(res, 200, {
+          ok: true,
+          mvp: "Execution Next Best Action",
+          proposal: null,
+          reason: "proposal_terminal_for_current_evidence",
+          decision_state: decision?.state || null,
+        });
+      }
       return sendJson(res, 200, {
         ok: true,
         mvp: "Execution Next Best Action",
         proposal: { ...proposal, audit_state: decision?.state || "proposed" },
-        safety: { proposal_only: true, capability_exposed: false, direct_database_access: false },
+        safety: {
+          proposal_only: true,
+          accept_required: true,
+          capability_exposed: false,
+          direct_database_access: false,
+          side_effect_authority: "execution-kernel",
+        },
       });
     }
 
@@ -1688,7 +1793,7 @@ const server = createServer(async (req, res) => {
         }));
       }
       const proposalId = validateExecutionDecision(accessContext, req, actionId, binding.workout_id);
-      const result = executionKernelRuntime.execute(accessContext, {
+      const result = executeDecisionBound(accessContext, proposalId, actionId, () => executionKernelRuntime.execute(accessContext, {
         actionId,
         idempotencyKey: resolveExecutionIdempotencyKey(req),
         binding,
@@ -1701,8 +1806,7 @@ const server = createServer(async (req, res) => {
           accessContext, actionId, binding, { executionId },
         ),
         resourceId: (effectResult) => effectResult.execution?.id,
-      });
-      linkExecutionDecision(accessContext, proposalId, result);
+      }));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
         ...result.guard.response,
         execution_kernel: result.execution_kernel,
@@ -1729,7 +1833,7 @@ const server = createServer(async (req, res) => {
         }));
       }
       const proposalId = validateExecutionDecision(accessContext, req, actionId, executionId);
-      const result = executionKernelRuntime.execute(accessContext, {
+      const result = executeDecisionBound(accessContext, proposalId, actionId, () => executionKernelRuntime.execute(accessContext, {
         actionId,
         idempotencyKey: resolveExecutionIdempotencyKey(req),
         binding,
@@ -1742,8 +1846,7 @@ const server = createServer(async (req, res) => {
           accessContext, actionId, binding, { executionId: kernelExecutionId },
         ),
         resourceId: (effectResult) => effectResult.execution?.id,
-      });
-      linkExecutionDecision(accessContext, proposalId, result);
+      }));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
         ...result.guard.response,
         execution_kernel: result.execution_kernel,
@@ -1769,7 +1872,7 @@ const server = createServer(async (req, res) => {
         }));
       }
       const proposalId = validateExecutionDecision(accessContext, req, actionId, executionId);
-      const result = executionKernelRuntime.execute(accessContext, {
+      const result = executeDecisionBound(accessContext, proposalId, actionId, () => executionKernelRuntime.execute(accessContext, {
         actionId,
         idempotencyKey: resolveExecutionIdempotencyKey(req),
         binding,
@@ -1782,8 +1885,7 @@ const server = createServer(async (req, res) => {
           accessContext, actionId, binding, { executionId: kernelExecutionId },
         ),
         resourceId: (effectResult) => effectResult.execution?.id,
-      });
-      linkExecutionDecision(accessContext, proposalId, result);
+      }));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, {
         ...result.guard.response,
         execution_kernel: result.execution_kernel,
@@ -1851,6 +1953,9 @@ const server = createServer(async (req, res) => {
       const executionAnalyticsForAgent = ["gestor", "professor"].includes(actorRole)
         ? executionKernelRuntime.analytics(accessContext, 168)
         : null;
+      const decisionIntelligenceForAgent = ["gestor", "professor"].includes(actorRole)
+        ? executionKernelRuntime.decisionIntelligence(accessContext, 720)
+        : null;
       const operationalContext = dashboardSnapshot?.guard ? {} : {
         source: dashboardSnapshot?.agent_context?.source || dashboardSnapshot?.source || "mvp37_consolidated_dashboard",
         facts: dashboardSnapshot?.agent_context?.facts || [],
@@ -1860,6 +1965,7 @@ const server = createServer(async (req, res) => {
         executions: executions.map((item) => ({ student_id: item.student_id, aluno: item.student_name || item.aluno_nome, status: item.status, esforco: item.percepcao_esforco ?? null, concluido_em: item.concluido_em || null })),
         evolution: evolutionStudents.map((item) => ({ student_id: item.student_id, aluno: item.student_name, frequencia: item.weekly_frequency, progresso: item.progress_percent, esforco: item.average_effort ?? null })),
         execution_analytics: executionAnalyticsForAgent,
+        decision_intelligence: decisionIntelligenceForAgent,
       };
       const result = await agentAssistantManager.ask(accessContext, { ...input, operational_context: operationalContext, external_provider_allowed: externalProviderAllowed });
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);

@@ -136,12 +136,17 @@ function dbFailure(error) {
     "execution_decision_transition_invalid",
     "execution_decision_transition_forbidden",
     "execution_decision_not_found",
+    "execution_decision_accept_required",
+    "execution_decision_actor_mismatch",
+    "execution_decision_outcome_invalid",
+    "execution_decision_outcome_conflict",
+    "execution_decision_window_invalid",
   ];
   const code = codes.find((candidate) => errorText.includes(candidate));
   if (!code) return new ExecutionKernelError("execution_kernel_database_failed", 503);
   if (code === "execution_not_found" || code === "execution_decision_not_found") return new ExecutionKernelError(code, 404);
   if (code.includes("forbidden") || code === "execution_tenant_context_mismatch") return new ExecutionKernelError(code, 403);
-  if (code.startsWith("execution_recovery_") || code === "execution_decision_transition_forbidden") return new ExecutionKernelError(code, 409);
+  if (code.startsWith("execution_recovery_") || code === "execution_decision_transition_forbidden" || code === "execution_decision_accept_required" || code === "execution_decision_outcome_conflict") return new ExecutionKernelError(code, 409);
   if (code.includes("conflict") || code.includes("binding") || code === "execution_transition_resource_required") {
     return new ExecutionKernelError(code, 409);
   }
@@ -465,7 +470,7 @@ export function createExecutionKernelRuntime(env = process.env) {
   function recordDecision(context, proposal = {}) {
     requireContext(context);
     try {
-      return jsonScalar(env, `
+      const decision = jsonScalar(env, `
         ${sqlContext(context.tenant_id)}
         SELECT fitcore_execution_record_decision(
           ${sqlText(context.tenant_id)}::uuid,
@@ -478,6 +483,14 @@ export function createExecutionKernelRuntime(env = process.env) {
           ${proposal.resource_id ? `${sqlText(proposal.resource_id)}::uuid` : "NULL"}
         )::text;
       `);
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_decision_track_proposal(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(proposal.proposal_id)}
+        )::text;
+      `) || decision;
     } catch (error) {
       throw dbFailure(error);
     }
@@ -488,7 +501,7 @@ export function createExecutionKernelRuntime(env = process.env) {
     try {
       return jsonScalar(env, `
         ${sqlContext(context.tenant_id)}
-        SELECT fitcore_execution_validate_decision(
+        SELECT fitcore_decision_validate_accepted(
           ${sqlText(context.tenant_id)}::uuid,
           ${sqlText(context.actor_id)}::uuid,
           ${sqlText(proposalId)},
@@ -501,17 +514,58 @@ export function createExecutionKernelRuntime(env = process.env) {
     }
   }
 
-  function transitionDecision(context, { proposalId, state, executionId = null, traceId = null } = {}) {
+  function transitionDecision(context, { proposalId, state, executionId = null, traceId = null, reasonCode = null } = {}) {
     requireContext(context);
     try {
       return jsonScalar(env, `
         ${sqlContext(context.tenant_id)}
-        SELECT fitcore_execution_transition_decision(
+        SELECT fitcore_decision_transition(
           ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
           ${sqlText(proposalId)},
           ${sqlText(state)},
           ${executionId ? sqlText(executionId) : "NULL"},
-          ${traceId ? sqlText(traceId) : "NULL"}
+          ${traceId ? sqlText(traceId) : "NULL"},
+          ${reasonCode ? sqlText(reasonCode) : "NULL"}
+        )::text;
+      `);
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function decisionIntelligence(context, windowHours = 720) {
+    requireContext(context);
+    const hours = Math.min(Math.max(Number.parseInt(String(windowHours || 720), 10) || 720, 1), 8760);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_decision_intelligence(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${hours}
+        )::text;
+      `) || {};
+    } catch (error) {
+      throw dbFailure(error);
+    }
+  }
+
+  function recordDecisionOutcome(context, { proposalId, outcomeCode, metricName, metricValue, windowHours = 1 } = {}) {
+    requireContext(context);
+    const hours = Math.min(Math.max(Number.parseInt(String(windowHours || 1), 10) || 1, 1), 8760);
+    const value = Number(metricValue);
+    if (!Number.isFinite(value)) throw new ExecutionKernelError("execution_decision_outcome_invalid", 400);
+    try {
+      return jsonScalar(env, `
+        ${sqlContext(context.tenant_id)}
+        SELECT fitcore_decision_record_outcome(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(proposalId)},
+          ${sqlText(outcomeCode)},
+          ${sqlText(metricName)},
+          ${value},
+          ${hours}
         )::text;
       `);
     } catch (error) {
@@ -530,10 +584,13 @@ export function createExecutionKernelRuntime(env = process.env) {
       observability: true,
       analytics: true,
       next_best_action: true,
+      decision_intelligence: true,
+      decision_lifecycle: "proposal-accept-execution-settlement-outcome",
+      evidence_ranking: "transparent-deterministic",
       stale_recovery: true,
       actions: Object.values(ACTION_DEFINITIONS).map((item) => item.id),
     };
   }
 
-  return { enabled, status, dryRun, execute, authorizeEffect, observability, analytics, recordDecision, validateDecision, transitionDecision };
+  return { enabled, status, dryRun, execute, authorizeEffect, observability, analytics, recordDecision, validateDecision, transitionDecision, decisionIntelligence, recordDecisionOutcome };
 }
