@@ -89,7 +89,7 @@ INSERT INTO fitcore_workout_builder_versions(
   ),
   '$GESTOR_A'
 ) RETURNING id;
-" | tail -1)"
+" | grep -Eo '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | tail -1)"
 test -n "$VERSION_ID"
 
 docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
