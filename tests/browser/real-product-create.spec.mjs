@@ -154,7 +154,7 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
     .click();
   await expect(page).toHaveURL(/\/treinos\?student=/);
   await expect(
-    page.getByLabel("Aluno").locator("option:checked"),
+    page.getByLabel("Aluno").first().locator("option:checked"),
   ).toHaveText("Aluno Browser QA");
 
   await page.goto("/atleta");
