@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS fitcore_workout_set_targets (
   set_order integer NOT NULL CHECK (set_order BETWEEN 1 AND 20),
   reps text NOT NULL,
   load_target text NULL,
-  rest_seconds integer NOT NULL DEFAULT 90 CHECK (rest_seconds BETWEEN 0 AND 900),
+  rest_seconds integer NOT NULL DEFAULT 90 CHECK (rest_seconds BETWEEN 0 AND 600),
   rir_target numeric(4,2) NULL CHECK (rir_target IS NULL OR rir_target BETWEEN 0 AND 10),
   rpe_target numeric(4,2) NULL CHECK (rpe_target IS NULL OR rpe_target BETWEEN 1 AND 10),
   tempo text NULL,
