@@ -4,8 +4,9 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, rollback, manager, athlete, coach, server, ui, deploy] = await Promise.all([
+const [migration, hardening, rollback, manager, athlete, coach, server, ui, deploy] = await Promise.all([
   read("infra/sql/028-assessments-anamnesis.sql"),
+  read("infra/sql/029-assessments-hardening.sql"),
   read("infra/sql/rollback-028-assessments-anamnesis.sql"),
   read("services/api/security/assessments-anamnesis.mjs"),
   read("services/api/security/athlete-360.mjs"),
@@ -41,11 +42,26 @@ assert.match(migration, /raw_responses_in_summary',false/);
 assert.match(migration, /attachments_in_summary',false/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_assessments/);
 
+for (const token of [
+  "assessment_tenant_context_mismatch",
+  "pg_advisory_xact_lock",
+  "superseded_measurements_excluded",
+  "unit_safe_delta",
+  "unit_compatible",
+  "sample_count",
+]) assert.ok(hardening.includes(token), token);
+assert.match(hardening, /current_setting\('app\.tenant_id',true\)/);
+assert.match(hardening, /newer\.supersedes_assessment_id=a\.id/);
+assert.match(hardening, /latest_unit=previous_unit/);
+assert.match(hardening, /count\(\*\) OVER \(PARTITION BY m\.measurement_code\)/);
+
 assert.match(manager, /raw_responses_to_external_ai: false/);
 assert.match(manager, /attachment_refs_to_external_ai: false/);
 assert.match(manager, /function coachSignals/);
 assert.match(manager, /listTemplates/);
 assert.match(manager, /recordAssessment/);
+assert.match(manager, /assessment_measurement_invalid/);
+assert.doesNotMatch(manager, /mapped\.code \|\| mapped\.message/);
 
 assert.match(athlete, /assessmentManager = null/);
 assert.match(athlete, /health_assessment_summary_included/);
@@ -75,7 +91,10 @@ for (const token of [
   "Histórico imutável de avaliações",
   "não gera diagnóstico automático",
 ]) assert.ok(ui.includes(token), token);
+assert.match(ui, /if \(result\) form\.reset\(\)/);
+assert.match(ui, /Number\.isFinite\(value\)/);
 
 assert.match(deploy, /apply-assessments-anamnesis\.sh/);
+assert.match(deploy, /apply-assessments-hardening\.sh/);
 
-console.log("Assessments + Anamnesis #92 contract: OK");
+console.log("Assessments + Anamnesis #92 + hardening 029 contract: OK");

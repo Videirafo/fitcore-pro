@@ -77,7 +77,7 @@ function mapDbError(error) {
 }
 function guardFailure(error, fallback = "assessment_failed") {
   const mapped = mapDbError(error);
-  return { guard: { allowed: false, statusCode: mapped.statusCode || 500, response: { erro: mapped.code || mapped.message || fallback } } };
+  return { guard: { allowed: false, statusCode: mapped.statusCode || 500, response: { erro: mapped.code || fallback } } };
 }
 
 export function createAssessmentManager(env = process.env) {
@@ -216,12 +216,21 @@ export function createAssessmentManager(env = process.env) {
     const templateVersion = Number.parseInt(String(input.template_version || 1), 10);
     const kind = clean(input.assessment_kind, "", 20).toLowerCase();
     const responses = input.responses && typeof input.responses === "object" && !Array.isArray(input.responses) ? input.responses : {};
-    const measurements = Array.isArray(input.measurements) ? input.measurements.slice(0, 64).map((item) => ({
+    const rawMeasurements = Array.isArray(input.measurements) ? input.measurements.slice(0, 64) : [];
+    const invalidMeasurement = rawMeasurements.some((item) => {
+      const raw = item?.value;
+      const numeric = Number(raw);
+      return raw === null || raw === undefined || raw === "" || !Number.isFinite(numeric);
+    });
+    if (invalidMeasurement) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "assessment_measurement_invalid" } } };
+    }
+    const measurements = rawMeasurements.map((item) => ({
       code: clean(item?.code, "", 80).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_"),
       value: Number(item?.value),
       unit: displayClean(item?.unit, "", 30),
       method: displayClean(item?.method, "", 120) || null,
-    })) : [];
+    }));
     const attachments = Array.isArray(input.attachments) ? input.attachments.slice(0, 12).map((item) => ({
       label: displayClean(item?.label, "", 120),
       object_key: clean(item?.object_key, "", 500),

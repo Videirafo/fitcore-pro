@@ -218,6 +218,19 @@ curl -fsS -b "$ALUNO_JAR" -H 'content-type: application/json' \
   -d '{"template_code":"anamnesis_standard","template_version":1,"assessment_kind":"anamnesis","responses":{"training_history":"iniciante","declared_restrictions":"nenhuma declarada","routine":"3x semana","sleep_quality":"regular"},"measurements":[],"attachments":[]}' \
   "$BASE/api/vnext/assessments/me/records" > "/tmp/${NAME}-assessment-anam.json"
 
+INVALID_CODE="$(curl -sS -o "/tmp/${NAME}-assessment-invalid.json" -w '%{http_code}' -b "$PROF_JAR" -H 'content-type: application/json' \
+  -d '{"template_code":"physical_standard","template_version":1,"assessment_kind":"physical","responses":{"notes":"sensitive-test-marker"},"measurements":[{"code":"body_weight","value":null,"unit":"kg"}],"attachments":[]}' \
+  "$BASE/api/vnext/assessments/students/$STUDENT_ID/records")"
+[[ "$INVALID_CODE" == "400" ]]
+python3 - <<PY
+import json
+j=json.load(open('/tmp/${NAME}-assessment-invalid.json'))
+assert j.get('erro')=='assessment_measurement_invalid', j
+raw=json.dumps(j).lower()
+assert 'psql' not in raw and 'select ' not in raw and 'sensitive-test-marker' not in raw, j
+print('OK #92 HTTP hardening: invalid measurement 400 + sanitized error')
+PY
+
 curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
   -d '{"template_code":"physical_standard","template_version":1,"assessment_kind":"physical","responses":{"notes":"registro operacional P0"},"measurements":[{"code":"body_weight","value":80,"unit":"kg","method":"scale"},{"code":"waist_circumference","value":90,"unit":"cm","method":"tape"}],"attachments":[]}' \
   "$BASE/api/vnext/assessments/students/$STUDENT_ID/records" > "/tmp/${NAME}-assessment-physical.json"
