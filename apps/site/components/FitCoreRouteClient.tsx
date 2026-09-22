@@ -566,7 +566,230 @@ function Athlete360Panel({ role, data, students, assessments, assessmentTemplate
   </div>;
 }
 
-function TrainingPanel({ role, students, data, detail, state, error, selectedStudentId, onSubmit, onReview, onRefresh }: { role: string; students: Json[]; data: Json; detail: Json | null; state: LoadState; error: string; selectedStudentId: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onReview: (id: string, status: "aprovado" | "ajustes_solicitados") => void; onRefresh: () => void }) { const canPrescribe = role === "gestor" || role === "professor"; const prescriptions = data.prescriptions || data.workouts || []; return <div className="split-grid">{canPrescribe ? <form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Treinos" title="Nova prescrição" text="Escolha um aluno real da unidade. Nenhum ID manual é necessário." /><label>Aluno<select name="student_id" required defaultValue={selectedStudentId}>{students.length ? students.map((student) => <option key={student.id} value={student.id}>{student.nome_publico}</option>) : <option value="">Cadastre um aluno antes</option>}</select></label><label>Nome do treino<input name="nome_treino" required defaultValue="Treino base semanal" /></label><label>Objetivo<input name="objetivo" defaultValue="força e condicionamento" /></label><label>Modalidade<input name="modalidade" defaultValue="academia" /></label><label>Foco<input name="foco" defaultValue="corpo inteiro" /></label><label>Dias por semana<input name="dias_semana" type="number" min="1" max="7" defaultValue="3" /></label><label>Exercícios<textarea name="exercicios" defaultValue={"Agachamento frontal\nPuxada alta\nSupino com halteres\nRemada sentada"} /></label><label>Orientações<textarea name="orientacoes" defaultValue="Executar com controle, registrar esforço e avisar desconforto." /></label><button disabled={state === "loading" || !students.length}>Criar prescrição</button></form> : <PermissionPanel title="Treinos" text="Aluno visualiza treinos liberados. Prescrição e revisão ficam com gestor ou professor." />}<section className="panel"><PanelTitle title={role === "aluno" ? "Meus treinos" : "Treinos da unidade"} action="Atualizar" onClick={onRefresh} /><div className="item-list">{prescriptions.length ? prescriptions.map((item: Json) => <article className="item" key={item.id}><strong>{safe(item.nome_treino || item.workout_name || item.id)}</strong><span>{safe(item.student_name || item.aluno_nome || "meu treino")} · {safe(item.status)}</span><ExerciseMediaGrid limit={2} compact />{canPrescribe ? <div className="row-actions"><button type="button" onClick={() => onReview(String(item.id), "aprovado")}>Aprovar</button><button type="button" className="secondary" onClick={() => onReview(String(item.id), "ajustes_solicitados")}>Pedir ajuste</button></div> : null}</article>) : <article className="item"><strong>Nenhum treino carregado</strong><span>{statusText(error, canPrescribe ? "Cadastre aluno e crie uma prescrição." : "Seu treino aparece aqui após liberação.")}</span></article>}</div><ActionSummary data={detail} /></section></div>; }
+function parseWorkoutBuilderScript(raw: string) {
+  const lines = String(raw || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const days: Json[] = [];
+  let day: Json | null = null;
+  let block: Json | null = null;
+  for (const line of lines) {
+    if (line.startsWith("# ") && !line.startsWith("## ")) {
+      day = { title: line.slice(2).trim() || `Dia ${days.length + 1}`, blocks: [] };
+      days.push(day);
+      block = null;
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      if (!day) { day = { title: "Dia 1", blocks: [] }; days.push(day); }
+      block = { title: line.slice(3).trim() || `Bloco ${day.blocks.length + 1}`, exercises: [] };
+      day.blocks.push(block);
+      continue;
+    }
+    if (!day) { day = { title: "Dia 1", blocks: [] }; days.push(day); }
+    if (!block) { block = { title: "Principal", exercises: [] }; day.blocks.push(block); }
+    const parts = line.split("|").map((item) => item.trim());
+    const [name, sets = "3", reps = "8-12", rest = "90", rir = "", rpe = "", load = "", protocol = "", tempo = ""] = parts;
+    if (!name) continue;
+    const rirMatch = rir.match(/^(\d+)\s*-\s*(\d+)$/);
+    block.exercises.push({
+      name,
+      sets: Number.parseInt(sets, 10) || 3,
+      reps: reps || "8-12",
+      rest_seconds: Number.parseInt(rest, 10) || 0,
+      target_rir_min: rirMatch ? Number(rirMatch[1]) : null,
+      target_rir_max: rirMatch ? Number(rirMatch[2]) : null,
+      target_rpe: rpe ? Number(rpe) : null,
+      target_load_kg: load ? Number(load) : null,
+      protocol_code: protocol || null,
+      tempo: tempo || null,
+    });
+  }
+  return days;
+}
+
+function parsePeriodizationPlan(raw: string) {
+  const weeks = String(raw || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line, index) => {
+    const [label = `Semana ${index + 1}`, load = "0", volume = "0", notes = ""] = line.split("|").map((item) => item.trim());
+    return {
+      week: index + 1,
+      label,
+      load_delta_pct: Number(load) || 0,
+      volume_delta_pct: Number(volume) || 0,
+      notes: notes || null,
+    };
+  });
+  return { model: "linear", weeks };
+}
+
+function TrainingPanel({ role, students, data, detail, state, error, selectedStudentId, onSubmit, onReview, onRefresh }: { role: string; students: Json[]; data: Json; detail: Json | null; state: LoadState; error: string; selectedStudentId: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onReview: (id: string, status: "aprovado" | "ajustes_solicitados") => void; onRefresh: () => void }) {
+  const canPrescribe = role === "gestor" || role === "professor";
+  const prescriptions = data.prescriptions || data.workouts || [];
+  const [builderWorkoutId, setBuilderWorkoutId] = useState("");
+  const [builderVersions, setBuilderVersions] = useState<Json[]>([]);
+  const [builderTemplates, setBuilderTemplates] = useState<Json[]>([]);
+  const [builderProtocols, setBuilderProtocols] = useState<Json[]>([]);
+  const [builderMessage, setBuilderMessage] = useState("");
+  const [builderBusy, setBuilderBusy] = useState(false);
+  const latestVersion = builderVersions[0] || null;
+
+  const refreshBuilder = useCallback(async (workoutId?: string) => {
+    if (!canPrescribe) return;
+    const id = workoutId || builderWorkoutId || prescriptions[0]?.id || "";
+    try {
+      const [templatesResult, protocolsResult] = await Promise.all([
+        api(`/api/vnext/workout-builder/templates?v=${Date.now()}`),
+        api(`/api/vnext/workout-builder/protocols?v=${Date.now()}`),
+      ]);
+      setBuilderTemplates(templatesResult.templates || []);
+      setBuilderProtocols(protocolsResult.protocols || []);
+      if (id) {
+        const versionResult = await api(`/api/vnext/workout-builder/workouts/${encodeURIComponent(String(id))}/versions?v=${Date.now()}`);
+        setBuilderVersions(versionResult.versions || []);
+      } else setBuilderVersions([]);
+    } catch (err) {
+      setBuilderMessage(err instanceof Error ? err.message : "Não foi possível carregar o Workout Builder.");
+    }
+  }, [builderWorkoutId, canPrescribe, prescriptions]);
+
+  useEffect(() => {
+    if (!canPrescribe) return;
+    const first = String(prescriptions[0]?.id || "");
+    if (!builderWorkoutId && first) setBuilderWorkoutId(first);
+  }, [canPrescribe, prescriptions, builderWorkoutId]);
+
+  useEffect(() => {
+    if (canPrescribe) refreshBuilder(builderWorkoutId || String(prescriptions[0]?.id || ""));
+  }, [canPrescribe, builderWorkoutId, prescriptions.length]);
+
+  async function createBuilderVersion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!builderWorkoutId) return;
+    const payload = formPayload(event.currentTarget);
+    const days = parseWorkoutBuilderScript(String(payload.builder_script || ""));
+    if (!days.length) { setBuilderMessage("Adicione pelo menos um dia/bloco/exercício."); return; }
+    setBuilderBusy(true); setBuilderMessage("Criando versão...");
+    try {
+      const result = await api(`/api/vnext/workout-builder/workouts/${encodeURIComponent(builderWorkoutId)}/versions`, {
+        method: "POST",
+        body: JSON.stringify({
+          snapshot: {
+            name: payload.builder_name || "Treino VNext",
+            objective: payload.builder_objective || "evolução",
+            modality: payload.builder_modality || "academia",
+            focus: payload.builder_focus || "completo",
+            days,
+          },
+          periodization: parsePeriodizationPlan(String(payload.periodization || "")),
+        }),
+      });
+      setBuilderMessage(`Versão ${result.version?.version || "nova"} criada como draft.`);
+      await refreshBuilder(builderWorkoutId);
+    } catch (err) {
+      setBuilderMessage(err instanceof Error ? err.message : "Não foi possível criar a versão.");
+    } finally { setBuilderBusy(false); }
+  }
+
+  async function publishBuilderVersion(versionId: string) {
+    if (!builderWorkoutId || !versionId) return;
+    setBuilderBusy(true); setBuilderMessage("Publicando versão...");
+    try {
+      const result = await api(`/api/vnext/workout-builder/workouts/${encodeURIComponent(builderWorkoutId)}/versions/${encodeURIComponent(versionId)}/publish`, { method: "POST", body: "{}" });
+      setBuilderMessage(`Versão ${result.version || ""} publicada no treino canônico e enviada para revisão.`);
+      await refreshBuilder(builderWorkoutId); onRefresh();
+    } catch (err) { setBuilderMessage(err instanceof Error ? err.message : "Falha ao publicar versão."); }
+    finally { setBuilderBusy(false); }
+  }
+
+  async function saveBuilderTemplate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!latestVersion?.id) return;
+    const payload = formPayload(event.currentTarget);
+    setBuilderBusy(true);
+    try {
+      const result = await api("/api/vnext/workout-builder/templates", {
+        method: "POST",
+        body: JSON.stringify({
+          version_id: latestVersion.id,
+          template_code: payload.template_code,
+          name: payload.template_name,
+        }),
+      });
+      setBuilderMessage(`Template ${result.template?.name || ""} salvo.`);
+      await refreshBuilder(builderWorkoutId);
+    } catch (err) { setBuilderMessage(err instanceof Error ? err.message : "Falha ao salvar template."); }
+    finally { setBuilderBusy(false); }
+  }
+
+  async function cloneBuilderTemplate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = formPayload(event.currentTarget);
+    setBuilderBusy(true);
+    try {
+      const result = await api("/api/vnext/workout-builder/templates/clone", {
+        method: "POST",
+        body: JSON.stringify({ template_code: payload.clone_template_code, student_id: payload.clone_student_id }),
+      });
+      setBuilderMessage(`Template clonado em novo treino ${result.clone?.workout_id || ""}.`);
+      onRefresh();
+    } catch (err) { setBuilderMessage(err instanceof Error ? err.message : "Falha ao clonar template."); }
+    finally { setBuilderBusy(false); }
+  }
+
+  async function saveProtocol(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = formPayload(event.currentTarget);
+    setBuilderBusy(true);
+    try {
+      await api("/api/vnext/workout-builder/protocols", {
+        method: "POST",
+        body: JSON.stringify({
+          protocol_code: payload.protocol_code,
+          name: payload.protocol_name,
+          description: payload.protocol_description,
+          defaults: { sets: 4, reps: "8", rest_seconds: 120, target_rir_min: 1, target_rir_max: 2 },
+        }),
+      });
+      setBuilderMessage("Protocolo salvo.");
+      await refreshBuilder(builderWorkoutId);
+    } catch (err) { setBuilderMessage(err instanceof Error ? err.message : "Falha ao salvar protocolo."); }
+    finally { setBuilderBusy(false); }
+  }
+
+  return <div className="dashboard-grid training-builder-workspace">
+    {canPrescribe ? <form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Treinos" title="Nova prescrição" text="Crie a prescrição base e evolua a estrutura no Workout Builder VNext." /><label>Aluno<select name="student_id" required defaultValue={selectedStudentId}>{students.length ? students.map((student) => <option key={student.id} value={student.id}>{student.nome_publico}</option>) : <option value="">Cadastre um aluno antes</option>}</select></label><label>Nome do treino<input name="nome_treino" required defaultValue="Treino base semanal" /></label><label>Objetivo<input name="objetivo" defaultValue="força e condicionamento" /></label><label>Modalidade<input name="modalidade" defaultValue="academia" /></label><label>Foco<input name="foco" defaultValue="corpo inteiro" /></label><label>Dias por semana<input name="dias_semana" type="number" min="1" max="7" defaultValue="3" /></label><label>Exercícios<textarea name="exercicios" defaultValue={"Agachamento frontal\nPuxada alta\nSupino com halteres\nRemada sentada"} /></label><label>Orientações<textarea name="orientacoes" defaultValue="Executar com controle, registrar esforço e avisar desconforto." /></label><button disabled={state === "loading" || !students.length}>Criar prescrição</button></form> : <PermissionPanel title="Treinos" text="Aluno visualiza treinos liberados. Prescrição e revisão ficam com gestor ou professor." />}
+
+    <section className="panel"><PanelTitle title={role === "aluno" ? "Meus treinos" : "Treinos da unidade"} action="Atualizar" onClick={onRefresh} /><div className="item-list">{prescriptions.length ? prescriptions.map((item: Json) => <article className="item" key={item.id}><strong>{safe(item.nome_treino || item.workout_name || item.id)}</strong><span>{safe(item.student_name || item.aluno_nome || "meu treino")} · {safe(item.status)}</span><ExerciseMediaGrid limit={2} compact />{canPrescribe ? <div className="row-actions"><button type="button" onClick={() => { setBuilderWorkoutId(String(item.id)); refreshBuilder(String(item.id)); }}>Abrir no Builder</button><button type="button" onClick={() => onReview(String(item.id), "aprovado")}>Aprovar</button><button type="button" className="secondary" onClick={() => onReview(String(item.id), "ajustes_solicitados")}>Pedir ajuste</button></div> : null}</article>) : <article className="item"><strong>Nenhum treino carregado</strong><span>{statusText(error, canPrescribe ? "Cadastre aluno e crie uma prescrição." : "Seu treino aparece aqui após liberação.")}</span></article>}</div><ActionSummary data={detail} /></section>
+
+    {canPrescribe ? <form className="panel wide operational-form" onSubmit={createBuilderVersion}>
+      <FormHeader label="Workout Builder VNext" title="Dias, blocos e exercícios versionados" text="Cada draft é imutável. Publicar materializa a versão nas tabelas canônicas de treino e volta a prescrição para revisão." />
+      <label>Treino<select aria-label="Treino do Builder" value={builderWorkoutId} onChange={(event) => setBuilderWorkoutId(event.target.value)}>{prescriptions.map((item: Json) => <option key={item.id} value={item.id}>{safe(item.nome_treino || item.id)} · {safe(item.student_name)}</option>)}</select></label>
+      <label>Nome da versão<input name="builder_name" defaultValue={prescriptions.find((item: Json) => String(item.id) === builderWorkoutId)?.nome_treino || "Treino VNext"} /></label>
+      <label>Objetivo<input name="builder_objective" defaultValue={prescriptions.find((item: Json) => String(item.id) === builderWorkoutId)?.objetivo || "evolução"} /></label>
+      <label>Modalidade<input name="builder_modality" defaultValue="academia" /></label>
+      <label>Foco<input name="builder_focus" defaultValue="completo" /></label>
+      <label className="field-span-2">Estrutura do treino<textarea name="builder_script" rows={12} defaultValue={"# Dia A — Superior\n## Bloco Principal\nSupino com halteres | 4 | 8 | 120 | 1-2 | 8 | 30 | strength_4x8 | 3-1-1\nRemada sentada | 4 | 10 | 90 | 1-2 | 8 | 45 | strength_4x8 | 2-1-1\n# Dia B — Inferior\n## Bloco Principal\nAgachamento frontal | 4 | 8 | 120 | 2-3 | 7.5 | 40 | strength_4x8 | 3-1-1"} /><small>Formato: exercício | séries | reps | descanso(s) | RIR min-max | RPE | carga kg | protocolo | tempo</small></label>
+      <label className="field-span-2">Periodização planejada<textarea name="periodization" rows={5} defaultValue={"Base | 0 | 0 | técnica\nProgressão | 2.5 | 5 | subir carga se alvo mantido\nDeload | -10 | -30 | reduzir fadiga"} /><small>Formato: rótulo | Δ carga % | Δ volume % | notas</small></label>
+      <button disabled={builderBusy || !builderWorkoutId}>Criar versão draft</button>
+      {builderMessage ? <p className="muted-note">{builderMessage}</p> : null}
+    </form> : null}
+
+    {canPrescribe ? <section className="panel wide">
+      <h2>Preview da versão</h2>
+      {latestVersion ? <div className="item-list">
+        <article className="item"><strong>Versão {safe(latestVersion.version)} · {safe(latestVersion.state)}</strong><span>{safe(latestVersion.snapshot?.name || "Treino")} · {(latestVersion.snapshot?.days || []).length} dia(s)</span></article>
+        {(latestVersion.snapshot?.days || []).map((day: Json, dayIndex: number) => <article className="item" key={dayIndex}><strong>{safe(day.title)}</strong><span>{(day.blocks || []).map((block: Json) => `${safe(block.title)}: ${(block.exercises || []).map((exercise: Json) => `${safe(exercise.name)} ${safe(exercise.sets)}x${safe(exercise.reps)} RIR ${safe(exercise.target_rir_min ?? "—")}-${safe(exercise.target_rir_max ?? "—")} RPE ${safe(exercise.target_rpe ?? "—")}`).join(", ")}`).join(" · ")}</span></article>)}
+        <article className="item"><strong>Periodização planejada</strong><span>{(latestVersion.periodization?.weeks || []).map((week: Json) => `${safe(week.label)}: carga ${safe(week.load_delta_pct)}% / volume ${safe(week.volume_delta_pct)}%`).join(" · ") || "Sem semanas planejadas"}</span></article>
+        <div className="row-actions"><button type="button" disabled={builderBusy || latestVersion.state === "published"} onClick={() => publishBuilderVersion(String(latestVersion.id))}>Publicar versão</button></div>
+      </div> : <p className="muted-note">Crie um draft para revisar a estrutura antes de publicar.</p>}
+    </section> : null}
+
+    {canPrescribe ? <form className="panel operational-form" onSubmit={saveBuilderTemplate}><FormHeader label="Template" title="Salvar como template" text="O template referencia uma versão imutável e pode ser clonado para outro aluno." /><label>Código<input name="template_code" defaultValue="upper_strength" required /></label><label>Nome<input name="template_name" defaultValue="Upper Strength" required /></label><button disabled={builderBusy || !latestVersion?.id}>Salvar como template</button></form> : null}
+
+    {canPrescribe ? <form className="panel operational-form" onSubmit={cloneBuilderTemplate}><FormHeader label="Template" title="Clonar para aluno" text="Cria um novo treino canônico em rascunho com versão 1 baseada no template." /><label>Template<select name="clone_template_code" required>{builderTemplates.length ? builderTemplates.map((item: Json) => <option key={item.template_code} value={item.template_code}>{safe(item.name)} · v{safe(item.source_version)}</option>) : <option value="">Salve um template antes</option>}</select></label><label>Aluno<select name="clone_student_id" required>{students.map((student: Json) => <option key={student.id} value={student.id}>{safe(student.nome_publico)}</option>)}</select></label><button disabled={builderBusy || !builderTemplates.length || !students.length}>Clonar template</button></form> : null}
+
+    {canPrescribe ? <form className="panel operational-form" onSubmit={saveProtocol}><FormHeader label="Protocolos" title="Protocolo reutilizável" text="Defaults de séries, reps, descanso e RIR podem ser referenciados pelos blocos/exercícios." /><label>Código<input name="protocol_code" defaultValue="strength_4x8" required /></label><label>Nome<input name="protocol_name" defaultValue="Strength 4x8" required /></label><label>Descrição<textarea name="protocol_description" defaultValue="4 séries de 8 reps, 120s, RIR 1–2." /></label><button disabled={builderBusy}>Salvar protocolo</button><List empty="Nenhum protocolo salvo." items={builderProtocols} pick={(item) => [item.name || item.protocol_code, item.protocol_code, JSON.stringify(item.defaults || {})]} /></form> : null}
+  </div>;
+}
+
 function ExecutionPanel({ role, workouts, executions, detail, state, error, firstPrescriptionId, firstExecutionId, nextBestAction, onNextBest, onRejectNextBest, onStart, onMarkDone, onFinish, onRefresh, onAskAgent, agentAnswer }: { role: string; workouts: Json; executions: Json; detail: Json | null; state: LoadState; error: string; firstPrescriptionId: string; firstExecutionId: string; nextBestAction: Json | null; onNextBest: (proposal: Json) => void; onRejectNextBest: (proposal: Json) => void; onStart: (workoutId: string) => void; onMarkDone: (executionId: string, index: number) => void; onFinish: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void; onAskAgent: (prompt: string) => void; agentAnswer: Json | null }) { const approved = workouts.prescriptions || workouts.workouts || []; const items = executions.executions || []; const inProgress = items.filter((item: Json) => item.status === "em_execucao"); const isAluno = role === "aluno"; return <div className="student-workout-layout"><main><section className="panel workout-day-card"><div><span className="label">Treino do dia</span><h2>{approved[0]?.nome_treino || approved[0]?.workout_name || "Nenhum treino liberado"}</h2><p>{approved[0] ? `${safe(approved[0].objetivo || "Treino liberado")} · ${safe(approved[0].status)}` : "Aguardando uma prescrição real aprovada para esta conta."}</p></div><div className="quote">Disciplina é o que te faz continuar.</div></section><section className="metric-grid"><Metric label="Treinos liberados" value={approved.length} /><Metric label="Em execução" value={inProgress.length} /><Metric label="Concluídos" value={executions?.concluidos || 0} /><Metric label="Esforço médio" value={executions?.average_effort ?? "—"} /></section><NextBestActionCard proposal={nextBestAction} onExecute={onNextBest} onReject={onRejectNextBest} /><section className="panel"><PanelTitle title="Exercícios do seu treino" action="Atualizar" onClick={onRefresh} /><ExerciseMediaGrid limit={4} onStart={() => firstPrescriptionId && onStart(firstPrescriptionId)} onMark={() => firstExecutionId && onMarkDone(firstExecutionId, 0)} /></section><section className="panel actions-panel"><h2>Ações permitidas</h2><div className="row-actions">{isAluno ? <><button type="button" onClick={() => onStart(firstPrescriptionId)} disabled={!firstPrescriptionId}>Iniciar treino liberado</button><button type="button" className="secondary" onClick={() => onMarkDone(firstExecutionId, 0)} disabled={!firstExecutionId}>Marcar próximo exercício</button></> : <span className="muted-note">Modo acompanhamento: gestor e professor visualizam. A execução é feita pelo aluno.</span>}<button type="button" className="secondary" onClick={onRefresh}>Recarregar painel</button></div><ActionSummary data={detail} /></section>{isAluno ? <form className="panel operational-form" onSubmit={onFinish}><FormHeader label="Aluno" title="Concluir execução" text="Selecione a sessão aberta. O sistema mantém você logado e registra o resultado." /><label>Execução em andamento<select name="execution_id" required defaultValue={firstExecutionId}>{inProgress.length ? inProgress.map((item: Json) => <option key={item.id} value={item.id}>{safe(item.nome_treino || item.workout_id)} · {safe(item.progresso_percentual)}%</option>) : <option value="">Inicie um treino antes</option>}</select></label><label>Esforço percebido<input name="percepcao_esforco" type="number" min="1" max="10" defaultValue="7" /></label><label>Duração em minutos<input name="duracao_minutos" type="number" min="1" max="480" defaultValue="45" /></label><label>Observações<textarea name="observacoes" defaultValue="Treino concluído com boa técnica." /></label><button disabled={state === "loading" || !firstExecutionId}>Concluir treino</button></form> : null}</main><aside><ProgressRing done={executions?.concluidos || 0} total={items.length || approved.length || 0} /><AgentPanel role={role} answer={agentAnswer} onAsk={onAskAgent} /><SecurityPanel session={null} compact /></aside></div>; }
 function EvolutionPanel({ data, detail, state, error, isStaff, onStudent, onRefresh }: { data: Json; detail: Json | null; state: LoadState; error: string; isStaff: boolean; onStudent: (studentId: string) => void; onRefresh: () => void }) { const summary = data.summary || data.student || {}; const students = data.students || []; const weekly = data.weekly || []; const history = data.history || []; return <div className="dashboard-grid"><section className="panel wide"><PanelTitle title="Resumo de evolução" action="Atualizar" onClick={onRefresh} /><div className="metric-grid"><Metric label="Alunos" value={summary.students || (data.student ? 1 : 0)} /><Metric label="Execuções" value={summary.executions || summary.total_executions} /><Metric label="Concluídos" value={summary.completed || summary.completed_executions} /><Metric label="Esforço médio" value={summary.average_effort} /></div><Chart weekly={weekly} history={history} /></section>{isStaff ? <section className="panel"><h2>Progresso dos alunos</h2><div className="item-list">{students.length ? students.map((student: Json) => <button type="button" className="student-row" key={student.student_id} onClick={() => onStudent(String(student.student_id))}><strong>{safe(student.student_name)}</strong><span>{safe(student.completed_executions)} concluídos · esforço {safe(student.average_effort)} · {safe(student.progress_percent)}%</span></button>) : <article className="item"><strong>Nenhum progresso carregado</strong><span>{statusText(error, "Execute treinos para gerar histórico.")}</span></article>}</div></section> : <section className="panel"><h2>Minha evolução</h2>{data.student ? <MetricTable data={data} /> : <article className="item"><strong>Sem histórico</strong><span>{statusText(error, state === "loading" ? "Carregando..." : "Seu progresso aparece após concluir treinos.")}</span></article>}</section>}{detail ? <section className="panel wide"><h2>Detalhe do aluno</h2><MetricTable data={detail} /></section> : null}</div>; }
 function AgentsPanel({ role, data, answer, onAsk }: { role: string; data: Json; answer: Json | null; onAsk: (prompt: string) => void }) { return <div className="dashboard-grid"><AgentPanel role={role} answer={answer} onAsk={onAsk} wide /><section className="panel"><h2>Criação com IA para profissionais</h2><div className="item-list">{agentPrompts.map((prompt) => <button type="button" className="student-row" key={prompt} onClick={() => onAsk(prompt)}><strong>{prompt}</strong><span>Baseado no aluno, treino, execução e evolução disponíveis.</span></button>)}</div></section><section className="panel wide"><h2>Contexto usado pelo assistente</h2><div className="metric-grid"><Metric label="Alunos" value={data.students?.total || data.students?.students?.length || 0} /><Metric label="Treinos" value={data.prescriptions?.total || 0} /><Metric label="Execuções" value={data.executions?.total || 0} /><Metric label="Evolução" value={data.evolution?.students?.length || data.evolution?.student?.total_executions || 0} /></div><p className="muted-note">O agente responde com base no papel logado e registra evento por unidade.</p></section></div>; }
