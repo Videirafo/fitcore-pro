@@ -22,6 +22,7 @@ import { createTenantOnboardingManager } from "./security/tenant-onboarding.mjs"
 import { createTenantUserManagement } from "./security/tenant-user-management.mjs";
 import { createStudentManagement } from "./security/student-management.mjs";
 import { createWorkoutPrescriptionManager } from "./security/workout-prescription.mjs";
+import { createWorkoutBuilderManager } from "./security/workout-builder-vnext.mjs";
 import { createWorkoutExecutionManager, buildWorkoutActionBinding, WORKOUT_ACTION_IDS } from "./security/workout-execution.mjs";
 import { createExecutionKernelRuntime, resolveExecutionIdempotencyKey } from "./security/execution-kernel-runtime.mjs";
 import { buildExecutionNextBestAction } from "./security/execution-next-best-action.mjs";
@@ -67,6 +68,7 @@ const tenantOnboardingManager = createTenantOnboardingManager(process.env, sessi
 const tenantUserManagement = createTenantUserManagement(process.env, sessionManager);
 const studentManagement = createStudentManagement(process.env);
 const workoutPrescriptionManager = createWorkoutPrescriptionManager(process.env);
+const workoutBuilderManager = createWorkoutBuilderManager(process.env);
 const executionKernelRuntime = createExecutionKernelRuntime(process.env);
 const workoutExecutionManager = createWorkoutExecutionManager(process.env, { executionKernel: executionKernelRuntime });
 function executionProposalId(req) {
@@ -1655,6 +1657,78 @@ const server = createServer(async (req, res) => {
       const result = studentManagement.getStudent(accessContext, decodeURIComponent(mvp23StudentMatch[1]));
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/vnext/workout-builder/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, workoutBuilderManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/vnext/workout-builder/templates") {
+      if (req.method === "GET") {
+        const result = workoutBuilderManager.listTemplates(accessContext);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = workoutBuilderManager.saveTemplate(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    if (url.pathname === "/api/vnext/workout-builder/templates/clone") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutBuilderManager.cloneTemplate(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/vnext/workout-builder/protocols") {
+      if (req.method === "GET") {
+        const result = workoutBuilderManager.listProtocols(accessContext);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = workoutBuilderManager.upsertProtocol(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    const builderPublishMatch = url.pathname.match(/^\/api\/vnext\/workout-builder\/workouts\/([^/]+)\/versions\/([^/]+)\/publish$/);
+    if (builderPublishMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const result = workoutBuilderManager.publishVersion(
+        accessContext,
+        decodeURIComponent(builderPublishMatch[1]),
+        decodeURIComponent(builderPublishMatch[2]),
+      );
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const builderVersionsMatch = url.pathname.match(/^\/api\/vnext\/workout-builder\/workouts\/([^/]+)\/versions$/);
+    if (builderVersionsMatch) {
+      const workoutId = decodeURIComponent(builderVersionsMatch[1]);
+      if (req.method === "GET") {
+        const result = workoutBuilderManager.listVersions(accessContext, workoutId);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = workoutBuilderManager.createVersion(accessContext, workoutId, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
     }
 
     if (url.pathname === "/api/mvp-24/status") {
