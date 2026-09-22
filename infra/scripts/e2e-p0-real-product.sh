@@ -165,7 +165,52 @@ curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
 PRESCRIPTION_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-prescription.json'))['prescription']['id'])")"
 
 curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
-  -d '{"status":"aprovado","observacoes":"Aprovado no E2E P0."}' \
+  -d '{"snapshot":{"name":"Treino P0 VNext","objective":"forca","modality":"academia","focus":"completo","days":[{"title":"Dia A","focus":"superior","blocks":[{"title":"Principal","protocol_code":"strength_4x8","exercises":[{"name":"Supino","sets":4,"reps":"8","rest_seconds":120,"target_load_kg":30,"target_rir_min":1,"target_rir_max":2,"target_rpe":8,"tempo":"3-1-1","protocol_code":"strength_4x8"},{"name":"Remada","sets":4,"reps":"10","rest_seconds":90,"target_load_kg":40,"target_rir_min":1,"target_rir_max":2,"target_rpe":8}]}]},{"title":"Dia B","focus":"inferior","blocks":[{"title":"Principal","exercises":[{"name":"Agachamento","sets":4,"reps":"8","rest_seconds":120,"target_load_kg":50,"target_rir_min":2,"target_rir_max":3,"target_rpe":7.5}]}]}]},"periodization":{"model":"linear","weeks":[{"week":1,"label":"Base","load_delta_pct":0,"volume_delta_pct":0},{"week":2,"label":"Progressao","load_delta_pct":2.5,"volume_delta_pct":5}]}}' \
+  "$BASE/api/vnext/workout-builder/workouts/$PRESCRIPTION_ID/versions" > "/tmp/${NAME}-builder-version.json"
+BUILDER_VERSION_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-builder-version.json'))['version']['id'])")"
+
+curl -fsS -b "$PROF_JAR" "$BASE/api/vnext/workout-builder/workouts/$PRESCRIPTION_ID/versions" > "/tmp/${NAME}-builder-preview.json"
+python3 - <<PY
+import json
+j=json.load(open('/tmp/${NAME}-builder-preview.json'))
+v=j['versions'][0]
+assert v['state']=='draft', j
+assert len(v['snapshot']['days'])==2, j
+assert v['snapshot']['days'][0]['blocks'][0]['exercises'][0]['target_rpe']==8, j
+assert len(v['periodization']['weeks'])==2, j
+print('OK #93 builder draft + preview + periodization')
+PY
+
+curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' -d '{}' \
+  "$BASE/api/vnext/workout-builder/workouts/$PRESCRIPTION_ID/versions/$BUILDER_VERSION_ID/publish" > "/tmp/${NAME}-builder-publish.json"
+
+curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
+  -d "{"version_id":"$BUILDER_VERSION_ID","template_code":"p0_strength","name":"P0 Strength"}" \
+  "$BASE/api/vnext/workout-builder/templates" > "/tmp/${NAME}-builder-template.json"
+
+curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
+  -d '{"protocol_code":"strength_4x8","name":"Strength 4x8","description":"P0 protocol","defaults":{"sets":4,"reps":"8","rest_seconds":120,"target_rir_min":1,"target_rir_max":2}}' \
+  "$BASE/api/vnext/workout-builder/protocols" > "/tmp/${NAME}-builder-protocol.json"
+
+curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
+  -d "{"template_code":"p0_strength","student_id":"$STUDENT_ID"}" \
+  "$BASE/api/vnext/workout-builder/templates/clone" > "/tmp/${NAME}-builder-clone.json"
+
+python3 - <<PY
+import json
+pub=json.load(open('/tmp/${NAME}-builder-publish.json'))
+tpl=json.load(open('/tmp/${NAME}-builder-template.json'))
+pro=json.load(open('/tmp/${NAME}-builder-protocol.json'))
+cl=json.load(open('/tmp/${NAME}-builder-clone.json'))
+assert pub['published'] is True and pub['version']==1, pub
+assert tpl['template']['template_code']=='p0_strength', tpl
+assert pro['protocol']['protocol_code']=='strength_4x8', pro
+assert cl['cloned'] is True and cl['clone']['state']=='draft', cl
+print('OK #93 publish canônico + template + protocol + clone')
+PY
+
+curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
+  -d '{"status":"aprovado","observacoes":"Aprovado no E2E P0 após publish VNext."}' \
   "$BASE/api/mvp-24/prescriptions/$PRESCRIPTION_ID/review" > "/tmp/${NAME}-review.json"
 
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/mvp-24/my-workouts" > "/tmp/${NAME}-my-workouts-before.json"
@@ -261,12 +306,14 @@ curl -fsS -b "$ALUNO_JAR" "$BASE/api/mvp-24/my-workouts" > "/tmp/${NAME}-my-work
 curl -fsS -b "$OWNER_JAR" "$BASE/api/mvp-22/users" > "/tmp/${NAME}-users-after.json"
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/athlete-360/me" > "/tmp/${NAME}-athlete360-after.json"
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/assessments/me?limit=20" > "/tmp/${NAME}-assessments-after.json"
+curl -fsS -b "$PROF_JAR" "$BASE/api/vnext/workout-builder/workouts/$PRESCRIPTION_ID/versions" > "/tmp/${NAME}-builder-after.json"
 python3 - <<PY
 import json
 workouts=json.load(open('/tmp/${NAME}-my-workouts-after.json'))
 users=json.load(open('/tmp/${NAME}-users-after.json'))
 athlete=json.load(open('/tmp/${NAME}-athlete360-after.json'))['athlete']
 assess=json.load(open('/tmp/${NAME}-assessments-after.json'))
+builder=json.load(open('/tmp/${NAME}-builder-after.json'))
 items=workouts.get('prescriptions') or []
 assert len(items)==1 and items[0]['id']=='$PRESCRIPTION_ID', workouts
 assert users.get('total_users')==3, users
@@ -274,11 +321,13 @@ assert athlete['student_id']=='$STUDENT_ID' and len(athlete['goals'])==1, athlet
 assert athlete['assessments']['assessment_count']==2, athlete
 assert assess['summary']['assessment_count']==2 and len(assess['records'])==2, assess
 assert assess['summary']['ai_coach_allowed'] is True, assess
-print('OK dados, sessões, Athlete 360 e assessments sobreviveram ao restart')
+assert builder['versions'][0]['state']=='published', builder
+assert builder['published_version_id']=='$BUILDER_VERSION_ID', builder
+print('OK dados, sessões, Athlete 360, assessments e Workout Builder sobreviveram ao restart')
 PY
 
 TENANT_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-onboarding.json'))['tenant']['id'])")"
-COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT jsonb_build_object('users',(SELECT count(*) FROM fitcore_users WHERE tenant_id='$TENANT_ID'),'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='$TENANT_ID'),'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='$TENANT_ID'),'athlete_goals',(SELECT count(*) FROM fitcore_athlete_goals WHERE tenant_id='$TENANT_ID'),'assessment_templates',(SELECT count(*) FROM fitcore_assessment_templates WHERE tenant_id='$TENANT_ID'),'assessment_consents',(SELECT count(*) FROM fitcore_assessment_consents WHERE tenant_id='$TENANT_ID'),'assessments',(SELECT count(*) FROM fitcore_assessments WHERE tenant_id='$TENANT_ID'),'assessment_measurements',(SELECT count(*) FROM fitcore_assessment_measurements WHERE tenant_id='$TENANT_ID'))::text")"
+COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT jsonb_build_object('users',(SELECT count(*) FROM fitcore_users WHERE tenant_id='$TENANT_ID'),'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='$TENANT_ID'),'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='$TENANT_ID'),'athlete_goals',(SELECT count(*) FROM fitcore_athlete_goals WHERE tenant_id='$TENANT_ID'),'assessment_templates',(SELECT count(*) FROM fitcore_assessment_templates WHERE tenant_id='$TENANT_ID'),'assessment_consents',(SELECT count(*) FROM fitcore_assessment_consents WHERE tenant_id='$TENANT_ID'),'assessments',(SELECT count(*) FROM fitcore_assessments WHERE tenant_id='$TENANT_ID'),'assessment_measurements',(SELECT count(*) FROM fitcore_assessment_measurements WHERE tenant_id='$TENANT_ID'),'builder_versions',(SELECT count(*) FROM fitcore_workout_builder_versions WHERE tenant_id='$TENANT_ID'),'builder_templates',(SELECT count(*) FROM fitcore_workout_templates WHERE tenant_id='$TENANT_ID'),'builder_protocols',(SELECT count(*) FROM fitcore_workout_protocols WHERE tenant_id='$TENANT_ID'),'builder_days',(SELECT count(*) FROM fitcore_workout_days WHERE tenant_id='$TENANT_ID' AND workout_id='$PRESCRIPTION_ID'),'builder_blocks',(SELECT count(*) FROM fitcore_workout_blocks WHERE tenant_id='$TENANT_ID'),'builder_exercises',(SELECT count(*) FROM fitcore_workout_exercises WHERE tenant_id='$TENANT_ID'))::text")"
 python3 - <<PY
 import json
 j=json.loads('''$COUNTS''')
@@ -290,7 +339,13 @@ assert j['assessment_templates']==2, j
 assert j['assessment_consents']==2, j
 assert j['assessments']==2, j
 assert j['assessment_measurements']==2, j
-print('OK PostgreSQL canônico + Athlete 360 + Assessments #92:', j)
+assert j['builder_versions']>=2, j
+assert j['builder_templates']==1, j
+assert j['builder_protocols']==1, j
+assert j['builder_days']==2, j
+assert j['builder_blocks']>=2, j
+assert j['builder_exercises']>=3, j
+print('OK PostgreSQL canônico + Athlete 360 + Assessments #92 + Workout Builder #93:', j)
 PY
 
-echo "P0 E2E aprovado: cadastro → gestor → professor → aluno → treino → Athlete 360 → anamnese/avaliação → restart → persistência."
+echo "P0 E2E aprovado: cadastro → gestor → professor → aluno → treino → Builder VNext/publish/template/clone → Athlete 360 → anamnese/avaliação → restart → persistência."
