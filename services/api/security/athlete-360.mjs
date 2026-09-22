@@ -82,7 +82,7 @@ function mapDbError(error) {
   return Object.assign(new Error(code), { statusCode, code });
 }
 
-export function createAthlete360Manager(env = process.env) {
+export function createAthlete360Manager(env = process.env, assessmentManager = null) {
   const enabled = boolEnv(env.FITCORE_ATHLETE_360_ENABLED, true);
 
   function status(context = {}) {
@@ -93,10 +93,10 @@ export function createAthlete360Manager(env = process.env) {
       enabled,
       tenant_scoped: true,
       roles: ["gestor","professor","aluno"],
-      source_of_truth: ["fitcore_students","fitcore_workouts","fitcore_workout_executions","fitcore_execution_decisions","fitcore_athlete_goals"],
+      source_of_truth: ["fitcore_students","fitcore_workouts","fitcore_workout_executions","fitcore_execution_decisions","fitcore_athlete_goals","fitcore_assessments"],
       new_persistence: ["fitcore_athlete_goals","fitcore_athlete_goal_events"],
-      availability: { physical_assessments: false, physical_assessments_issue: 92, pr_engine: false, pr_engine_issue: 95 },
-      privacy: { minimum_identity: true, medical_data_included: false, ai_consent_respected: true },
+      availability: { physical_assessments: Boolean(assessmentManager?.enabled), physical_assessments_issue: 92, pr_engine: false, pr_engine_issue: 95 },
+      privacy: { minimum_identity: true, health_assessment_summary_included: Boolean(assessmentManager?.enabled), raw_anamnesis_in_snapshot: false, clinical_inference: false, ai_consent_respected: true },
       endpoints: [
         "GET /api/vnext/athlete-360/status",
         "GET /api/vnext/athlete-360/me",
@@ -124,6 +124,14 @@ export function createAthlete360Manager(env = process.env) {
       `);
       const athlete = jsonScalar(raw);
       if (!athlete?.student_id) return { guard: { allowed: false, statusCode: 404, response: { erro: "athlete360_not_found" } } };
+      if (assessmentManager?.enabled) {
+        const assessmentResult = assessmentManager.summary(context, athlete.student_id);
+        if (!assessmentResult?.guard && assessmentResult?.summary) {
+          athlete.assessments = assessmentResult.summary;
+          athlete.availability = { ...(athlete.availability || {}), physical_assessments: true, physical_assessments_issue: 92 };
+          athlete.privacy = { ...(athlete.privacy || {}), health_assessment_summary_included: true, raw_anamnesis_in_snapshot: false, clinical_inference: false };
+        }
+      }
       return { ok: true, product: "Athlete 360", tenant_slug: context.tenant_slug, actor_role: guard.role, athlete };
     } catch (error) {
       const mapped = mapDbError(error);

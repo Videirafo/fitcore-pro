@@ -39,7 +39,9 @@ assert.match(rollback, /DROP TABLE IF EXISTS fitcore_athlete_goals/);
 
 assert.match(manager, /Unified operational read model over existing sources/);
 assert.match(manager, /minimum_identity: true/);
-assert.match(manager, /medical_data_included: false/);
+assert.match(manager, /health_assessment_summary_included/);
+assert.match(manager, /raw_anamnesis_in_snapshot: false/);
+assert.match(manager, /clinical_inference: false/);
 assert.match(manager, /source_of_truth/);
 assert.doesNotMatch(manager, /email:|telefone:|phone:/);
 

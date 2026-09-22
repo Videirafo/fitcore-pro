@@ -74,10 +74,10 @@ function requireCoachAccess(context = {}) {
   return { allowed: true, role };
 }
 
-export function createEvidenceCoachManager(env = process.env, studentEvolutionManager) {
+export function createEvidenceCoachManager(env = process.env, studentEvolutionManager, assessmentManager = null) {
   const enabled = String(env.FITCORE_EVIDENCE_COACH_ENABLED ?? "true").toLowerCase() !== "false";
   function status(context = {}) {
-    return { ok: true, mvp: "MVP-33 Evidence-First Coach", enabled, tenant_scoped: true, evidence_first: true, human_review: true, medical_autonomy: false, actor_role: context.actor_role || null };
+    return { ok: true, mvp: "MVP-33 Evidence-First Coach", enabled, tenant_scoped: true, evidence_first: true, human_review: true, medical_autonomy: false, assessment_signals: Boolean(assessmentManager?.enabled), assessment_policy: { derived_only: true, raw_responses: false, attachments: false, clinical_inference: false }, actor_role: context.actor_role || null };
   }
   function studentCoach(context = {}, studentId = "", url = null, ownOnly = false) {
     if (!enabled) return { guard: { allowed: false, statusCode: 503, response: { erro: "evidence_coach_disabled" } } };
@@ -87,6 +87,9 @@ export function createEvidenceCoachManager(env = process.env, studentEvolutionMa
     const contextPack = buildStudentContextPack(evolution);
     const feedbackQuality = evaluateFeedbackQuality(contextPack);
     const recommendations = buildCoachRecommendations(contextPack);
+    const assessmentSignals = assessmentManager?.enabled
+      ? assessmentManager.coachSignals(context, studentId)
+      : { ok: true, allowed: false, reason: "assessments_disabled", signals: null, policy: { raw_responses: false, attachments: false, clinical_inference: false } };
     return {
       ok: true,
       mvp: "MVP-33 Evidence-First Coach",
@@ -95,12 +98,17 @@ export function createEvidenceCoachManager(env = process.env, studentEvolutionMa
       context_pack: contextPack,
       feedback_quality: feedbackQuality,
       recommendations,
+      assessment_signals: assessmentSignals?.allowed ? assessmentSignals.signals : null,
+      assessment_signal_policy: assessmentSignals?.policy || { raw_responses: false, attachments: false, clinical_inference: false },
+      assessment_signal_status: assessmentSignals?.allowed ? "consented" : (assessmentSignals?.reason || "unavailable"),
       guardrails: {
         evidence_only: true,
         insufficient_data_is_explicit: !feedbackQuality.sufficient,
         no_diagnosis: true,
         no_automatic_sensitive_action: true,
         professor_review_required_for_training_change: true,
+        assessment_signals_descriptive_only: true,
+        assessment_raw_data_external_ai: false,
       },
     };
   }
