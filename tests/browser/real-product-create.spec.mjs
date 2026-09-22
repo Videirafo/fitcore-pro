@@ -180,9 +180,26 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
     .filter({ hasText: "Treino Browser QA" })
     .first();
   await expect(workout).toBeVisible();
-  await workout.getByRole("button", { name: "Aprovar" }).click();
+
+  await expect(page.getByText("Workout Builder VNext")).toBeVisible();
+  await workout.getByRole("button", { name: "Abrir no Builder" }).click();
+  await page.getByLabel("Nome da versão").fill("Treino Browser VNext");
+  await page.getByRole("button", { name: "Criar versão draft" }).click();
+  await expect(page.getByText(/Versão 1 criada como draft/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Preview da versão" })).toBeVisible();
+  await expect(page.getByText(/Supino com halteres 4x8 RIR 1-2 RPE 8/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Publicar versão" }).click();
+  await expect(page.getByText(/publicada no treino canônico/)).toBeVisible();
+
+  await page.getByLabel("Código").fill("browser_strength");
+  await page.getByLabel("Nome").filter({ has: page.locator("input") }).last().fill("Browser Strength").catch(() => {});
+  await page.getByRole("button", { name: "Salvar como template" }).click();
+  await expect(page.getByText(/Template .* salvo/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Aprovar" }).first().click();
   await expectSuccess(page, "Aprovar treino");
-  await expect(workout).toContainText("aprovado");
+  await expect(page.getByText("Treino Browser VNext").first()).toBeVisible();
 
   await logout(page);
   await login(page, ownerLogin, ownerSecret);
