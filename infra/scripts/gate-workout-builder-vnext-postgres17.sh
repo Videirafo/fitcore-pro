@@ -10,8 +10,11 @@ TENANT_A="93111111-1111-4111-8111-111111111111"
 TENANT_B="93222222-2222-4222-8222-222222222222"
 COACH_A="93aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 STUDENT_A="93333333-3333-4333-8333-333333333333"
+STUDENT_B="93888888-8888-4888-8888-888888888888"
 WORKOUT_A="93444444-4444-4444-8444-444444444444"
+WORKOUT_B="93999999-9999-4999-8999-999999999999"
 DAY_A="93555555-5555-4555-8555-555555555555"
+DAY_B="93dddddd-dddd-4ddd-8ddd-dddddddddddd"
 EXERCISE_A="93666666-6666-4666-8666-666666666666"
 BLOCK_A="93777777-7777-4777-8777-777777777777"
 
@@ -19,27 +22,24 @@ cleanup(){ docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 command -v docker >/dev/null || { echo "ERRO: Docker obrigatório." >&2; exit 2; }
-docker run -d --rm --name "$NAME" -e POSTGRES_PASSWORD="$PASS" -e POSTGRES_DB="$DB" -p 127.0.0.1::5432 postgres:17.6-alpine >/dev/null
+docker run -d --rm --name "$NAME" -e POSTGRES_USER=fitcore_app -e POSTGRES_PASSWORD="$PASS" -e POSTGRES_DB="$DB" -p 127.0.0.1::5432 postgres:17.6-alpine >/dev/null
 
 ready=0
 for _ in $(seq 1 80); do
-  if docker exec "$NAME" psql -U postgres -d "$DB" -Atqc 'select 1' 2>/dev/null | grep -qx 1; then
+  if docker exec "$NAME" psql -U fitcore_app -d "$DB" -Atqc 'select 1' 2>/dev/null | grep -qx 1; then
     ready=$((ready+1)); [[ "$ready" -ge 2 ]] && break
   else ready=0; fi
   sleep 0.4
 done
 [[ "$ready" -ge 2 ]] || { echo "ERRO: PostgreSQL 17.6 não ficou estável." >&2; exit 3; }
 
-apply_sql(){ docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 < "$ROOT/$1" >/dev/null; }
+apply_sql(){ docker exec -i "$NAME" psql -U fitcore_app -d "$DB" -v ON_ERROR_STOP=1 < "$ROOT/$1" >/dev/null; }
 apply_sql infra/sql/001-mvp-07-core.sql
 apply_sql infra/sql/002-mvp-10-postgres-store.sql
 apply_sql infra/sql/031-workout-builder-vnext.sql
 apply_sql infra/sql/031-workout-builder-vnext.sql
 
-docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 <<SQL >/dev/null
-CREATE ROLE fitcore_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
-GRANT SELECT ON fitcore_workout_templates,fitcore_workout_blocks,fitcore_workout_set_targets TO fitcore_app;
-
+docker exec -i "$NAME" psql -U fitcore_app -d "$DB" -v ON_ERROR_STOP=1 <<SQL >/dev/null
 INSERT INTO fitcore_tenants(id,slug,nome,status) VALUES
 ('$TENANT_A','builder93-a','Builder93 A','teste'),
 ('$TENANT_B','builder93-b','Builder93 B','teste');
@@ -48,7 +48,8 @@ INSERT INTO fitcore_users(id,tenant_id,nome,papel,ativo) VALUES
 ('$COACH_A','$TENANT_A','Coach A','professor',true);
 
 INSERT INTO fitcore_students(id,tenant_id,nome_publico,nivel,status,criado_por) VALUES
-('$STUDENT_A','$TENANT_A','Aluno A','intermediario','ativo','$COACH_A');
+('$STUDENT_A','$TENANT_A','Aluno A','intermediario','ativo','$COACH_A'),
+('$STUDENT_B','$TENANT_B','Aluno B','iniciante','ativo',NULL);
 
 INSERT INTO fitcore_workouts(
   id,tenant_id,student_id,objetivo,modalidade,foco,dias_semana,status,criado_por,
@@ -58,8 +59,17 @@ INSERT INTO fitcore_workouts(
   1,1,'hypertrophy','{"type":"undulating","weeks":6}'::jsonb
 );
 
-INSERT INTO fitcore_workout_days(id,tenant_id,workout_id,ordem,titulo,foco)
-VALUES ('$DAY_A','$TENANT_A','$WORKOUT_A',1,'A - Superior','upper');
+INSERT INTO fitcore_workouts(
+  id,tenant_id,student_id,objetivo,modalidade,foco,dias_semana,status,criado_por,
+  prescription_version,builder_schema_version,protocol_code,periodization
+) VALUES (
+  '$WORKOUT_B','$TENANT_B','$STUDENT_B','condicionamento','academia','full body',2,'rascunho',NULL,
+  1,1,'general','{"type":"none","weeks":4}'::jsonb
+);
+
+INSERT INTO fitcore_workout_days(id,tenant_id,workout_id,ordem,titulo,foco) VALUES
+('$DAY_A','$TENANT_A','$WORKOUT_A',1,'A - Superior','upper'),
+('$DAY_B','$TENANT_B','$WORKOUT_B',1,'B - Full body','full body');
 
 INSERT INTO fitcore_workout_blocks(id,tenant_id,workout_day_id,ordem,block_code,title,block_type)
 VALUES ('$BLOCK_A','$TENANT_A','$DAY_A',1,'chest_main','Peito','main');
@@ -87,33 +97,56 @@ INSERT INTO fitcore_workout_templates(
 );
 SQL
 
-COUNT_A="$(docker exec "$NAME" psql -U postgres -d "$DB" -Atqc "
-SET ROLE fitcore_app;
+ROLE_TOPOLOGY="$(docker exec "$NAME" psql -U fitcore_app -d "$DB" -AtF '|' -c "
+SELECT
+  (SELECT rolsuper FROM pg_roles WHERE rolname='fitcore_app'),
+  (SELECT rolsuper FROM pg_roles WHERE rolname='fitcore_runtime'),
+  (SELECT rolbypassrls FROM pg_roles WHERE rolname='fitcore_runtime'),
+  pg_has_role('fitcore_app','fitcore_runtime','MEMBER');
+")"
+[[ "$ROLE_TOPOLOGY" == "t|f|f|t" ]]
+echo "OK role topology: owner superuser + runtime least-privilege"
+
+COUNT_A="$(docker exec "$NAME" psql -U fitcore_app -d "$DB" -Atqc "
+SET ROLE fitcore_runtime;
 SELECT set_config('app.tenant_id','$TENANT_A',false);
 SELECT count(*) FROM fitcore_workout_templates;
 ")"
 [[ "$(echo "$COUNT_A" | tail -1)" == "1" ]]
 
-COUNT_B="$(docker exec "$NAME" psql -U postgres -d "$DB" -Atqc "
-SET ROLE fitcore_app;
+COUNT_B="$(docker exec "$NAME" psql -U fitcore_app -d "$DB" -Atqc "
+SET ROLE fitcore_runtime;
 SELECT set_config('app.tenant_id','$TENANT_B',false);
 SELECT count(*) FROM fitcore_workout_templates;
 ")"
 [[ "$(echo "$COUNT_B" | tail -1)" == "0" ]]
 echo "OK tenant isolation: templates fail-closed"
 
-if docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
+if docker exec "$NAME" psql -U fitcore_app -d "$DB" -v ON_ERROR_STOP=1 -c "
+INSERT INTO fitcore_workout_blocks(
+  tenant_id,workout_day_id,ordem,block_code,title,block_type
+) VALUES (
+  '$TENANT_A','$DAY_B',2,'cross_tenant','Cross tenant','main'
+);
+" >/tmp/fitcore-builder93-cross-parent.log 2>&1; then
+  echo "ERRO: parent cross-tenant foi aceito." >&2
+  exit 4
+fi
+grep -q 'fitcore_workout_blocks_tenant_day_fkey' /tmp/fitcore-builder93-cross-parent.log
+echo "OK tenant-qualified parent FK: fail-closed"
+
+if docker exec "$NAME" psql -U fitcore_app -d "$DB" -v ON_ERROR_STOP=1 -c "
 INSERT INTO fitcore_workout_set_targets(
   tenant_id,workout_exercise_id,set_order,reps,rest_seconds,rpe_target
 ) VALUES ('$TENANT_A','$EXERCISE_A',3,'8',90,11);
 " >/tmp/fitcore-builder93-invalid.log 2>&1; then
   echo "ERRO: rpe_target inválido foi aceito." >&2
-  exit 4
+  exit 5
 fi
 grep -q 'fitcore_workout_set_targets_rpe_target_check' /tmp/fitcore-builder93-invalid.log
 echo "OK target bounds: fail-closed"
 
-SUMMARY="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "
+SUMMARY="$(docker exec "$NAME" psql -U fitcore_app -d "$DB" -AtF '|' -c "
 SELECT
   (SELECT count(*) FROM fitcore_workout_templates WHERE tenant_id='$TENANT_A'::uuid),
   (SELECT count(*) FROM fitcore_workout_blocks WHERE tenant_id='$TENANT_A'::uuid),
@@ -125,7 +158,7 @@ SELECT
 echo "OK builder schema: template + block + set targets + periodization"
 
 apply_sql infra/sql/rollback-031-workout-builder-vnext.sql
-MISSING="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "
+MISSING="$(docker exec "$NAME" psql -U fitcore_app -d "$DB" -AtF '|' -c "
 SELECT
   to_regclass('public.fitcore_workout_templates') IS NULL,
   to_regclass('public.fitcore_workout_blocks') IS NULL,
@@ -134,9 +167,11 @@ SELECT
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='fitcore_workouts' AND column_name='prescription_version'
   ),
+  to_regclass('public.uq_fitcore_workout_days_tenant_id') IS NULL,
+  to_regclass('public.uq_fitcore_workout_exercises_tenant_id') IS NULL,
   NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='031-workout-builder-vnext');
 ")"
-[[ "$MISSING" == "t|t|t|t|t" ]]
+[[ "$MISSING" == "t|t|t|t|t|t|t" ]]
 apply_sql infra/sql/031-workout-builder-vnext.sql
 
 echo "WORKOUT_BUILDER_VNEXT_DB_GATE=PASS PostgreSQL=17.6"

@@ -22,4 +22,7 @@ ALTER TABLE fitcore_workout_exercises
 DROP TABLE IF EXISTS fitcore_workout_blocks;
 DROP TABLE IF EXISTS fitcore_workout_templates;
 
+DROP INDEX IF EXISTS uq_fitcore_workout_exercises_tenant_id;
+DROP INDEX IF EXISTS uq_fitcore_workout_days_tenant_id;
+
 COMMIT;

@@ -4,15 +4,18 @@ import {
   normalizeWorkoutBuilder,
   workoutBuilderPreview,
   WORKOUT_BUILDER_VNEXT_SCHEMA_VERSION,
+  WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES,
 } from "../services/api/security/workout-builder-vnext.mjs";
 import { createWorkoutBuilderManager } from "../services/api/security/workout-builder-manager.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, rollback, managerSource, serverSource] = await Promise.all([
+const [migration, rollback, applyScript, deployScript, managerSource, serverSource] = await Promise.all([
   read("infra/sql/031-workout-builder-vnext.sql"),
   read("infra/sql/rollback-031-workout-builder-vnext.sql"),
+  read("infra/scripts/apply-workout-builder-vnext.sh"),
+  read("infra/scripts/deploy-fitcore-by-sha.sh"),
   read("services/api/security/workout-builder-manager.mjs"),
   read("services/api/server.mjs"),
 ]);
@@ -31,14 +34,23 @@ for (const token of [
 ]) assert.match(migration, new RegExp(token));
 
 assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
-assert.match(migration, /current_setting\('app\.tenant_id',true\)/);
+assert.match(migration, /current_setting\(''app\.tenant_id'',true\)/);
 assert.match(migration, /UNIQUE \(tenant_id,template_key,version\)/);
 assert.match(migration, /UNIQUE \(workout_exercise_id,set_order\)/);
+assert.match(migration, /fitcore_workout_blocks_tenant_day_fkey/);
+assert.match(migration, /fitcore_workout_exercises_tenant_block_fkey/);
+assert.match(migration, /fitcore_workout_set_targets_tenant_exercise_fkey/);
+assert.match(migration, /fitcore_workouts_tenant_template_fkey/);
+assert.match(migration, /CREATE ROLE fitcore_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS/);
+assert.match(migration, /FORCE ROW LEVEL SECURITY/);
 assert.match(migration, /031-workout-builder-vnext/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_set_targets/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_blocks/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_templates/);
 assert.match(rollback, /DROP COLUMN IF EXISTS prescription_version/);
+assert.match(applyScript, /031-workout-builder-vnext/);
+assert.match(applyScript, /PostgreSQL 17\.6 obrigatório/);
+assert.match(deployScript, /apply-workout-builder-vnext\.sh/);
 
 const input = {
   title: "Hipertrofia A/B",
@@ -85,6 +97,9 @@ assert.equal(normalized.days[0].blocks[0].exercises[0].sets[0].rpe_target, 8);
 
 const preview = workoutBuilderPreview(input);
 assert.equal(preview.publishable, true);
+assert.equal(WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES, 262144);
+assert.ok(preview.storage_bytes > 0);
+assert.equal(preview.storage_limit_bytes, WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES);
 assert.deepEqual(preview.summary, {
   days: 1,
   blocks: 1,
@@ -112,6 +127,21 @@ assert.equal(bounded.days.length, 7);
 assert.equal(bounded.days[0].blocks.length, 12);
 assert.equal(bounded.days[0].blocks[0].exercises.length, 20);
 assert.equal(bounded.days[0].blocks[0].exercises[0].sets.length, 12);
+const boundedPreview = workoutBuilderPreview(bounded);
+assert.equal(boundedPreview.publishable, false);
+assert.ok(boundedPreview.storage_bytes > WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES);
+
+const sanitized = normalizeWorkoutBuilder({
+  days: [{
+    blocks: [{
+      code: "A",
+      type: "?",
+      exercises: [{ name: "X", sets: [{ reps: "8" }] }],
+    }],
+  }],
+});
+assert.equal(sanitized.days[0].blocks[0].code, "block_1");
+assert.equal(sanitized.days[0].blocks[0].type, "main");
 
 const manager = createWorkoutBuilderManager({});
 const anonymousPreview = manager.preview({}, input);
@@ -143,6 +173,9 @@ for (const route of [
 assert.match(managerSource, /pg_advisory_xact_lock/);
 assert.match(managerSource, /hashtextextended/);
 assert.match(managerSource, /workout_builder_role_forbidden/);
+assert.match(managerSource, /SET ROLE \$\{runtimeRole\(env\)\}/);
+assert.match(managerSource, /FITCORE_DATABASE_RUNTIME_ROLE/);
+assert.match(managerSource, /LIMIT \$\{limit\}/);
 assert.doesNotMatch(managerSource, /response: \{ erro: clean\(error\?\.message/);
 assert.doesNotMatch(managerSource, /phone|email|raw_payload|provider_payload/i);
 

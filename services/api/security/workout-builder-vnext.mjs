@@ -3,6 +3,7 @@
 
 const PERIODIZATION_TYPES = new Set(["none","linear","undulating","block"]);
 const PROTOCOL_CODES = new Set(["general","strength","hypertrophy","conditioning","mobility"]);
+const BUILDER_STORAGE_LIMIT_BYTES = 262144;
 
 function clean(value, fallback = "", max = 180) {
   const text = String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
@@ -18,9 +19,11 @@ function decimal(value, fallback, min, max) {
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(Math.max(parsed, min), max);
 }
-function code(value, fallback, max = 80) {
-  const raw = clean(value, fallback, max).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_");
-  return raw || fallback;
+function code(value, fallback, max = 80, min = 3) {
+  const raw = clean(value, "", max).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_");
+  if (raw.length >= min) return raw;
+  const safeFallback = String(fallback || "").toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_").slice(0, max);
+  return safeFallback.length >= min ? safeFallback : "general";
 }
 function normalizeSet(input = {}, index = 0) {
   return {
@@ -64,7 +67,7 @@ function normalizeBlock(input = {}, index = 0) {
     order: index + 1,
     code: code(input.code ?? input.codigo, `block_${index + 1}`, 80),
     title: clean(input.title ?? input.titulo, `Bloco ${index + 1}`, 120),
-    type: code(input.type ?? input.tipo, "main", 40),
+    type: code(input.type ?? input.tipo, "main", 40, 2),
     exercises,
   };
 }
@@ -108,8 +111,11 @@ export function workoutBuilderPreview(input = {}) {
   const blocks = workout.days.flatMap((day) => day.blocks);
   const exercises = blocks.flatMap((block) => block.exercises);
   const sets = exercises.flatMap((exercise) => exercise.sets);
+  const storageBytes = new TextEncoder().encode(JSON.stringify(workout)).length;
   return {
     workout,
+    storage_bytes: storageBytes,
+    storage_limit_bytes: BUILDER_STORAGE_LIMIT_BYTES,
     summary: {
       days: workout.days.length,
       blocks: blocks.length,
@@ -120,8 +126,13 @@ export function workoutBuilderPreview(input = {}) {
       periodization_weeks: workout.periodization.weeks,
       protocol_code: workout.protocol_code,
     },
-    publishable: workout.days.length > 0 && exercises.length > 0 && sets.length > 0,
+    publishable:
+      workout.days.length > 0 &&
+      exercises.length > 0 &&
+      sets.length > 0 &&
+      storageBytes <= BUILDER_STORAGE_LIMIT_BYTES,
   };
 }
 
 export const WORKOUT_BUILDER_VNEXT_SCHEMA_VERSION = 1;
+export const WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES = BUILDER_STORAGE_LIMIT_BYTES;

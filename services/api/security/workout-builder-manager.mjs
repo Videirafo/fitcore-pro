@@ -8,8 +8,11 @@ function clean(value, fallback = "", max = 240) {
   const text = String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
   return text || fallback;
 }
-function code(value, fallback = "", max = 80) {
-  return clean(value, fallback, max).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_");
+function code(value, fallback = "", max = 80, min = 3) {
+  const raw = clean(value, "", max).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_");
+  if (raw.length >= min) return raw;
+  const safeFallback = String(fallback || "").toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_").slice(0, max);
+  return safeFallback.length >= min ? safeFallback : "";
 }
 function sqlText(value) {
   return `'${String(value ?? "").replace(/'/g, "''")}'`;
@@ -30,9 +33,15 @@ function dbConnection(env = process.env) {
     env: { PGPASSWORD: decodeURIComponent(parsed.password || ""), PGCONNECT_TIMEOUT: "5", PGSSLMODE: parsed.searchParams.get("sslmode") || "disable" },
   };
 }
+function runtimeRole(env) {
+  const role = clean(env.FITCORE_DATABASE_RUNTIME_ROLE || "fitcore_runtime", "fitcore_runtime", 63);
+  if (!/^[a-z_][a-z0-9_]{0,62}$/.test(role)) throw new Error("workout_builder_runtime_role_invalid");
+  return role;
+}
 function runSql(env, sql) {
   const connection = dbConnection(env);
-  return execFileSync(clean(env.FITCORE_PSQL_BIN || "psql", "psql", 120), [...connection.args, "-X", "-A", "-t", "-q", "-v", "ON_ERROR_STOP=1", "-c", sql], {
+  const scopedSql = `SET ROLE ${runtimeRole(env)};\n${sql}`;
+  return execFileSync(clean(env.FITCORE_PSQL_BIN || "psql", "psql", 120), [...connection.args, "-X", "-A", "-t", "-q", "-v", "ON_ERROR_STOP=1", "-c", scopedSql], {
     encoding: "utf8",
     env: { ...process.env, ...connection.env },
     timeout: 25000,
@@ -103,9 +112,19 @@ export function createWorkoutBuilderManager(env = process.env) {
     const whereStatus = ["draft","published","archived"].includes(statusFilter)
       ? `AND t.status=${sqlText(statusFilter)}`
       : "";
+    const requestedLimit = Number.parseInt(String(url?.searchParams?.get("limit") || "50"), 10);
+    const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 50, 1), 100);
     try {
       const data = jsonScalar(scalar(env, `
         ${tenantSession(context)}
+        WITH bounded AS (
+          SELECT t.*
+          FROM fitcore_workout_templates t
+          WHERE t.tenant_id=${sqlText(context.tenant_id)}::uuid
+          ${whereStatus}
+          ORDER BY t.template_key,t.version DESC
+          LIMIT ${limit}
+        )
         SELECT COALESCE(jsonb_agg(jsonb_build_object(
           'id',t.id,
           'template_key',t.template_key,
@@ -118,11 +137,9 @@ export function createWorkoutBuilderManager(env = process.env) {
           'published_at',t.published_at,
           'created_at',t.created_at
         ) ORDER BY t.template_key,t.version DESC),'[]'::jsonb)::text
-        FROM fitcore_workout_templates t
-        WHERE t.tenant_id=${sqlText(context.tenant_id)}::uuid
-        ${whereStatus};
+        FROM bounded t;
       `)) || [];
-      return { ok: true, product: "Workout Builder VNext", templates: data };
+      return { ok: true, product: "Workout Builder VNext", templates: data, limit };
     } catch (error) {
       return { guard: { allowed: false, statusCode: 500, response: { erro: "workout_builder_templates_failed" } } };
     }
