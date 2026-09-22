@@ -3,6 +3,7 @@
 
 const PERIODIZATION_TYPES = new Set(["none","linear","undulating","block"]);
 const PROTOCOL_CODES = new Set(["general","strength","hypertrophy","conditioning","mobility"]);
+const BUILDER_STORAGE_LIMIT_BYTES = 262144;
 
 function clean(value, fallback = "", max = 180) {
   const text = String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
@@ -110,8 +111,11 @@ export function workoutBuilderPreview(input = {}) {
   const blocks = workout.days.flatMap((day) => day.blocks);
   const exercises = blocks.flatMap((block) => block.exercises);
   const sets = exercises.flatMap((exercise) => exercise.sets);
+  const storageBytes = new TextEncoder().encode(JSON.stringify(workout)).length;
   return {
     workout,
+    storage_bytes: storageBytes,
+    storage_limit_bytes: BUILDER_STORAGE_LIMIT_BYTES,
     summary: {
       days: workout.days.length,
       blocks: blocks.length,
@@ -122,8 +126,13 @@ export function workoutBuilderPreview(input = {}) {
       periodization_weeks: workout.periodization.weeks,
       protocol_code: workout.protocol_code,
     },
-    publishable: workout.days.length > 0 && exercises.length > 0 && sets.length > 0,
+    publishable:
+      workout.days.length > 0 &&
+      exercises.length > 0 &&
+      sets.length > 0 &&
+      storageBytes <= BUILDER_STORAGE_LIMIT_BYTES,
   };
 }
 
 export const WORKOUT_BUILDER_VNEXT_SCHEMA_VERSION = 1;
+export const WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES = BUILDER_STORAGE_LIMIT_BYTES;
