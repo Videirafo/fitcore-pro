@@ -31,6 +31,8 @@ DECLARE
   v_exercise_ord bigint;
   v_set_ord bigint;
   v_version integer;
+  v_day_exercise_order integer:=0;
+  v_legacy_exercises jsonb:='[]'::jsonb;
   v_day_count integer:=0;
   v_block_count integer:=0;
   v_exercise_count integer:=0;
@@ -93,6 +95,28 @@ BEGIN
     1
   ),7);
 
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'nome',left(COALESCE(NULLIF(btrim(e.exercise_json->>'name'),''),'Exercício'),160),
+        'series',jsonb_array_length(COALESCE(e.exercise_json->'sets','[]'::jsonb)),
+        'repeticoes',left(COALESCE(e.exercise_json->'sets'->0->>'reps','8-12'),40),
+        'descanso_segundos',LEAST(GREATEST(COALESCE((e.exercise_json->'sets'->0->>'rest_seconds')::integer,90),0),600),
+        'observacao',NULLIF(left(COALESCE(e.exercise_json->>'notes',''),320),''),
+        'block_code',left(COALESCE(NULLIF(btrim(b.block_json->>'code'),''),'main'),80),
+        'sets',COALESCE(e.exercise_json->'sets','[]'::jsonb)
+      )
+      ORDER BY d.day_ord,b.block_ord,e.exercise_ord
+    ),
+    '[]'::jsonb
+  )
+  INTO v_legacy_exercises
+  FROM jsonb_array_elements(p_builder->'days') WITH ORDINALITY AS d(day_json,day_ord)
+  CROSS JOIN LATERAL jsonb_array_elements(COALESCE(d.day_json->'blocks','[]'::jsonb))
+    WITH ORDINALITY AS b(block_json,block_ord)
+  CROSS JOIN LATERAL jsonb_array_elements(COALESCE(b.block_json->'exercises','[]'::jsonb))
+    WITH ORDINALITY AS e(exercise_json,exercise_ord);
+
   INSERT INTO fitcore_workouts(
     tenant_id,student_id,objetivo,modalidade,foco,dias_semana,status,criado_por,
     payload,prescription_version,builder_schema_version,protocol_code,periodization,source_template_id
@@ -107,7 +131,9 @@ BEGIN
     p_actor_user_id,
     jsonb_build_object(
       'origem','workout_builder_vnext',
-      'nome_treino',left(COALESCE(NULLIF(btrim(p_builder->>'title'),''),'Treino VNext'),160)
+      'nome_treino',left(COALESCE(NULLIF(btrim(p_builder->>'title'),''),'Treino VNext'),160),
+      'exercicios',v_legacy_exercises,
+      'orientacoes','Prescrição estruturada pelo Workout Builder VNext'
     ),
     v_version,
     LEAST(GREATEST(COALESCE((p_builder->>'schema_version')::smallint,1),1),100),
@@ -121,6 +147,7 @@ BEGIN
     SELECT value,ordinality
     FROM jsonb_array_elements(p_builder->'days') WITH ORDINALITY
   LOOP
+    v_day_exercise_order:=0;
     INSERT INTO fitcore_workout_days(
       tenant_id,workout_id,ordem,titulo,foco,aquecimento,orientacao
     ) VALUES (
@@ -162,6 +189,8 @@ BEGIN
           RAISE EXCEPTION 'workout_builder_sets_invalid';
         END IF;
 
+        v_day_exercise_order:=v_day_exercise_order+1;
+
         INSERT INTO fitcore_workout_exercises(
           tenant_id,workout_day_id,block_id,ordem,source_id,slug,nome,categoria,equipamento,foco,
           series,repeticoes,descanso_segundos,observacao,progression
@@ -169,16 +198,16 @@ BEGIN
           p_tenant_id,
           v_day_id,
           v_block_id,
-          v_exercise_ord::integer,
+          v_day_exercise_order,
           NULLIF(left(COALESCE(v_exercise->>'source_id',''),120),''),
-          left(COALESCE(NULLIF(btrim(v_exercise->>'slug'),''),'exercise_'||v_exercise_ord),120),
-          left(COALESCE(NULLIF(btrim(v_exercise->>'name'),''),'Exercício '||v_exercise_ord),160),
+          left(COALESCE(NULLIF(btrim(v_exercise->>'slug'),''),'exercise_'||v_day_exercise_order),120),
+          left(COALESCE(NULLIF(btrim(v_exercise->>'name'),''),'Exercício '||v_day_exercise_order),160),
           NULLIF(left(COALESCE(v_exercise->>'category',''),80),''),
           NULLIF(left(COALESCE(v_exercise->>'equipment',''),80),''),
           NULLIF(left(COALESCE(v_exercise->>'focus',''),120),''),
           jsonb_array_length(v_exercise->'sets'),
           left(COALESCE(v_exercise->'sets'->0->>'reps','8-12'),40),
-          LEAST(GREATEST(COALESCE((v_exercise->'sets'->0->>'rest_seconds')::integer,90),0),900),
+          LEAST(GREATEST(COALESCE((v_exercise->'sets'->0->>'rest_seconds')::integer,90),0),600),
           NULLIF(left(COALESCE(v_exercise->>'notes',''),320),''),
           COALESCE(v_exercise->'progression','{"kind":"none","step":0}'::jsonb)
         )
@@ -197,7 +226,7 @@ BEGIN
             v_set_ord::integer,
             left(COALESCE(NULLIF(btrim(v_set->>'reps'),''),'8-12'),40),
             NULLIF(left(COALESCE(v_set->>'load',''),40),''),
-            LEAST(GREATEST(COALESCE((v_set->>'rest_seconds')::integer,90),0),900),
+            LEAST(GREATEST(COALESCE((v_set->>'rest_seconds')::integer,90),0),600),
             CASE WHEN v_set ? 'rir_target' THEN (v_set->>'rir_target')::numeric ELSE NULL END,
             CASE WHEN v_set ? 'rpe_target' THEN (v_set->>'rpe_target')::numeric ELSE NULL END,
             NULLIF(left(COALESCE(v_set->>'tempo',''),30),'')
@@ -263,12 +292,12 @@ $function$;
 
 REVOKE ALL ON FUNCTION fitcore_workout_builder_publish(uuid,uuid,uuid,jsonb,uuid) FROM PUBLIC;
 
-DO $$
+DO $
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_app') THEN
-    GRANT EXECUTE ON FUNCTION fitcore_workout_builder_publish(uuid,uuid,uuid,jsonb,uuid) TO fitcore_app;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_runtime') THEN
+    GRANT EXECUTE ON FUNCTION fitcore_workout_builder_publish(uuid,uuid,uuid,jsonb,uuid) TO fitcore_runtime;
   END IF;
-END $$;
+END $;
 
 INSERT INTO fitcore_schema_migrations(version,descricao,status)
 VALUES (
