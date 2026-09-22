@@ -63,7 +63,7 @@ function mapDbError(error) {
     "assessment_tenant_context_mismatch","assessment_consent_subject_required","assessment_consent_invalid",
     "assessment_template_forbidden","assessment_template_invalid","assessment_template_not_found",
     "assessment_consent_required","assessment_record_invalid","assessment_student_write_forbidden",
-    "assessment_role_forbidden","assessment_supersedes_invalid","assessment_measurement_invalid",
+    "assessment_role_forbidden","assessment_supersedes_invalid","assessment_supersedes_kind_mismatch","assessment_measurement_invalid",
     "assessment_attachment_invalid","assessment_history_immutable",
     "athlete360_tenant_context_mismatch","athlete360_student_not_found_or_forbidden",
   ];
