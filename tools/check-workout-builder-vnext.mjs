@@ -94,6 +94,11 @@ assert.equal(normalized.days[0].blocks[0].exercises.length, 1);
 assert.equal(normalized.days[0].blocks[0].exercises[0].sets.length, 2);
 assert.equal(normalized.days[0].blocks[0].exercises[0].sets[0].rir_target, 2);
 assert.equal(normalized.days[0].blocks[0].exercises[0].sets[0].rpe_target, 8);
+assert.equal(
+  normalizeWorkoutBuilder({ days: [{ blocks: [{ exercises: [{ name: "X", sets: [{ reps: "8", rest_seconds: 900 }] }] }] }] })
+    .days[0].blocks[0].exercises[0].sets[0].rest_seconds,
+  600,
+);
 
 const preview = workoutBuilderPreview(input);
 assert.equal(preview.publishable, true);
