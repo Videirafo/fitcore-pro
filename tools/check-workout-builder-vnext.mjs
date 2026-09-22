@@ -4,14 +4,17 @@ import {
   normalizeWorkoutBuilder,
   workoutBuilderPreview,
   WORKOUT_BUILDER_VNEXT_SCHEMA_VERSION,
+  WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES,
 } from "../services/api/security/workout-builder-vnext.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, rollback] = await Promise.all([
+const [migration, rollback, applyScript, deployScript] = await Promise.all([
   read("infra/sql/031-workout-builder-vnext.sql"),
   read("infra/sql/rollback-031-workout-builder-vnext.sql"),
+  read("infra/scripts/apply-workout-builder-vnext.sh"),
+  read("infra/scripts/deploy-fitcore-by-sha.sh"),
 ]);
 
 for (const token of [
@@ -42,6 +45,9 @@ assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_set_targets/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_blocks/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_templates/);
 assert.match(rollback, /DROP COLUMN IF EXISTS prescription_version/);
+assert.match(applyScript, /031-workout-builder-vnext/);
+assert.match(applyScript, /PostgreSQL 17\.6 obrigatório/);
+assert.match(deployScript, /apply-workout-builder-vnext\.sh/);
 
 const input = {
   title: "Hipertrofia A/B",
@@ -88,6 +94,9 @@ assert.equal(normalized.days[0].blocks[0].exercises[0].sets[0].rpe_target, 8);
 
 const preview = workoutBuilderPreview(input);
 assert.equal(preview.publishable, true);
+assert.equal(WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES, 262144);
+assert.ok(preview.storage_bytes > 0);
+assert.equal(preview.storage_limit_bytes, WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES);
 assert.deepEqual(preview.summary, {
   days: 1,
   blocks: 1,
@@ -115,6 +124,9 @@ assert.equal(bounded.days.length, 7);
 assert.equal(bounded.days[0].blocks.length, 12);
 assert.equal(bounded.days[0].blocks[0].exercises.length, 20);
 assert.equal(bounded.days[0].blocks[0].exercises[0].sets.length, 12);
+const boundedPreview = workoutBuilderPreview(bounded);
+assert.equal(boundedPreview.publishable, false);
+assert.ok(boundedPreview.storage_bytes > WORKOUT_BUILDER_VNEXT_STORAGE_LIMIT_BYTES);
 
 const sanitized = normalizeWorkoutBuilder({
   days: [{
