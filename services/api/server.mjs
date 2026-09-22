@@ -1687,6 +1687,14 @@ const server = createServer(async (req, res) => {
       return sendMethodNotAllowed(res);
     }
 
+    if (url.pathname === "/api/vnext/workout-builder/prescriptions") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = workoutBuilderManager.publishPrescription(accessContext, input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
     const workoutBuilderCloneMatch = url.pathname.match(/^\/api\/vnext\/workout-builder\/templates\/([^/]+)\/clone$/);
     if (workoutBuilderCloneMatch) {
       if (req.method !== "GET") return sendMethodNotAllowed(res);
