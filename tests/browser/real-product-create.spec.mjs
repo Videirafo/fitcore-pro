@@ -193,7 +193,7 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
   await expect(page.getByText(/publicada no treino canônico/)).toBeVisible();
 
   await page.getByLabel("Código").fill("browser_strength");
-  await page.getByLabel("Nome").filter({ has: page.locator("input") }).last().fill("Browser Strength").catch(() => {});
+  await page.getByLabel("Nome", { exact: true }).first().fill("Browser Strength");
   await page.getByRole("button", { name: "Salvar como template" }).click();
   await expect(page.getByText(/Template .* salvo/)).toBeVisible();
 
