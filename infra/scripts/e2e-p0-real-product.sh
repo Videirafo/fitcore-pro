@@ -184,16 +184,18 @@ PY
 curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' -d '{}' \
   "$BASE/api/vnext/workout-builder/workouts/$PRESCRIPTION_ID/versions/$BUILDER_VERSION_ID/publish" > "/tmp/${NAME}-builder-publish.json"
 
+printf -v BUILDER_TEMPLATE_PAYLOAD '{"version_id":"%s","template_code":"p0_strength","name":"P0 Strength"}' "$BUILDER_VERSION_ID"
 curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
-  -d "{"version_id":"$BUILDER_VERSION_ID","template_code":"p0_strength","name":"P0 Strength"}" \
+  -d "$BUILDER_TEMPLATE_PAYLOAD" \
   "$BASE/api/vnext/workout-builder/templates" > "/tmp/${NAME}-builder-template.json"
 
 curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
   -d '{"protocol_code":"strength_4x8","name":"Strength 4x8","description":"P0 protocol","defaults":{"sets":4,"reps":"8","rest_seconds":120,"target_rir_min":1,"target_rir_max":2}}' \
   "$BASE/api/vnext/workout-builder/protocols" > "/tmp/${NAME}-builder-protocol.json"
 
+printf -v BUILDER_CLONE_PAYLOAD '{"template_code":"p0_strength","student_id":"%s"}' "$STUDENT_ID"
 curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
-  -d "{"template_code":"p0_strength","student_id":"$STUDENT_ID"}" \
+  -d "$BUILDER_CLONE_PAYLOAD" \
   "$BASE/api/vnext/workout-builder/templates/clone" > "/tmp/${NAME}-builder-clone.json"
 
 python3 - <<PY
