@@ -10,9 +10,11 @@ import { createWorkoutBuilderManager } from "../services/api/security/workout-bu
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, rollback, managerSource, serverSource] = await Promise.all([
+const [migration, rollback, publishMigration, publishRollback, managerSource, serverSource] = await Promise.all([
   read("infra/sql/031-workout-builder-vnext.sql"),
   read("infra/sql/rollback-031-workout-builder-vnext.sql"),
+  read("infra/sql/032-workout-builder-vnext-publish.sql"),
+  read("infra/sql/rollback-032-workout-builder-vnext-publish.sql"),
   read("services/api/security/workout-builder-manager.mjs"),
   read("services/api/server.mjs"),
 ]);
@@ -39,6 +41,13 @@ assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_set_targets/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_blocks/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_templates/);
 assert.match(rollback, /DROP COLUMN IF EXISTS prescription_version/);
+assert.match(publishMigration, /fitcore_workout_builder_publish/);
+assert.match(publishMigration, /workout_builder_tenant_context_mismatch/);
+assert.match(publishMigration, /workout_builder_role_forbidden/);
+assert.match(publishMigration, /fitcore_workout_prescription_events/);
+assert.match(publishMigration, /workout_builder_published/);
+assert.match(publishMigration, /pg_advisory_xact_lock/);
+assert.match(publishRollback, /DROP FUNCTION IF EXISTS fitcore_workout_builder_publish/);
 
 const input = {
   title: "Hipertrofia A/B",
@@ -137,12 +146,16 @@ for (const route of [
   "/api/vnext/workout-builder/status",
   "/api/vnext/workout-builder/preview",
   "/api/vnext/workout-builder/templates",
+  "/api/vnext/workout-builder/prescriptions",
   "workout-builder/templates\\/([^/]+)\\/clone",
 ]) assert.match(serverSource, new RegExp(route));
 
 assert.match(managerSource, /pg_advisory_xact_lock/);
 assert.match(managerSource, /hashtextextended/);
 assert.match(managerSource, /workout_builder_role_forbidden/);
+assert.match(managerSource, /publishPrescription/);
+assert.match(managerSource, /fitcore_workout_builder_publish/);
+assert.match(managerSource, /workout_builder_student_id_invalid/);
 assert.doesNotMatch(managerSource, /response: \{ erro: clean\(error\?\.message/);
 assert.doesNotMatch(managerSource, /phone|email|raw_payload|provider_payload/i);
 
