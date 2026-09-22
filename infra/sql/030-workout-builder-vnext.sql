@@ -140,7 +140,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_app') THEN
     GRANT SELECT,INSERT,UPDATE,DELETE ON fitcore_workout_blocks TO fitcore_app;
-    GRANT SELECT,INSERT ON fitcore_workout_builder_versions TO fitcore_app;
+    GRANT SELECT,INSERT,UPDATE ON fitcore_workout_builder_versions TO fitcore_app;
     GRANT SELECT,INSERT,UPDATE ON fitcore_workout_templates TO fitcore_app;
     GRANT SELECT,INSERT,UPDATE ON fitcore_workout_protocols TO fitcore_app;
   END IF;
