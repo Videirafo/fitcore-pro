@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildExecutionNextBestAction } from "../services/api/security/execution-next-best-action.mjs";
+import {
+  buildExecutionDecisionCandidates,
+  buildExecutionNextBestAction,
+} from "../services/api/security/execution-next-best-action.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -86,5 +89,33 @@ const staff = buildExecutionNextBestAction({
 });
 assert.equal(staff.type, "operational_review");
 assert.equal(staff.governed, false);
+
+const pipelineCandidates = buildExecutionDecisionCandidates({
+  context: aluno,
+  analytics: { alerts: [{ code: "execution_dead_letter", severity: "critical", count: 1 }] },
+  prescriptions: [{ id: "85333333-3333-4333-8333-333333333333", status: "aprovado" }],
+  executions: [{
+    id: "85444444-4444-4444-8444-444444444444",
+    status: "em_execucao",
+    exercise_progress: [{ index: 0, status: "feito" }, { index: 1, status: "pendente" }],
+  }],
+});
+assert.equal(pipelineCandidates.length, 3);
+assert.equal(pipelineCandidates[0].actionId, "fitcore.workout.exercise.complete");
+assert.equal(pipelineCandidates[1].actionId, "fitcore.workout.execution.start");
+assert.equal(pipelineCandidates[2].payload.type, "operational_review");
+
+const prioritized = buildExecutionNextBestAction({
+  context: aluno,
+  analytics: { alerts: [{ code: "execution_dead_letter", severity: "critical", count: 1 }] },
+  prescriptions: [{ id: "85333333-3333-4333-8333-333333333333", status: "aprovado" }],
+  executions: [{
+    id: "85444444-4444-4444-8444-444444444444",
+    status: "em_execucao",
+    exercise_progress: [{ index: 0, status: "feito" }, { index: 1, status: "pendente" }],
+  }],
+});
+assert.equal(prioritized.action_id, "fitcore.workout.exercise.complete");
+assert.equal(prioritized.binding.index, 1);
 
 console.log("Execution Analytics + NBA #85: OK");
