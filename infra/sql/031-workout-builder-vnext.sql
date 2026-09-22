@@ -2,6 +2,21 @@
 -- Templates versioned, periodization, blocks and per-set targets over MVP-24.
 BEGIN;
 
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_runtime') THEN
+    CREATE ROLE fitcore_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_app') THEN
+    GRANT fitcore_runtime TO fitcore_app;
+  END IF;
+END $;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fitcore_workout_days_tenant_id
+  ON fitcore_workout_days (tenant_id,id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fitcore_workout_exercises_tenant_id
+  ON fitcore_workout_exercises (tenant_id,id);
+
 CREATE TABLE IF NOT EXISTS fitcore_workout_templates (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES fitcore_tenants(id) ON DELETE CASCADE,
@@ -30,11 +45,13 @@ CREATE TABLE IF NOT EXISTS fitcore_workout_templates (
 
 CREATE INDEX IF NOT EXISTS idx_fitcore_workout_templates_lookup
   ON fitcore_workout_templates (tenant_id,template_key,status,version DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fitcore_workout_templates_tenant_id
+  ON fitcore_workout_templates (tenant_id,id);
 
 CREATE TABLE IF NOT EXISTS fitcore_workout_blocks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES fitcore_tenants(id) ON DELETE CASCADE,
-  workout_day_id uuid NOT NULL REFERENCES fitcore_workout_days(id) ON DELETE CASCADE,
+  workout_day_id uuid NOT NULL,
   ordem integer NOT NULL CHECK (ordem BETWEEN 1 AND 50),
   block_code text NOT NULL,
   title text NOT NULL,
@@ -49,10 +66,38 @@ CREATE TABLE IF NOT EXISTS fitcore_workout_blocks (
 
 CREATE INDEX IF NOT EXISTS idx_fitcore_workout_blocks_day
   ON fitcore_workout_blocks (tenant_id,workout_day_id,ordem);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fitcore_workout_blocks_tenant_id
+  ON fitcore_workout_blocks (tenant_id,id);
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname='fitcore_workout_blocks_tenant_day_fkey'
+  ) THEN
+    ALTER TABLE fitcore_workout_blocks
+      ADD CONSTRAINT fitcore_workout_blocks_tenant_day_fkey
+      FOREIGN KEY (tenant_id,workout_day_id)
+      REFERENCES fitcore_workout_days(tenant_id,id)
+      ON DELETE CASCADE;
+  END IF;
+END $;
 
 ALTER TABLE fitcore_workout_exercises
-  ADD COLUMN IF NOT EXISTS block_id uuid NULL REFERENCES fitcore_workout_blocks(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS block_id uuid NULL,
   ADD COLUMN IF NOT EXISTS progression jsonb NOT NULL DEFAULT '{"kind":"none","step":0}'::jsonb;
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname='fitcore_workout_exercises_tenant_block_fkey'
+  ) THEN
+    ALTER TABLE fitcore_workout_exercises
+      ADD CONSTRAINT fitcore_workout_exercises_tenant_block_fkey
+      FOREIGN KEY (tenant_id,block_id)
+      REFERENCES fitcore_workout_blocks(tenant_id,id)
+      ON DELETE SET NULL;
+  END IF;
+END $;
 
 CREATE INDEX IF NOT EXISTS idx_fitcore_workout_exercises_block
   ON fitcore_workout_exercises (tenant_id,block_id,ordem);
@@ -60,7 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_fitcore_workout_exercises_block
 CREATE TABLE IF NOT EXISTS fitcore_workout_set_targets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES fitcore_tenants(id) ON DELETE CASCADE,
-  workout_exercise_id uuid NOT NULL REFERENCES fitcore_workout_exercises(id) ON DELETE CASCADE,
+  workout_exercise_id uuid NOT NULL,
   set_order integer NOT NULL CHECK (set_order BETWEEN 1 AND 20),
   reps text NOT NULL,
   load_target text NULL,
@@ -78,12 +123,38 @@ CREATE TABLE IF NOT EXISTS fitcore_workout_set_targets (
 CREATE INDEX IF NOT EXISTS idx_fitcore_workout_set_targets_exercise
   ON fitcore_workout_set_targets (tenant_id,workout_exercise_id,set_order);
 
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname='fitcore_workout_set_targets_tenant_exercise_fkey'
+  ) THEN
+    ALTER TABLE fitcore_workout_set_targets
+      ADD CONSTRAINT fitcore_workout_set_targets_tenant_exercise_fkey
+      FOREIGN KEY (tenant_id,workout_exercise_id)
+      REFERENCES fitcore_workout_exercises(tenant_id,id)
+      ON DELETE CASCADE;
+  END IF;
+END $;
+
 ALTER TABLE fitcore_workouts
   ADD COLUMN IF NOT EXISTS prescription_version integer NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS builder_schema_version smallint NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS protocol_code text NOT NULL DEFAULT 'general',
   ADD COLUMN IF NOT EXISTS periodization jsonb NOT NULL DEFAULT '{"type":"none","weeks":4}'::jsonb,
-  ADD COLUMN IF NOT EXISTS source_template_id uuid NULL REFERENCES fitcore_workout_templates(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS source_template_id uuid NULL;
+
+DO $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname='fitcore_workouts_tenant_template_fkey'
+  ) THEN
+    ALTER TABLE fitcore_workouts
+      ADD CONSTRAINT fitcore_workouts_tenant_template_fkey
+      FOREIGN KEY (tenant_id,source_template_id)
+      REFERENCES fitcore_workout_templates(tenant_id,id)
+      ON DELETE SET NULL;
+  END IF;
+END $;
 
 DO $$
 BEGIN
@@ -106,8 +177,11 @@ BEGIN
 END $$;
 
 ALTER TABLE fitcore_workout_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fitcore_workout_templates FORCE ROW LEVEL SECURITY;
 ALTER TABLE fitcore_workout_blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fitcore_workout_blocks FORCE ROW LEVEL SECURITY;
 ALTER TABLE fitcore_workout_set_targets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fitcore_workout_set_targets FORCE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE r text;
@@ -124,7 +198,10 @@ BEGIN
     );
     EXECUTE format('REVOKE ALL ON %I FROM PUBLIC',r);
   END LOOP;
-END $$;
+END $;
+
+GRANT SELECT,INSERT ON fitcore_workout_templates TO fitcore_runtime;
+GRANT SELECT ON fitcore_workout_blocks,fitcore_workout_set_targets TO fitcore_runtime;
 
 INSERT INTO fitcore_schema_migrations(version,descricao,status)
 VALUES (
