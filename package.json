@@ -126,7 +126,7 @@
     "fitcore:vnext:check": "node tools/check-fitcore-os-vnext.mjs && npm run athlete:check && npm run assessments:check && npm run workout-builder:check",
     "athlete:check": "node tools/check-athlete-360.mjs && bash infra/scripts/gate-athlete-360-postgres17.sh",
     "assessments:check": "node tools/check-assessments-anamnesis.mjs && bash infra/scripts/gate-assessments-anamnesis-postgres17.sh",
-    "workout-builder:check": "node tools/check-workout-builder-vnext.mjs && bash infra/scripts/gate-workout-builder-vnext-postgres17.sh"
+    "workout-builder:check": "node tools/check-workout-builder-vnext.mjs && bash infra/scripts/gate-workout-builder-vnext-postgres17.sh && bash infra/scripts/gate-workout-builder-vnext-publish-postgres17.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
