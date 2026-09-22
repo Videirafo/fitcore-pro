@@ -220,10 +220,12 @@ python3 - <<PY
 import json
 j=json.load(open('/tmp/${NAME}-my-workouts-before.json'))
 items=j.get('prescriptions') or []
-assert len(items)==1, j
-assert items[0]['id']=='$PRESCRIPTION_ID', j
-assert items[0]['status']=='aprovado', j
-print('OK gestor/professor/aluno + treino real antes do restart')
+approved=[x for x in items if x.get('status')=='aprovado']
+drafts=[x for x in items if x.get('status')=='rascunho']
+assert len(approved)==1, j
+assert approved[0]['id']=='$PRESCRIPTION_ID', j
+assert len(drafts)>=1, j
+print('OK gestor/professor/aluno + treino aprovado + clone draft antes do restart')
 PY
 
 curl -fsS -b "$ALUNO_JAR" -H 'content-type: application/json' \
@@ -317,7 +319,10 @@ athlete=json.load(open('/tmp/${NAME}-athlete360-after.json'))['athlete']
 assess=json.load(open('/tmp/${NAME}-assessments-after.json'))
 builder=json.load(open('/tmp/${NAME}-builder-after.json'))
 items=workouts.get('prescriptions') or []
-assert len(items)==1 and items[0]['id']=='$PRESCRIPTION_ID', workouts
+approved=[x for x in items if x.get('status')=='aprovado']
+drafts=[x for x in items if x.get('status')=='rascunho']
+assert len(approved)==1 and approved[0]['id']=='$PRESCRIPTION_ID', workouts
+assert len(drafts)>=1, workouts
 assert users.get('total_users')==3, users
 assert athlete['student_id']=='$STUDENT_ID' and len(athlete['goals'])==1, athlete
 assert athlete['assessments']['assessment_count']==2, athlete
