@@ -287,7 +287,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
       setToast({ type: "error", title: "Template ausente", message: "O gestor precisa publicar um template de anamnese primeiro." });
       return;
     }
-    await runAction("Registrar anamnese", () => api(
+    const result = await runAction("Registrar anamnese", () => api(
       "/api/vnext/assessments/me/records",
       { method: "POST", body: JSON.stringify({
         template_code: template.template_code,
@@ -303,7 +303,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
         attachments: [],
       }) },
     ), "athlete");
-    form.reset();
+    if (result) form.reset();
   }
   async function submitPhysicalAssessment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -316,9 +316,25 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
       return;
     }
     const measurements: Json[] = [];
-    if (payload.body_weight !== "") measurements.push({ code: "body_weight", value: Number(payload.body_weight), unit: "kg", method: "scale" });
-    if (payload.waist_circumference !== "") measurements.push({ code: "waist_circumference", value: Number(payload.waist_circumference), unit: "cm", method: "tape" });
-    await runAction("Registrar avaliação física", () => api(
+    const bodyWeight = payload.body_weight;
+    const waist = payload.waist_circumference;
+    if (bodyWeight !== undefined && bodyWeight !== null && String(bodyWeight).trim() !== "") {
+      const value = Number(bodyWeight);
+      if (!Number.isFinite(value)) {
+        setToast({ type: "error", title: "Medida inválida", message: "Informe um peso corporal válido." });
+        return;
+      }
+      measurements.push({ code: "body_weight", value, unit: "kg", method: "scale" });
+    }
+    if (waist !== undefined && waist !== null && String(waist).trim() !== "") {
+      const value = Number(waist);
+      if (!Number.isFinite(value)) {
+        setToast({ type: "error", title: "Medida inválida", message: "Informe uma circunferência válida." });
+        return;
+      }
+      measurements.push({ code: "waist_circumference", value, unit: "cm", method: "tape" });
+    }
+    const result = await runAction("Registrar avaliação física", () => api(
       `/api/vnext/assessments/students/${encodeURIComponent(studentId)}/records`,
       { method: "POST", body: JSON.stringify({
         template_code: template.template_code,
@@ -329,7 +345,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
         attachments: [],
       }) },
     ), "athlete");
-    form.reset();
+    if (result) form.reset();
   }
   async function askAgent(prompt: string) { const result = await runAction("Assistente IA", () => api("/api/mvp-32/agent", { method: "POST", body: JSON.stringify({ prompt, module: mode }) }), mode); if (result) setAgentAnswer(result); }
 

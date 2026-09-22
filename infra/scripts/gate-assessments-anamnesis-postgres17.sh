@@ -41,7 +41,8 @@ apply_sql infra/sql/025-decision-intelligence.sql
 apply_sql infra/sql/026-execution-remediation.sql
 apply_sql infra/sql/027-athlete-360.sql
 apply_sql infra/sql/028-assessments-anamnesis.sql
-apply_sql infra/sql/028-assessments-anamnesis.sql
+apply_sql infra/sql/029-assessments-hardening.sql
+apply_sql infra/sql/029-assessments-hardening.sql
 
 docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 <<SQL >/dev/null
 INSERT INTO fitcore_tenants(id,slug,nome,status) VALUES
@@ -181,6 +182,79 @@ fi
 grep -q 'assessment_history_immutable' /tmp/fitcore-assess92-immutable.log
 echo "OK immutable history"
 
+PHYS3="$(sql_a "SELECT fitcore_assessment_record(
+  '$TENANT_A'::uuid,'$COACH_A'::uuid,'professor','$STUDENT_A'::uuid,
+  'physical_standard',1,'physical',
+  jsonb_build_object('notes','unidade incompatível para hardening'),
+  jsonb_build_array(jsonb_build_object('code','body_weight','value',176,'unit','lb','method','scale')),
+  '[]'::jsonb,NULL
+)::text;")"
+PHYS3_ID="$(node -e 'const x=JSON.parse(process.argv[1]); console.log(x.id)' "$PHYS3")"
+SUMMARY_UNITS="$(sql_a "SELECT fitcore_assessment_summary(
+  '$TENANT_A'::uuid,'$ALUNO_A'::uuid,'aluno',NULL
+)::text;")"
+node -e '
+const s=JSON.parse(process.argv[1]);
+const w=s.measurement_trends.find(x=>x.measurement_code==="body_weight");
+if(Number(w.latest_value)!==176||w.unit!=="lb"||Number(w.previous_value)!==79||w.previous_unit!=="kg") process.exit(2);
+if(w.delta!==null||w.unit_compatible!==false||Number(w.sample_count)!==3) process.exit(3);
+' "$SUMMARY_UNITS"
+echo "OK hardening unit mismatch: delta bloqueado + sample_count completo"
+
+PHYS4="$(sql_a "SELECT fitcore_assessment_record(
+  '$TENANT_A'::uuid,'$COACH_A'::uuid,'professor','$STUDENT_A'::uuid,
+  'physical_standard',1,'physical',
+  jsonb_build_object('notes','correção superseding'),
+  jsonb_build_array(jsonb_build_object('code','body_weight','value',78,'unit','kg','method','scale')),
+  '[]'::jsonb,'$PHYS3_ID'::uuid
+)::text;")"
+SUMMARY_CORRECTED="$(sql_a "SELECT fitcore_assessment_summary(
+  '$TENANT_A'::uuid,'$ALUNO_A'::uuid,'aluno',NULL
+)::text;")"
+node -e '
+const s=JSON.parse(process.argv[1]);
+const w=s.measurement_trends.find(x=>x.measurement_code==="body_weight");
+if(Number(w.latest_value)!==78||Number(w.previous_value)!==79||Number(w.delta)!==-1) process.exit(2);
+if(w.unit!=="kg"||w.previous_unit!=="kg"||w.unit_compatible!==true||Number(w.sample_count)!==3) process.exit(3);
+if(!s.signals_policy.superseded_measurements_excluded||!s.signals_policy.unit_safe_delta) process.exit(4);
+' "$SUMMARY_CORRECTED"
+echo "OK hardening supersedes: registro substituído fora da tendência ativa"
+
+if docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
+  SET ROLE fitcore_app;
+  SELECT set_config('app.tenant_id','$TENANT_B',false);
+  SELECT fitcore_assessment_current_consent('$TENANT_A'::uuid,'$STUDENT_A'::uuid,'assessment_data');
+" >/tmp/fitcore-assess92-consent-cross.log 2>&1; then
+  echo "ERRO: consent lookup SECURITY DEFINER vazou cross-tenant." >&2; exit 10
+fi
+grep -q 'assessment_tenant_context_mismatch' /tmp/fitcore-assess92-consent-cross.log
+echo "OK hardening consent lookup: tenant context fail-closed"
+
+publish_parallel() {
+  local title="$1"
+  docker exec "$NAME" psql -U postgres -d "$DB" -At -v ON_ERROR_STOP=1 -c "
+    SET ROLE fitcore_app;
+    SELECT set_config('app.tenant_id','$TENANT_A',false);
+    SELECT fitcore_assessment_template_publish(
+      '$TENANT_A'::uuid,'$GESTOR_A'::uuid,'gestor',
+      'concurrent_template','$title','anamnesis','{}'::jsonb
+    )::text;
+  " | tail -1
+}
+publish_parallel "Concorrente A" >/tmp/fitcore-assess92-template-a.json &
+PID_A=$!
+publish_parallel "Concorrente B" >/tmp/fitcore-assess92-template-b.json &
+PID_B=$!
+wait "$PID_A"
+wait "$PID_B"
+VERSIONS="$(docker exec "$NAME" psql -U postgres -d "$DB" -At -c "
+  SELECT string_agg(version::text,',' ORDER BY version)
+  FROM fitcore_assessment_templates
+  WHERE tenant_id='$TENANT_A'::uuid AND template_code='concurrent_template';
+")"
+[[ "$VERSIONS" == "1,2" ]] || { echo "ERRO: versões concorrentes=$VERSIONS" >&2; exit 11; }
+echo "OK hardening template versions: concorrência serializada 1,2"
+
 CONSENT_REVOKE_AI="$(sql_a "SELECT fitcore_assessment_consent_record(
   '$TENANT_A'::uuid,'$ALUNO_A'::uuid,'aluno','$STUDENT_A'::uuid,
   'ai_coach_derived_signals','revoked','v1'
@@ -214,14 +288,17 @@ fi
 grep -Eq 'athlete360_tenant_context_mismatch|assessment_tenant_context_mismatch' /tmp/fitcore-assess92-cross.log
 echo "OK tenant isolation: fail-closed"
 
+apply_sql infra/sql/rollback-029-assessments-hardening.sql
 apply_sql infra/sql/rollback-028-assessments-anamnesis.sql
 MISSING="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "
 SELECT
   to_regclass('public.fitcore_assessments') IS NULL,
   to_regclass('public.fitcore_assessment_measurements') IS NULL,
   to_regprocedure('public.fitcore_assessment_summary(uuid,uuid,text,uuid)') IS NULL,
-  NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='028-assessments-anamnesis');")"
-[[ "$MISSING" == "t|t|t|t" ]]
+  NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='028-assessments-anamnesis'),
+  NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='029-assessments-hardening');")"
+[[ "$MISSING" == "t|t|t|t|t" ]]
 apply_sql infra/sql/028-assessments-anamnesis.sql
+apply_sql infra/sql/029-assessments-hardening.sql
 
-echo "ASSESSMENTS_ANAMNESIS_DB_GATE=PASS PostgreSQL=17.6"
+echo "ASSESSMENTS_ANAMNESIS_DB_GATE=PASS PostgreSQL=17.6 hardening=029"
