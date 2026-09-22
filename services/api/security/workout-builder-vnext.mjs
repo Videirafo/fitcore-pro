@@ -18,9 +18,11 @@ function decimal(value, fallback, min, max) {
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(Math.max(parsed, min), max);
 }
-function code(value, fallback, max = 80) {
-  const raw = clean(value, fallback, max).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_");
-  return raw || fallback;
+function code(value, fallback, max = 80, min = 3) {
+  const raw = clean(value, "", max).toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_");
+  if (raw.length >= min) return raw;
+  const safeFallback = String(fallback || "").toLowerCase().replace(/[^a-z0-9_.:-]+/g, "_").slice(0, max);
+  return safeFallback.length >= min ? safeFallback : "general";
 }
 function normalizeSet(input = {}, index = 0) {
   return {
@@ -64,7 +66,7 @@ function normalizeBlock(input = {}, index = 0) {
     order: index + 1,
     code: code(input.code ?? input.codigo, `block_${index + 1}`, 80),
     title: clean(input.title ?? input.titulo, `Bloco ${index + 1}`, 120),
-    type: code(input.type ?? input.tipo, "main", 40),
+    type: code(input.type ?? input.tipo, "main", 40, 2),
     exercises,
   };
 }
