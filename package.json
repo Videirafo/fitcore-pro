@@ -123,9 +123,10 @@
     "decision:check": "node tools/check-decision-intelligence.mjs && bash infra/scripts/gate-decision-intelligence-postgres17.sh",
     "execution:db:gate": "bash infra/scripts/gate-execution-kernel-v2-postgres17.sh",
     "execution:analytics:check": "node tools/check-execution-analytics.mjs && bash infra/scripts/gate-execution-analytics-postgres17.sh",
-    "fitcore:vnext:check": "node tools/check-fitcore-os-vnext.mjs && npm run athlete:check && npm run assessments:check",
+    "fitcore:vnext:check": "node tools/check-fitcore-os-vnext.mjs && npm run athlete:check && npm run assessments:check && npm run builder:check",
     "athlete:check": "node tools/check-athlete-360.mjs && bash infra/scripts/gate-athlete-360-postgres17.sh",
-    "assessments:check": "node tools/check-assessments-anamnesis.mjs && bash infra/scripts/gate-assessments-anamnesis-postgres17.sh"
+    "assessments:check": "node tools/check-assessments-anamnesis.mjs && bash infra/scripts/gate-assessments-anamnesis-postgres17.sh",
+    "builder:check": "node tools/check-workout-builder-vnext.mjs && bash infra/scripts/gate-workout-builder-vnext-postgres17.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
