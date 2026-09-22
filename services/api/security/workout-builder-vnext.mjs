@@ -30,7 +30,7 @@ function normalizeSet(input = {}, index = 0) {
     order: index + 1,
     reps: clean(input.reps ?? input.repeticoes, "8-12", 40),
     load: clean(input.load ?? input.carga, "", 40) || null,
-    rest_seconds: integer(input.rest_seconds ?? input.descanso_segundos, 90, 0, 900),
+    rest_seconds: integer(input.rest_seconds ?? input.descanso_segundos, 90, 0, 600),
     rir_target: decimal(input.rir_target ?? input.rir, null, 0, 10),
     rpe_target: decimal(input.rpe_target ?? input.rpe, null, 1, 10),
     tempo: clean(input.tempo, "", 30) || null,
