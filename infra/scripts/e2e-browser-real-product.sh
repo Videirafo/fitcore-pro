@@ -142,7 +142,12 @@ COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT j
   'athlete_goals',(SELECT count(*) FROM fitcore_athlete_goals WHERE tenant_id='${TENANT_ID}'),
   'assessment_templates',(SELECT count(*) FROM fitcore_assessment_templates WHERE tenant_id='${TENANT_ID}'),
   'assessment_consents',(SELECT count(*) FROM fitcore_assessment_consents WHERE tenant_id='${TENANT_ID}'),
-  'assessments',(SELECT count(*) FROM fitcore_assessments WHERE tenant_id='${TENANT_ID}')
+  'assessments',(SELECT count(*) FROM fitcore_assessments WHERE tenant_id='${TENANT_ID}'),
+  'builder_versions',(SELECT count(*) FROM fitcore_workout_builder_versions WHERE tenant_id='${TENANT_ID}'),
+  'builder_templates',(SELECT count(*) FROM fitcore_workout_templates WHERE tenant_id='${TENANT_ID}'),
+  'builder_days',(SELECT count(*) FROM fitcore_workout_days WHERE tenant_id='${TENANT_ID}'),
+  'builder_blocks',(SELECT count(*) FROM fitcore_workout_blocks WHERE tenant_id='${TENANT_ID}'),
+  'builder_exercises',(SELECT count(*) FROM fitcore_workout_exercises WHERE tenant_id='${TENANT_ID}')
 )::text")"
 python3 - <<PY
 import json
@@ -156,7 +161,12 @@ assert j['athlete_goals'] >= 1, j
 assert j['assessment_templates'] >= 2, j
 assert j['assessment_consents'] >= 2, j
 assert j['assessments'] >= 1, j
+assert j['builder_versions'] >= 1, j
+assert j['builder_templates'] >= 1, j
+assert j['builder_days'] >= 2, j
+assert j['builder_blocks'] >= 2, j
+assert j['builder_exercises'] >= 3, j
 print('BROWSER_DB_ASSERTIONS=PASS', j)
 PY
 
-echo "Browser E2E aprovado: cadastro → gestor → templates #92 → professor → aluno → prescrição → restart → consentimento → anamnese → execução → evolução → Athlete 360 → viewport Android."
+echo "Browser E2E aprovado: cadastro → gestor → templates #92 → professor → aluno → prescrição → Builder VNext/publish/template → restart → consentimento → anamnese → execução → evolução → Athlete 360 → viewport Android."
