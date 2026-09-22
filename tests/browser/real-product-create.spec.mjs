@@ -172,7 +172,7 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
 
   await page.goto("/treinos");
   await page.getByLabel("Nome do treino").fill("Treino Browser QA");
-  await page.getByLabel("Objetivo").fill("força e condicionamento");
+  await page.getByLabel("Objetivo").first().fill("força e condicionamento");
   await page.getByRole("button", { name: "Criar prescrição" }).click();
   await expectSuccess(page, "Criar prescrição");
   const workout = page
