@@ -167,9 +167,11 @@ SELECT
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='fitcore_workouts' AND column_name='prescription_version'
   ),
+  to_regclass('public.uq_fitcore_workout_days_tenant_id') IS NULL,
+  to_regclass('public.uq_fitcore_workout_exercises_tenant_id') IS NULL,
   NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='031-workout-builder-vnext');
 ")"
-[[ "$MISSING" == "t|t|t|t|t" ]]
+[[ "$MISSING" == "t|t|t|t|t|t|t" ]]
 apply_sql infra/sql/031-workout-builder-vnext.sql
 
 echo "WORKOUT_BUILDER_VNEXT_DB_GATE=PASS PostgreSQL=17.6"
