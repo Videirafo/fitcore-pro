@@ -42,7 +42,8 @@ apply_sql infra/sql/026-execution-remediation.sql
 apply_sql infra/sql/027-athlete-360.sql
 apply_sql infra/sql/028-assessments-anamnesis.sql
 apply_sql infra/sql/029-assessments-hardening.sql
-apply_sql infra/sql/029-assessments-hardening.sql
+apply_sql infra/sql/030-assessments-supersedes-kind.sql
+apply_sql infra/sql/030-assessments-supersedes-kind.sql
 
 docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 <<SQL >/dev/null
 INSERT INTO fitcore_tenants(id,slug,nome,status) VALUES
@@ -220,6 +221,17 @@ if(!s.signals_policy.superseded_measurements_excluded||!s.signals_policy.unit_sa
 ' "$SUMMARY_CORRECTED"
 echo "OK hardening supersedes: registro substituído fora da tendência ativa"
 
+if sql_a "SELECT fitcore_assessment_record(
+  '$TENANT_A'::uuid,'$ALUNO_A'::uuid,'aluno','$STUDENT_A'::uuid,
+  'anamnesis_standard',2,'anamnesis',
+  jsonb_build_object('routine','tentativa cross-kind'),
+  '[]'::jsonb,'[]'::jsonb,'$PHYS1_ID'::uuid
+)::text;" >/tmp/fitcore-assess92-cross-kind.log 2>&1; then
+  echo "ERRO: anamnese supersede avaliação física." >&2; exit 12
+fi
+grep -q 'assessment_supersedes_kind_mismatch' /tmp/fitcore-assess92-cross-kind.log
+echo "OK hardening supersedes kind: fail-closed"
+
 if docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
   SET ROLE fitcore_app;
   SELECT set_config('app.tenant_id','$TENANT_B',false);
@@ -288,6 +300,7 @@ fi
 grep -Eq 'athlete360_tenant_context_mismatch|assessment_tenant_context_mismatch' /tmp/fitcore-assess92-cross.log
 echo "OK tenant isolation: fail-closed"
 
+apply_sql infra/sql/rollback-030-assessments-supersedes-kind.sql
 apply_sql infra/sql/rollback-029-assessments-hardening.sql
 apply_sql infra/sql/rollback-028-assessments-anamnesis.sql
 MISSING="$(docker exec "$NAME" psql -U postgres -d "$DB" -AtF '|' -c "
@@ -296,9 +309,11 @@ SELECT
   to_regclass('public.fitcore_assessment_measurements') IS NULL,
   to_regprocedure('public.fitcore_assessment_summary(uuid,uuid,text,uuid)') IS NULL,
   NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='028-assessments-anamnesis'),
-  NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='029-assessments-hardening');")"
-[[ "$MISSING" == "t|t|t|t|t" ]]
+  NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='029-assessments-hardening'),
+  NOT EXISTS (SELECT 1 FROM fitcore_schema_migrations WHERE version='030-assessments-supersedes-kind');")"
+[[ "$MISSING" == "t|t|t|t|t|t" ]]
 apply_sql infra/sql/028-assessments-anamnesis.sql
 apply_sql infra/sql/029-assessments-hardening.sql
+apply_sql infra/sql/030-assessments-supersedes-kind.sql
 
-echo "ASSESSMENTS_ANAMNESIS_DB_GATE=PASS PostgreSQL=17.6 hardening=029"
+echo "ASSESSMENTS_ANAMNESIS_DB_GATE=PASS PostgreSQL=17.6 hardening=029,030"

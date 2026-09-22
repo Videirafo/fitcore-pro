@@ -4,10 +4,13 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, hardening, rollback, manager, athlete, coach, server, ui, deploy] = await Promise.all([
+const [migration, hardening, finalHardening, rollback, rollbackHardening, rollbackFinal, manager, athlete, coach, server, ui, deploy] = await Promise.all([
   read("infra/sql/028-assessments-anamnesis.sql"),
   read("infra/sql/029-assessments-hardening.sql"),
+  read("infra/sql/030-assessments-supersedes-kind.sql"),
   read("infra/sql/rollback-028-assessments-anamnesis.sql"),
+  read("infra/sql/rollback-029-assessments-hardening.sql"),
+  read("infra/sql/rollback-030-assessments-supersedes-kind.sql"),
   read("services/api/security/assessments-anamnesis.mjs"),
   read("services/api/security/athlete-360.mjs"),
   read("services/api/security/evidence-coach.mjs"),
@@ -54,6 +57,13 @@ assert.match(hardening, /current_setting\('app\.tenant_id',true\)/);
 assert.match(hardening, /newer\.supersedes_assessment_id=a\.id/);
 assert.match(hardening, /latest_unit=previous_unit/);
 assert.match(hardening, /count\(\*\) OVER \(PARTITION BY m\.measurement_code\)/);
+assert.match(finalHardening, /assessment_supersedes_kind_mismatch/);
+assert.match(finalHardening, /v_previous\.assessment_kind IS DISTINCT FROM p_assessment_kind/);
+assert.match(rollbackHardening, /CREATE OR REPLACE FUNCTION fitcore_assessment_current_consent/);
+assert.match(rollbackHardening, /CREATE OR REPLACE FUNCTION fitcore_assessment_template_publish/);
+assert.match(rollbackHardening, /CREATE OR REPLACE FUNCTION fitcore_assessment_summary/);
+assert.match(rollbackFinal, /CREATE OR REPLACE FUNCTION fitcore_assessment_record/);
+assert.doesNotMatch(rollbackFinal, /assessment_supersedes_kind_mismatch/);
 
 assert.match(manager, /raw_responses_to_external_ai: false/);
 assert.match(manager, /attachment_refs_to_external_ai: false/);
@@ -96,5 +106,6 @@ assert.match(ui, /Number\.isFinite\(value\)/);
 
 assert.match(deploy, /apply-assessments-anamnesis\.sh/);
 assert.match(deploy, /apply-assessments-hardening\.sh/);
+assert.match(deploy, /apply-assessments-supersedes-kind\.sh/);
 
-console.log("Assessments + Anamnesis #92 + hardening 029 contract: OK");
+console.log("Assessments + Anamnesis #92 + hardening 029/030 contract: OK");
