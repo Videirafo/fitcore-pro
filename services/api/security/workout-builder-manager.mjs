@@ -97,7 +97,7 @@ export function createWorkoutBuilderManager(env = process.env) {
         preview: true,
         templates: true,
         clone: true,
-        prescription_publish: false,
+        prescription_publish: true,
       },
       endpoints: [
         "GET /api/vnext/workout-builder/status",
