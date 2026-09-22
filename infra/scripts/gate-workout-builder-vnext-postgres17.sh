@@ -67,8 +67,26 @@ INSERT INTO fitcore_workout_builder_versions(
   tenant_id,workout_id,version,state,snapshot,periodization,created_by
 ) VALUES (
   '$TENANT_A','$WORKOUT_A',1,'draft',
-  '{"name":"Upper A","days":[{"order":1,"title":"A","blocks":[{"order":1,"title":"Principal","exercises":[{"order":1,"name":"Supino","slug":"supino","sets":4,"reps":"8","rest_seconds":120,"target_rir_min":1,"target_rir_max":2,"target_rpe":8}]}]}]}'::jsonb,
-  '{"model":"linear","weeks":[{"week":1,"load_delta_pct":0},{"week":2,"load_delta_pct":2.5}]}'::jsonb,
+  jsonb_build_object(
+    'name','Upper A',
+    'days',jsonb_build_array(jsonb_build_object(
+      'order',1,'title','A',
+      'blocks',jsonb_build_array(jsonb_build_object(
+        'order',1,'title','Principal',
+        'exercises',jsonb_build_array(jsonb_build_object(
+          'order',1,'name','Supino','slug','supino','sets',4,'reps','8',
+          'rest_seconds',120,'target_rir_min',1,'target_rir_max',2,'target_rpe',8
+        ))
+      ))
+    ))
+  ),
+  jsonb_build_object(
+    'model','linear',
+    'weeks',jsonb_build_array(
+      jsonb_build_object('week',1,'load_delta_pct',0),
+      jsonb_build_object('week',2,'load_delta_pct',2.5)
+    )
+  ),
   '$GESTOR_A'
 ) RETURNING id;
 " | tail -1)"
@@ -96,7 +114,7 @@ SELECT set_config('app.tenant_id','$TENANT_A',false);
 INSERT INTO fitcore_workout_templates(tenant_id,template_code,nome,source_version_id,created_by)
 VALUES('$TENANT_A','upper_strength','Upper Strength','$VERSION_ID','$GESTOR_A');
 INSERT INTO fitcore_workout_protocols(tenant_id,protocol_code,nome,defaults,created_by)
-VALUES('$TENANT_A','strength_4x8','Strength 4x8','{"sets":4,"reps":"8","rest_seconds":120,"target_rir_min":1,"target_rir_max":2}'::jsonb,'$GESTOR_A');
+VALUES('$TENANT_A','strength_4x8','Strength 4x8',jsonb_build_object('sets',4,'reps','8','rest_seconds',120,'target_rir_min',1,'target_rir_max',2),'$GESTOR_A');
 " >/dev/null
 
 if docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -c "
