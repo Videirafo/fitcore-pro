@@ -5,13 +5,16 @@ import {
   workoutBuilderPreview,
   WORKOUT_BUILDER_VNEXT_SCHEMA_VERSION,
 } from "../services/api/security/workout-builder-vnext.mjs";
+import { createWorkoutBuilderManager } from "../services/api/security/workout-builder-manager.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, rollback] = await Promise.all([
+const [migration, rollback, managerSource, serverSource] = await Promise.all([
   read("infra/sql/031-workout-builder-vnext.sql"),
   read("infra/sql/rollback-031-workout-builder-vnext.sql"),
+  read("services/api/security/workout-builder-manager.mjs"),
+  read("services/api/server.mjs"),
 ]);
 
 for (const token of [
@@ -110,4 +113,37 @@ assert.equal(bounded.days[0].blocks.length, 12);
 assert.equal(bounded.days[0].blocks[0].exercises.length, 20);
 assert.equal(bounded.days[0].blocks[0].exercises[0].sets.length, 12);
 
-console.log("Workout Builder VNext #93 foundation contract: OK");
+const manager = createWorkoutBuilderManager({});
+const anonymousPreview = manager.preview({}, input);
+assert.equal(anonymousPreview.guard.statusCode, 401);
+const studentPreview = manager.preview({
+  session_signed: true,
+  tenant_id: "tenant-a",
+  actor_id: "actor-a",
+  actor_role: "aluno",
+}, input);
+assert.equal(studentPreview.guard.statusCode, 403);
+const coachPreview = manager.preview({
+  session_signed: true,
+  tenant_id: "tenant-a",
+  tenant_slug: "tenant-a",
+  actor_id: "coach-a",
+  actor_role: "professor",
+}, input);
+assert.equal(coachPreview.ok, true);
+assert.equal(coachPreview.publishable, true);
+
+for (const route of [
+  "/api/vnext/workout-builder/status",
+  "/api/vnext/workout-builder/preview",
+  "/api/vnext/workout-builder/templates",
+  "workout-builder/templates\\/([^/]+)\\/clone",
+]) assert.match(serverSource, new RegExp(route));
+
+assert.match(managerSource, /pg_advisory_xact_lock/);
+assert.match(managerSource, /hashtextextended/);
+assert.match(managerSource, /workout_builder_role_forbidden/);
+assert.doesNotMatch(managerSource, /response: \{ erro: clean\(error\?\.message/);
+assert.doesNotMatch(managerSource, /phone|email|raw_payload|provider_payload/i);
+
+console.log("Workout Builder VNext #93 foundation + API contract: OK");
