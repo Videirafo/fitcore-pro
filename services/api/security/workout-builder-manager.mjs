@@ -52,8 +52,34 @@ function guard(context = {}) {
   }
   return { allowed: true, role };
 }
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function tenantSession(context) {
   return `SELECT set_config('app.tenant_id', ${sqlText(context.tenant_id)}, false);`;
+}
+
+function publishError(error) {
+  const message = error instanceof Error ? String(error.message || "") : String(error || "");
+  const codes = [
+    "workout_builder_session_required",
+    "workout_builder_tenant_context_mismatch",
+    "workout_builder_role_forbidden",
+    "workout_builder_student_not_found",
+    "workout_builder_template_not_found",
+    "workout_builder_payload_invalid",
+    "workout_builder_days_invalid",
+    "workout_builder_blocks_invalid",
+    "workout_builder_exercises_invalid",
+    "workout_builder_sets_invalid",
+    "workout_builder_not_publishable",
+  ];
+  const code = codes.find((item) => message.includes(item)) || "workout_builder_publish_failed";
+  const statusCode =
+    code === "workout_builder_session_required" ? 401 :
+    code.includes("tenant_context") || code.includes("role_forbidden") ? 403 :
+    code.includes("not_found") ? 404 :
+    code === "workout_builder_publish_failed" ? 500 : 422;
+  return { guard: { allowed: false, statusCode, response: { erro: code } } };
 }
 
 export function createWorkoutBuilderManager(env = process.env) {
@@ -186,6 +212,45 @@ export function createWorkoutBuilderManager(env = process.env) {
     }
   }
 
+  function publishPrescription(context = {}, input = {}) {
+    const access = guard(context);
+    if (!access.allowed) return { guard: access };
+    const studentId = clean(input.student_id || input.studentId, "", 90);
+    if (!UUID_RE.test(studentId)) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "workout_builder_student_id_invalid" } } };
+    }
+    const sourceTemplateId = clean(input.source_template_id || input.sourceTemplateId, "", 90);
+    if (sourceTemplateId && !UUID_RE.test(sourceTemplateId)) {
+      return { guard: { allowed: false, statusCode: 400, response: { erro: "workout_builder_template_id_invalid" } } };
+    }
+    const builder = normalizeWorkoutBuilder(input.builder || input);
+    const previewResult = workoutBuilderPreview(builder);
+    if (!previewResult.publishable) {
+      return { guard: { allowed: false, statusCode: 422, response: { erro: "workout_builder_not_publishable" } } };
+    }
+    try {
+      const result = jsonScalar(scalar(env, `
+        ${tenantSession(context)}
+        SELECT fitcore_workout_builder_publish(
+          ${sqlText(context.tenant_id)}::uuid,
+          ${sqlText(context.actor_id)}::uuid,
+          ${sqlText(studentId)}::uuid,
+          ${sqlJson(builder)},
+          ${sourceTemplateId ? `${sqlText(sourceTemplateId)}::uuid` : "NULL"}
+        )::text;
+      `));
+      return {
+        ok: true,
+        product: "Workout Builder VNext",
+        published: true,
+        prescription: result,
+        preview: previewResult.summary,
+      };
+    } catch (error) {
+      return publishError(error);
+    }
+  }
+
   function cloneTemplate(context = {}, templateKey = "", version = null) {
     const access = guard(context);
     if (!access.allowed) return { guard: access };
@@ -217,5 +282,5 @@ export function createWorkoutBuilderManager(env = process.env) {
     }
   }
 
-  return { status, preview, listTemplates, publishTemplate, cloneTemplate };
+  return { status, preview, listTemplates, publishTemplate, publishPrescription, cloneTemplate };
 }
