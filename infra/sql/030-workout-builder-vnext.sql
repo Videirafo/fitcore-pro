@@ -115,7 +115,19 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
 BEGIN
-  RAISE EXCEPTION 'workout_builder_version_immutable';
+  IF TG_OP='DELETE' THEN
+    RAISE EXCEPTION 'workout_builder_version_immutable';
+  END IF;
+  IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+     OR NEW.workout_id IS DISTINCT FROM OLD.workout_id
+     OR NEW.version IS DISTINCT FROM OLD.version
+     OR NEW.snapshot IS DISTINCT FROM OLD.snapshot
+     OR NEW.periodization IS DISTINCT FROM OLD.periodization
+     OR NEW.created_by IS DISTINCT FROM OLD.created_by
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+    RAISE EXCEPTION 'workout_builder_version_immutable';
+  END IF;
+  RETURN NEW;
 END;
 $function$;
 
