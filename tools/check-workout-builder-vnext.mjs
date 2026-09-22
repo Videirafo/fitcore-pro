@@ -28,9 +28,15 @@ for (const token of [
 ]) assert.match(migration, new RegExp(token));
 
 assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
-assert.match(migration, /current_setting\('app\.tenant_id',true\)/);
+assert.match(migration, /current_setting\(''app\.tenant_id'',true\)/);
 assert.match(migration, /UNIQUE \(tenant_id,template_key,version\)/);
 assert.match(migration, /UNIQUE \(workout_exercise_id,set_order\)/);
+assert.match(migration, /fitcore_workout_blocks_tenant_day_fkey/);
+assert.match(migration, /fitcore_workout_exercises_tenant_block_fkey/);
+assert.match(migration, /fitcore_workout_set_targets_tenant_exercise_fkey/);
+assert.match(migration, /fitcore_workouts_tenant_template_fkey/);
+assert.match(migration, /CREATE ROLE fitcore_runtime NOLOGIN NOSUPERUSER NOBYPASSRLS/);
+assert.match(migration, /FORCE ROW LEVEL SECURITY/);
 assert.match(migration, /031-workout-builder-vnext/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_set_targets/);
 assert.match(rollback, /DROP TABLE IF EXISTS fitcore_workout_blocks/);
@@ -109,5 +115,17 @@ assert.equal(bounded.days.length, 7);
 assert.equal(bounded.days[0].blocks.length, 12);
 assert.equal(bounded.days[0].blocks[0].exercises.length, 20);
 assert.equal(bounded.days[0].blocks[0].exercises[0].sets.length, 12);
+
+const sanitized = normalizeWorkoutBuilder({
+  days: [{
+    blocks: [{
+      code: "A",
+      type: "?",
+      exercises: [{ name: "X", sets: [{ reps: "8" }] }],
+    }],
+  }],
+});
+assert.equal(sanitized.days[0].blocks[0].code, "block_1");
+assert.equal(sanitized.days[0].blocks[0].type, "main");
 
 console.log("Workout Builder VNext #93 foundation contract: OK");
