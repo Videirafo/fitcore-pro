@@ -43,6 +43,26 @@ assert.notEqual(
   first.logicalExecutionId,
 );
 assert.notEqual(buildExecutionIdentity({ ...base, occurrence: 1 }).attemptId, first.attemptId);
+assert.equal(
+  buildExecutionIdentity({ ...base, source: ' hermes ' }).submissionId,
+  first.submissionId,
+);
+assert.throws(
+  () => buildExecutionIdentity({ ...base, source: '   ' }),
+  /execution_source_required/,
+);
+for (const actionVersion of [0, -1, 1.5, 'abc', null, false, '', '1']) {
+  assert.throws(
+    () => buildExecutionIdentity({ ...base, actionVersion }),
+    /execution_action_version_invalid/,
+  );
+}
+for (const occurrence of [-1, 1.5, 'abc', null, false, '', '0']) {
+  assert.throws(
+    () => buildExecutionIdentity({ ...base, occurrence }),
+    /execution_occurrence_invalid/,
+  );
+}
 
 assert.equal(canTransitionExecution('planned', 'validated'), true);
 assert.equal(canTransitionExecution('validated', 'approval_required'), true);
