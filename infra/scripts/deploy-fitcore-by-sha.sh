@@ -117,6 +117,7 @@ FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-execution-remediation.sh
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-athlete-360.sh
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-assessments-anamnesis.sh
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-assessments-hardening.sh
+FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-workout-builder-vnext.sh
 unset DB_URL
 
 [[ -x infra/scripts/fitcore-api-with-hermes.sh ]] || {
