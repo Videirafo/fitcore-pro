@@ -194,9 +194,52 @@ assert a['relationships']['coach_id']=='$PROF_ID', a
 assert len(a['goals'])==1, a
 assert a['training']['approved_workouts']==1, a
 assert a['privacy']['medical_data_included'] is False, a
-assert a['availability']['physical_assessments'] is False, a
+assert a['privacy']['health_assessment_summary_included'] is True, a
+assert a['availability']['physical_assessments'] is True, a
 assert a['availability']['pr_engine'] is False, a
-print('OK Athlete 360 aluno: perfil + coach + meta + treino + LGPD')
+print('OK Athlete 360 aluno: perfil + coach + meta + treino + LGPD + #92 disponível')
+PY
+
+curl -fsS -b "$OWNER_JAR" -H 'content-type: application/json' \
+  -d '{"template_code":"anamnesis_standard","title":"Anamnese padrão","assessment_kind":"anamnesis","schema":{"fields":["training_history","declared_restrictions","routine","sleep_quality"]}}' \
+  "$BASE/api/vnext/assessments/templates" > "/tmp/${NAME}-assessment-template-anam.json"
+curl -fsS -b "$OWNER_JAR" -H 'content-type: application/json' \
+  -d '{"template_code":"physical_standard","title":"Avaliação física padrão","assessment_kind":"physical","schema":{"measurements":["body_weight","waist_circumference"]}}' \
+  "$BASE/api/vnext/assessments/templates" > "/tmp/${NAME}-assessment-template-physical.json"
+
+curl -fsS -b "$ALUNO_JAR" -H 'content-type: application/json' \
+  -d '{"scope":"assessment_data","state":"granted","consent_version":"v1"}' \
+  "$BASE/api/vnext/assessments/consents" > "/tmp/${NAME}-assessment-consent.json"
+curl -fsS -b "$ALUNO_JAR" -H 'content-type: application/json' \
+  -d '{"scope":"ai_coach_derived_signals","state":"granted","consent_version":"v1"}' \
+  "$BASE/api/vnext/assessments/consents" > "/tmp/${NAME}-assessment-ai-consent.json"
+
+curl -fsS -b "$ALUNO_JAR" -H 'content-type: application/json' \
+  -d '{"template_code":"anamnesis_standard","template_version":1,"assessment_kind":"anamnesis","responses":{"training_history":"iniciante","declared_restrictions":"nenhuma declarada","routine":"3x semana","sleep_quality":"regular"},"measurements":[],"attachments":[]}' \
+  "$BASE/api/vnext/assessments/me/records" > "/tmp/${NAME}-assessment-anam.json"
+
+curl -fsS -b "$PROF_JAR" -H 'content-type: application/json' \
+  -d '{"template_code":"physical_standard","template_version":1,"assessment_kind":"physical","responses":{"notes":"registro operacional P0"},"measurements":[{"code":"body_weight","value":80,"unit":"kg","method":"scale"},{"code":"waist_circumference","value":90,"unit":"cm","method":"tape"}],"attachments":[]}' \
+  "$BASE/api/vnext/assessments/students/$STUDENT_ID/records" > "/tmp/${NAME}-assessment-physical.json"
+
+curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/assessments/me?limit=20" > "/tmp/${NAME}-assessments-before.json"
+curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/athlete-360/me" > "/tmp/${NAME}-athlete360-assessments.json"
+python3 - <<PY
+import json
+t1=json.load(open('/tmp/${NAME}-assessment-template-anam.json'))['template']
+t2=json.load(open('/tmp/${NAME}-assessment-template-physical.json'))['template']
+h=json.load(open('/tmp/${NAME}-assessments-before.json'))
+a=json.load(open('/tmp/${NAME}-athlete360-assessments.json'))['athlete']
+assert t1['version']==1 and t2['version']==1, (t1,t2)
+assert h['summary']['assessment_count']==2, h
+assert h['summary']['assessment_data_consent']=='granted', h
+assert h['summary']['ai_coach_allowed'] is True, h
+assert len(h['records'])==2, h
+assert a['assessments']['assessment_count']==2, a
+assert a['assessments']['physical_count']==1, a
+assert a['privacy']['raw_anamnesis_in_snapshot'] is False, a
+assert a['privacy']['clinical_inference'] is False, a
+print('OK #92 P0: templates + consent + anamnese + físico + Athlete 360 sanitizado')
 PY
 
 stop_api
@@ -204,20 +247,25 @@ start_api
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/mvp-24/my-workouts" > "/tmp/${NAME}-my-workouts-after.json"
 curl -fsS -b "$OWNER_JAR" "$BASE/api/mvp-22/users" > "/tmp/${NAME}-users-after.json"
 curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/athlete-360/me" > "/tmp/${NAME}-athlete360-after.json"
+curl -fsS -b "$ALUNO_JAR" "$BASE/api/vnext/assessments/me?limit=20" > "/tmp/${NAME}-assessments-after.json"
 python3 - <<PY
 import json
 workouts=json.load(open('/tmp/${NAME}-my-workouts-after.json'))
 users=json.load(open('/tmp/${NAME}-users-after.json'))
 athlete=json.load(open('/tmp/${NAME}-athlete360-after.json'))['athlete']
+assess=json.load(open('/tmp/${NAME}-assessments-after.json'))
 items=workouts.get('prescriptions') or []
 assert len(items)==1 and items[0]['id']=='$PRESCRIPTION_ID', workouts
 assert users.get('total_users')==3, users
 assert athlete['student_id']=='$STUDENT_ID' and len(athlete['goals'])==1, athlete
-print('OK dados, sessões e Athlete 360 sobreviveram ao restart')
+assert athlete['assessments']['assessment_count']==2, athlete
+assert assess['summary']['assessment_count']==2 and len(assess['records'])==2, assess
+assert assess['summary']['ai_coach_allowed'] is True, assess
+print('OK dados, sessões, Athlete 360 e assessments sobreviveram ao restart')
 PY
 
 TENANT_ID="$(python3 -c "import json; print(json.load(open('/tmp/${NAME}-onboarding.json'))['tenant']['id'])")"
-COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT jsonb_build_object('users',(SELECT count(*) FROM fitcore_users WHERE tenant_id='$TENANT_ID'),'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='$TENANT_ID'),'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='$TENANT_ID'),'athlete_goals',(SELECT count(*) FROM fitcore_athlete_goals WHERE tenant_id='$TENANT_ID'))::text")"
+COUNTS="$(docker exec "$NAME" psql -U postgres -d "$DB" -X -A -t -q -c "SELECT jsonb_build_object('users',(SELECT count(*) FROM fitcore_users WHERE tenant_id='$TENANT_ID'),'students',(SELECT count(*) FROM fitcore_students WHERE tenant_id='$TENANT_ID'),'workouts',(SELECT count(*) FROM fitcore_workouts WHERE tenant_id='$TENANT_ID'),'athlete_goals',(SELECT count(*) FROM fitcore_athlete_goals WHERE tenant_id='$TENANT_ID'),'assessment_templates',(SELECT count(*) FROM fitcore_assessment_templates WHERE tenant_id='$TENANT_ID'),'assessment_consents',(SELECT count(*) FROM fitcore_assessment_consents WHERE tenant_id='$TENANT_ID'),'assessments',(SELECT count(*) FROM fitcore_assessments WHERE tenant_id='$TENANT_ID'),'assessment_measurements',(SELECT count(*) FROM fitcore_assessment_measurements WHERE tenant_id='$TENANT_ID'))::text")"
 python3 - <<PY
 import json
 j=json.loads('''$COUNTS''')
@@ -225,7 +273,11 @@ assert j['users']==3, j
 assert j['students']==1, j
 assert j['workouts']>=1, j
 assert j['athlete_goals']==1, j
-print('OK PostgreSQL canônico + Athlete 360:', j)
+assert j['assessment_templates']==2, j
+assert j['assessment_consents']==2, j
+assert j['assessments']==2, j
+assert j['assessment_measurements']==2, j
+print('OK PostgreSQL canônico + Athlete 360 + Assessments #92:', j)
 PY
 
-echo "P0 E2E aprovado: cadastro → gestor → professor → aluno → treino → restart → persistência."
+echo "P0 E2E aprovado: cadastro → gestor → professor → aluno → treino → Athlete 360 → anamnese/avaliação → restart → persistência."

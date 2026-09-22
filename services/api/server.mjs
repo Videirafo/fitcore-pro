@@ -29,6 +29,7 @@ import { attachDecisionEvidence, outcomeForExecutionAction, terminalDecisionStat
 import { createWorkoutSetSyncManager } from "./security/workout-set-sync.mjs";
 import { createStudentEvolutionManager } from "./security/student-evolution.mjs";
 import { createAthlete360Manager } from "./security/athlete-360.mjs";
+import { createAssessmentManager } from "./security/assessments-anamnesis.mjs";
 import { createAgentAssistantManager } from "./security/agent-assistant.mjs";
 import { createOpenSourceCapabilityManager } from "./security/open-source-capabilities.mjs";
 import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
@@ -214,10 +215,11 @@ function runExecutionRemediation(context, remediationId, input = {}, dryRun = fa
 
 const workoutSetSyncManager = createWorkoutSetSyncManager(process.env);
 const studentEvolutionManager = createStudentEvolutionManager(process.env);
-const athlete360Manager = createAthlete360Manager(process.env);
+const assessmentManager = createAssessmentManager(process.env);
+const athlete360Manager = createAthlete360Manager(process.env, assessmentManager);
 const agentAssistantManager = createAgentAssistantManager(process.env);
 const openSourceCapabilityManager = createOpenSourceCapabilityManager(process.env);
-const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager);
+const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvolutionManager, assessmentManager);
 const guidedSetupManager = createGuidedSetupManager(process.env);
 const roleDashboardManager = createRoleDashboardManager(process.env, { tenantUserManagement, studentManagement, workoutPrescriptionManager, workoutExecutionManager, studentEvolutionManager, agentAssistantManager, guidedSetupManager });
 const platformOwnerManager = createPlatformOwnerManager(process.env, sessionManager);
@@ -2151,6 +2153,66 @@ const server = createServer(async (req, res) => {
       const result = evidenceCoachManager.studentCoach(accessContext, decodeURIComponent(mvp33StudentCoachMatch[1]), url, false);
       if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
       return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/vnext/assessments/status") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      return sendJson(res, 200, assessmentManager.status(accessContext));
+    }
+
+    if (url.pathname === "/api/vnext/assessments/me") {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = assessmentManager.history(accessContext, "", url.searchParams.get("limit") || 50);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    if (url.pathname === "/api/vnext/assessments/consents") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = assessmentManager.recordConsent(accessContext, "", input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    if (url.pathname === "/api/vnext/assessments/templates") {
+      if (req.method === "GET") {
+        const result = assessmentManager.listTemplates(accessContext);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 200, result);
+      }
+      if (req.method === "POST") {
+        const input = await readJsonBody(req);
+        const result = assessmentManager.publishTemplate(accessContext, input);
+        if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+        return sendJson(res, 201, result);
+      }
+      return sendMethodNotAllowed(res);
+    }
+
+    if (url.pathname === "/api/vnext/assessments/me/records") {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = assessmentManager.recordAssessment(accessContext, "", input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
+    }
+
+    const assessmentStudentMatch = url.pathname.match(/^\/api\/vnext\/assessments\/students\/([^/]+)$/);
+    if (assessmentStudentMatch) {
+      if (req.method !== "GET") return sendMethodNotAllowed(res);
+      const result = assessmentManager.history(accessContext, decodeURIComponent(assessmentStudentMatch[1]), url.searchParams.get("limit") || 50);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 200, result);
+    }
+
+    const assessmentStudentRecordMatch = url.pathname.match(/^\/api\/vnext\/assessments\/students\/([^/]+)\/records$/);
+    if (assessmentStudentRecordMatch) {
+      if (req.method !== "POST") return sendMethodNotAllowed(res);
+      const input = await readJsonBody(req);
+      const result = assessmentManager.recordAssessment(accessContext, decodeURIComponent(assessmentStudentRecordMatch[1]), input);
+      if (result.guard && !result.guard.allowed) return sendJson(res, result.guard.statusCode, result.guard.response);
+      return sendJson(res, 201, result);
     }
 
     if (url.pathname === "/api/vnext/athlete-360/status") {

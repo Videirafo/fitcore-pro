@@ -180,6 +180,32 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
   await expect(page.getByRole("heading", { name: "Aluno Browser QA" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Perfil autorizado" })).toBeVisible();
   await expect(page.getByText(/IA sem consentimento/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Anamnese e avaliações físicas" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Autorizar dados de avaliação" }).click();
+  await expectSuccess(page, "Registrar consentimento");
+  await page.getByRole("button", { name: "Autorizar sinais no Coach" }).click();
+  await expectSuccess(page, "Registrar consentimento");
+
+  await page.getByLabel("Histórico de treino").fill("Treino regularmente há seis meses");
+  await page.getByLabel("Restrições declaradas").fill("Nenhuma declarada");
+  await page.getByLabel("Rotina").fill("Três treinos por semana");
+  await page.getByLabel("Qualidade do sono").selectOption("regular");
+  await page.getByRole("button", { name: "Registrar anamnese" }).click();
+  await expectSuccess(page, "Registrar anamnese");
+  await expect(page.getByRole("heading", { name: "Histórico imutável de avaliações" })).toBeVisible();
+
+  const assessments = await apiJson(page, "/api/vnext/assessments/me?limit=20");
+  expect(assessments.status).toBe(200);
+  expect(assessments.body.summary.assessment_data_consent).toBe("granted");
+  expect(assessments.body.summary.ai_coach_allowed).toBe(true);
+  expect(assessments.body.summary.anamnesis_count).toBeGreaterThanOrEqual(1);
+  expect(assessments.body.records.length).toBeGreaterThanOrEqual(1);
+
+  const coachWithAssessments = await apiJson(page, "/api/mvp-33/my-coach");
+  expect(coachWithAssessments.status).toBe(200);
+  expect(coachWithAssessments.body.assessment_signal_status).toBe("consented");
+  expect(coachWithAssessments.body.guardrails.assessment_raw_data_external_ai).toBe(false);
 
   await page.getByLabel("Meta").fill("Manter 3 treinos por semana");
   await page.getByLabel("Tipo").selectOption("weekly_frequency");
@@ -193,8 +219,10 @@ test("aluno entra após restart, executa treino e vê evolução", async ({
   expect(athlete.status).toBe(200);
   expect(athlete.body.athlete.profile.name).toBe("Aluno Browser QA");
   expect(athlete.body.athlete.goals.length).toBeGreaterThanOrEqual(1);
-  expect(athlete.body.athlete.privacy.medical_data_included).toBe(false);
-  expect(athlete.body.athlete.availability.physical_assessments).toBe(false);
+  expect(athlete.body.athlete.privacy.clinical_inference).toBe(false);
+  expect(athlete.body.athlete.privacy.raw_anamnesis_in_snapshot).toBe(false);
+  expect(athlete.body.athlete.availability.physical_assessments).toBe(true);
+  expect(athlete.body.athlete.assessments.anamnesis_count).toBeGreaterThanOrEqual(1);
   expect(athlete.body.athlete.availability.pr_engine).toBe(false);
 });
 

@@ -88,6 +88,8 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
   const [executions, setExecutions] = useState<Json>({ executions: [] });
   const [evolution, setEvolution] = useState<Json>({ students: [], weekly: [], summary: {} });
   const [athlete360, setAthlete360] = useState<Json | null>(null);
+  const [assessmentHistory, setAssessmentHistory] = useState<Json>({ records: [], summary: {} });
+  const [assessmentTemplates, setAssessmentTemplates] = useState<Json[]>([]);
   const [setup, setSetup] = useState<Json>({ steps: [], progress_percent: 0 });
   const [detail, setDetail] = useState<Json | null>(null);
   const [agentAnswer, setAgentAnswer] = useState<Json | null>(null);
@@ -141,10 +143,19 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
             const result = await api(`/api/vnext/athlete-360/students/${encodeURIComponent(requested)}?v=${Date.now()}`);
             setAthlete360(result.athlete || null);
             setStudentQuery(String(requested));
-          } else setAthlete360(null);
+            setAssessmentHistory(await api(`/api/vnext/assessments/students/${encodeURIComponent(requested)}?limit=20&v=${Date.now()}`).catch(() => ({ records: [], summary: result.athlete?.assessments || {} })));
+          } else {
+            setAthlete360(null);
+            setAssessmentHistory({ records: [], summary: {} });
+          }
         } else if (currentRole === "aluno") {
           const result = await api(`/api/vnext/athlete-360/me?v=${Date.now()}`);
           setAthlete360(result.athlete || null);
+          setAssessmentHistory(await api(`/api/vnext/assessments/me?limit=20&v=${Date.now()}`).catch(() => ({ records: [], summary: result.athlete?.assessments || {} })));
+        }
+        if (currentRole !== "visitante") {
+          const templateResult = await api(`/api/vnext/assessments/templates?v=${Date.now()}`).catch(() => ({ templates: [] }));
+          setAssessmentTemplates(templateResult.templates || []);
         }
       }
       if (["training", "execution", "home", "agents", "library", "reports"].includes(target)) {
@@ -223,6 +234,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
     try {
       const result = await api(`/api/vnext/athlete-360/students/${encodeURIComponent(studentId)}?v=${Date.now()}`);
       setAthlete360(result.athlete || null);
+      setAssessmentHistory(await api(`/api/vnext/assessments/students/${encodeURIComponent(studentId)}?limit=20&v=${Date.now()}`).catch(() => ({ records: [], summary: result.athlete?.assessments || {} })));
       window.history.replaceState(null, "", `/atleta?student=${encodeURIComponent(studentId)}`);
       setState("success");
     } catch (err) {
@@ -246,6 +258,79 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
       { method: "POST", body: JSON.stringify({ status, reason_code: status === "achieved" ? "goal_achieved_ui" : "goal_updated_ui" }) },
     ), "athlete");
   }
+  function latestAssessmentTemplate(kind: "anamnesis" | "physical") {
+    return assessmentTemplates
+      .filter((item: Json) => item.assessment_kind === kind)
+      .sort((a: Json, b: Json) => Number(b.version || 0) - Number(a.version || 0))[0] || null;
+  }
+  async function setAssessmentConsent(scope: "assessment_data" | "ai_coach_derived_signals", consentState: "granted" | "revoked") {
+    await runAction(consentState === "granted" ? "Registrar consentimento" : "Revogar consentimento", () => api(
+      "/api/vnext/assessments/consents",
+      { method: "POST", body: JSON.stringify({ scope, state: consentState, consent_version: "v1" }) },
+    ), "athlete");
+  }
+  async function publishAssessmentTemplate(kind: "anamnesis" | "physical") {
+    const body = kind === "anamnesis"
+      ? { template_code: "anamnesis_standard", title: "Anamnese padrão", assessment_kind: "anamnesis", schema: { fields: ["training_history", "declared_restrictions", "routine", "sleep_quality"] } }
+      : { template_code: "physical_standard", title: "Avaliação física padrão", assessment_kind: "physical", schema: { measurements: ["body_weight", "waist_circumference"] } };
+    await runAction("Publicar template", () => api(
+      "/api/vnext/assessments/templates",
+      { method: "POST", body: JSON.stringify(body) },
+    ), "athlete");
+  }
+  async function submitAnamnesis(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const payload = formPayload(form);
+    const template = latestAssessmentTemplate("anamnesis");
+    if (!template) {
+      setToast({ type: "error", title: "Template ausente", message: "O gestor precisa publicar um template de anamnese primeiro." });
+      return;
+    }
+    await runAction("Registrar anamnese", () => api(
+      "/api/vnext/assessments/me/records",
+      { method: "POST", body: JSON.stringify({
+        template_code: template.template_code,
+        template_version: template.version,
+        assessment_kind: "anamnesis",
+        responses: {
+          training_history: payload.training_history || "",
+          declared_restrictions: payload.declared_restrictions || "",
+          routine: payload.routine || "",
+          sleep_quality: payload.sleep_quality || "",
+        },
+        measurements: [],
+        attachments: [],
+      }) },
+    ), "athlete");
+    form.reset();
+  }
+  async function submitPhysicalAssessment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const payload = formPayload(form);
+    const template = latestAssessmentTemplate("physical");
+    const studentId = String(athlete360?.student_id || firstStudentId || "");
+    if (!template || !studentId) {
+      setToast({ type: "error", title: "Avaliação indisponível", message: !template ? "Publique um template físico primeiro." : "Selecione um atleta." });
+      return;
+    }
+    const measurements: Json[] = [];
+    if (payload.body_weight !== "") measurements.push({ code: "body_weight", value: Number(payload.body_weight), unit: "kg", method: "scale" });
+    if (payload.waist_circumference !== "") measurements.push({ code: "waist_circumference", value: Number(payload.waist_circumference), unit: "cm", method: "tape" });
+    await runAction("Registrar avaliação física", () => api(
+      `/api/vnext/assessments/students/${encodeURIComponent(studentId)}/records`,
+      { method: "POST", body: JSON.stringify({
+        template_code: template.template_code,
+        template_version: template.version,
+        assessment_kind: "physical",
+        responses: { notes: payload.notes || "" },
+        measurements,
+        attachments: [],
+      }) },
+    ), "athlete");
+    form.reset();
+  }
   async function askAgent(prompt: string) { const result = await runAction("Assistente IA", () => api("/api/mvp-32/agent", { method: "POST", body: JSON.stringify({ prompt, module: mode }) }), mode); if (result) setAgentAnswer(result); }
 
   const publicHome = mode === "home" && !session;
@@ -258,7 +343,7 @@ export function FitCoreRouteClient({ mode }: { mode: Mode }) {
     {mode === "invite" && <InvitePanel onSubmit={submitInviteAccept} state={state} />}
     {mode === "team" && <TeamPanel role={role} data={team} detail={detail} state={state} error={error} onCreate={submitUser} onInvite={submitInvite} onRefresh={() => loadRouteData("team")} />}
     {mode === "students" && <StudentsPanel role={role} team={team} data={students} detail={detail} state={state} error={error} onSubmit={submitStudent} onRefresh={() => loadRouteData("students")} />}
-    {mode === "athlete" && <Athlete360Panel role={role} data={athlete360} students={students?.students || []} state={state} error={error} selectedStudentId={studentQuery || athlete360?.student_id || ""} onSelect={loadAthlete360} onCreateGoal={submitAthleteGoal} onGoalStatus={updateAthleteGoal} onRefresh={() => loadRouteData("athlete")} />}
+    {mode === "athlete" && <Athlete360Panel role={role} data={athlete360} students={students?.students || []} assessments={assessmentHistory} assessmentTemplates={assessmentTemplates} state={state} error={error} selectedStudentId={studentQuery || athlete360?.student_id || ""} onSelect={loadAthlete360} onCreateGoal={submitAthleteGoal} onGoalStatus={updateAthleteGoal} onAssessmentConsent={setAssessmentConsent} onPublishAssessmentTemplate={publishAssessmentTemplate} onSubmitAnamnesis={submitAnamnesis} onSubmitPhysicalAssessment={submitPhysicalAssessment} onRefresh={() => loadRouteData("athlete")} />}
     {mode === "training" && <TrainingPanel role={role} students={students?.students || []} data={prescriptions} detail={detail} state={state} error={error} selectedStudentId={firstStudentId} onSubmit={submitPrescription} onReview={reviewPrescription} onRefresh={() => loadRouteData("training")} />}
     {mode === "execution" && <ExecutionPanel role={role} workouts={prescriptions} executions={executions} detail={detail} state={state} error={error} firstPrescriptionId={firstPrescriptionId} firstExecutionId={firstExecutionId} nextBestAction={nextBestAction} onNextBest={executeNextBestAction} onRejectNextBest={rejectNextBestAction} onStart={startExecution} onMarkDone={markExerciseDone} onFinish={finishExecution} onRefresh={() => loadRouteData("execution")} onAskAgent={askAgent} agentAnswer={agentAnswer} />}
     {mode === "evolution" && <EvolutionPanel data={evolution} detail={detail} state={state} error={error} isStaff={isStaff} onStudent={loadStudentEvolution} onRefresh={() => loadRouteData("evolution")} />}
@@ -411,11 +496,16 @@ function InvitePanel({ onSubmit, state }: { onSubmit: (event: FormEvent<HTMLForm
 function SetupPanel({ setup, session, state, error, onRefresh }: { setup: Json; session: Json | null; state: LoadState; error: string; onRefresh: () => void }) { const steps = setup.steps || []; if (!session) return <PermissionPanel title="Configurar" text="Entre como gestor para continuar a configuração da unidade." />; return <div className="dashboard-grid setup-workspace"><section className="panel wide setup-board"><div className="setup-board-head"><div><span className="label">Checklist da unidade</span><h2>{setup.all_done ? "Operação pronta para testar" : "Continue a primeira operação"}</h2><p>{setup.all_done ? "Equipe, aluno, treino, execução e evolução já foram validados nesta unidade." : "Cada etapa usa dados reais do sistema e salva progresso no negócio atual."}</p></div><div className="setup-progress"><strong>{numberText(setup.progress_percent)}%</strong><span>concluído</span></div></div><div className="setup-meter"><i style={{ width: `${Math.max(0, Math.min(100, Number(setup.progress_percent || 0)))}%` }} /></div><div className="setup-steps">{steps.length ? steps.map((step: Json) => <Link className={`setup-step ${step.done ? "is-done" : "is-open"}`} href={step.href || "/"} key={step.id}><span>{String(step.order || 1).padStart(2, "0")}</span><div><strong>{safe(step.title)}</strong><small>{step.done ? "Concluído" : "Abrir etapa"} · {safe(step.count)} registro(s)</small></div><em>{step.done ? "OK" : "Fazer"}</em></Link>) : <article className="item"><strong>Configuração não carregada</strong><span>{statusText(error, state === "loading" ? "Carregando..." : "Atualize para calcular o progresso.")}</span></article>}</div><div className="row-actions"><button type="button" className="secondary" onClick={onRefresh}>Atualizar progresso</button><Link className="primary-pill" href={setup?.steps?.find?.((step: Json) => !step.done)?.href || "/evolucao"}>{setup.all_done ? "Ver evolução" : "Continuar etapa"}</Link></div></section><section className="panel setup-summary"><h2>Próxima ação</h2><p>{setup.all_done ? "Use os perfis reais da sua unidade para validar cada papel." : `Etapa atual: ${safe(setup.current_step)}`}</p><div className="mini-grid"><Metric label="Professor" value={setup?.counters?.professors_with_access || 0} /><Metric label="Alunos" value={setup?.counters?.students || 0} /><Metric label="Treinos" value={setup?.counters?.workouts || 0} /><Metric label="Execuções" value={setup?.counters?.completed_executions || 0} /></div></section></div>; }
 function TeamPanel({ role, data, detail, state, error, onCreate, onInvite, onRefresh }: { role: string; data: Json; detail: Json | null; state: LoadState; error: string; onCreate: (event: FormEvent<HTMLFormElement>) => void; onInvite: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void }) { const users = data.users || []; const invites = data.invites || []; if (role !== "gestor") return <PermissionPanel title="Equipe" text="Somente gestor administra usuários da unidade." />; return <div className="dashboard-grid"><section className="panel wide flow-guide"><FlowHeader current="Equipe" next="Alunos" href="/alunos" /><div className="flow-cards"><FlowCard title="1. Professor" text="Crie o professor que vai revisar treinos." /><FlowCard title="2. Aluno" text="Crie usuário aluno ou envie convite." /><FlowCard title="3. Cadastro operacional" text="No próximo passo, cadastre o aluno no módulo Alunos." /></div></section><form className="panel operational-form" onSubmit={onCreate}><FormHeader label="Equipe" title="Criar usuário" text="Usuário já entra vinculado à unidade atual." /><label>Nome<input name="nome" required placeholder="nome do usuário" /></label><label>Papel<select name="papel" defaultValue="professor"><option value="professor">Professor</option><option value="aluno">Aluno</option></select></label><label>E-mail<input name="email" required type="email" inputMode="email" autoComplete="email" placeholder="professor@academia.com" /></label><label>WhatsApp / telefone<input name="telefone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(22) 99999-9999" /></label><label>Senha<input name="secret" required type="password" minLength={8} autoComplete="new-password" placeholder="mínimo 8 caracteres" /></label><button disabled={state === "loading"}>Criar usuário</button></form><section className="panel"><PanelTitle title="Usuários da unidade" action="Atualizar" onClick={onRefresh} /><List empty={statusText(error, "Nenhum usuário carregado.")} items={users} pick={(user) => [user.nome, user.papel, user.email || user.login_identifier || user.status]} /></section><form className="panel operational-form" onSubmit={onInvite}><FormHeader label="Convite" title="Gerar convite" text="O link leva o usuário para definir a própria credencial." /><label>Nome<input name="nome" required placeholder="nome do convidado" /></label><label>Papel<select name="papel" defaultValue="aluno"><option value="aluno">Aluno</option><option value="professor">Professor</option></select></label><label>E-mail sugerido<input name="login_identifier" type="email" inputMode="email" placeholder="aluno@email.com" /></label><button>Gerar convite</button></form><section className="panel"><h2>Convites recentes</h2><List empty="Nenhum convite recente." items={invites} pick={(invite) => [invite.nome_convidado || invite.nome, invite.papel, invite.status]} /><ActionSummary data={detail} /></section></div>; }
 function StudentsPanel({ role, team, data, detail, state, error, onSubmit, onRefresh }: { role: string; team: Json; data: Json; detail: Json | null; state: LoadState; error: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onRefresh: () => void }) { const studentItems = data.students || []; const users = team.users || []; const professors = users.filter((user: Json) => user.papel === "professor" || user.role === "professor"); const alunoUsers = users.filter((user: Json) => user.papel === "aluno" || user.role === "aluno"); if (!isStaffRole(role)) return <PermissionPanel title="Alunos" text="Aluno acessa treino e evolução. Cadastro operacional fica com gestor ou professor." />; return <div className="split-grid"><form className="panel operational-form" onSubmit={onSubmit}><FormHeader label="Alunos" title="Cadastrar aluno" text="Vincule o usuário aluno e o professor responsável antes de avançar para treinos." /><label>Nome público<input name="nome_publico" required placeholder="nome do aluno" /></label>{alunoUsers.length ? <label>Usuário aluno<select name="user_id" required defaultValue={alunoUsers[0]?.id}>{alunoUsers.map((user: Json) => <option key={user.id} value={user.id}>{user.nome}</option>)}</select></label> : <p className="muted-note">Crie primeiro um usuário com papel Aluno na área Equipe.</p>}{professors.length ? <label>Professor responsável<select name="professor_id" defaultValue={professors[0]?.id}>{professors.map((professor: Json) => <option key={professor.id} value={professor.id}>{professor.nome}</option>)}</select></label> : <p className="muted-note">Crie primeiro um professor na área Equipe.</p>}<label>Código interno<input name="codigo_publico" placeholder="opcional" /></label><label>Nível<select name="nivel" defaultValue="iniciante"><option value="iniciante">Iniciante</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></label><label>Objetivo<input name="objetivo" defaultValue="força e evolução" /></label><label>Modalidade<input name="modalidade_preferida" defaultValue="academia" /></label><label>Frequência semanal<input name="frequencia_semana" type="number" min="1" max="7" defaultValue="3" /></label><label className="field-span-2 consent-line"><input name="consentimento_lgpd" type="checkbox" /> <span>Consentimento LGPD para processamento dos dados deste aluno pelo Assistente IA foi registrado.</span></label><p className="muted-note field-span-2">Sem este consentimento, o aluno continua funcionando normalmente no FitCore, mas seus dados não são enviados ao Hermes; o assistente usa apenas o fallback local.</p><button disabled={state === "loading" || !alunoUsers.length || !professors.length}>Cadastrar e prescrever treino</button></form><section className="panel"><PanelTitle title="Alunos ativos" action="Atualizar" onClick={onRefresh} /><List empty={statusText(error, "Nenhum aluno carregado.")} items={studentItems} pick={(student) => [student.nome_publico, student.professor_nome || student.nivel, `${student.objetivo || "objetivo"} · ${student.frequencia_semana || 0}x/semana`]} /><ActionSummary data={detail} /></section></div>; }
-function Athlete360Panel({ role, data, students, state, error, selectedStudentId, onSelect, onCreateGoal, onGoalStatus, onRefresh }: {
-  role: string; data: Json | null; students: Json[]; state: LoadState; error: string;
+function Athlete360Panel({ role, data, students, assessments, assessmentTemplates, state, error, selectedStudentId, onSelect, onCreateGoal, onGoalStatus, onAssessmentConsent, onPublishAssessmentTemplate, onSubmitAnamnesis, onSubmitPhysicalAssessment, onRefresh }: {
+  role: string; data: Json | null; students: Json[]; assessments: Json; assessmentTemplates: Json[]; state: LoadState; error: string;
   selectedStudentId: string; onSelect: (studentId: string) => void;
   onCreateGoal: (event: FormEvent<HTMLFormElement>) => void;
-  onGoalStatus: (goalId: string, status: string) => void; onRefresh: () => void;
+  onGoalStatus: (goalId: string, status: string) => void;
+  onAssessmentConsent: (scope: "assessment_data" | "ai_coach_derived_signals", state: "granted" | "revoked") => void;
+  onPublishAssessmentTemplate: (kind: "anamnesis" | "physical") => void;
+  onSubmitAnamnesis: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmitPhysicalAssessment: (event: FormEvent<HTMLFormElement>) => void;
+  onRefresh: () => void;
 }) {
   if (!data) return <div className="dashboard-grid"><section className="panel wide"><PanelTitle title="Athlete 360" action="Atualizar" onClick={onRefresh} /><h2>{state === "loading" ? "Carregando visão do atleta..." : "Nenhum atleta disponível"}</h2><p>{statusText(error, role === "aluno" ? "Seu perfil operacional aparecerá quando o cadastro de aluno estiver vinculado à sua conta." : "Cadastre ou vincule um aluno para abrir a visão 360.")}</p></section></div>;
   const profile = data.profile || {};
@@ -428,18 +518,33 @@ function Athlete360Panel({ role, data, students, state, error, selectedStudentId
   const decisions = data.decisions || [];
   const availability = data.availability || {};
   const privacy = data.privacy || {};
+  const assessmentSummary = data.assessments || assessments?.summary || {};
+  const assessmentRecords = assessments?.records || [];
+  const measurementTrends = assessmentSummary.measurement_trends || [];
+  const hasAnamnesisTemplate = assessmentTemplates.some((item: Json) => item.assessment_kind === "anamnesis");
+  const hasPhysicalTemplate = assessmentTemplates.some((item: Json) => item.assessment_kind === "physical");
+  const assessmentConsentGranted = assessmentSummary.assessment_data_consent === "granted";
+  const aiAssessmentConsentGranted = assessmentSummary.ai_coach_allowed === true;
+  const canAssess = role === "gestor" || role === "professor";
   return <div className="dashboard-grid athlete-360-workspace">
     <section className="panel wide">
       <div className="panel-title"><div><span className="label">Athlete 360 · fonte operacional única</span><h2>{safe(profile.name)}</h2><p>{safe(profile.objective || "Objetivo ainda não definido")} · {safe(profile.preferred_modality || "modalidade não definida")} · {safe(profile.level)}</p></div><button type="button" className="secondary" onClick={onRefresh}>Atualizar</button></div>
       {role !== "aluno" && students.length ? <label>Atleta<select aria-label="Selecionar atleta Athlete 360" value={selectedStudentId || data.student_id} onChange={(event) => onSelect(event.target.value)}>{students.map((student: Json) => <option key={student.id} value={student.id}>{safe(student.nome_publico)}</option>)}</select></label> : null}
       <div className="metric-grid"><Metric label="Aderência 28 dias" value={`${numberText(adherence.adherence_28d_pct || 0)}%`} /><Metric label="Treinos 7 dias" value={adherence.completed_7d || 0} /><Metric label="Meta semanal" value={profile.weekly_frequency_target || 0} /><Metric label="Esforço médio" value={adherence.average_effort ?? "—"} /></div>
     </section>
-    <section className="panel"><h2>Perfil autorizado</h2><div className="item-list"><article className="item"><strong>{safe(relationships.tenant_name || "Unidade")}</strong><span>{safe(relationships.coach_name || "Coach não vinculado")} · {safe(profile.status)}</span></article><article className="item"><strong>Privacidade</strong><span>{privacy.tenant_scoped ? "Tenant isolado" : "—"} · IA {privacy.ai_consent ? "autorizada" : "sem consentimento"}</span></article></div><p className="muted-note">Athlete 360 usa identidade mínima e não inclui dado médico.</p></section>
+    <section className="panel"><h2>Perfil autorizado</h2><div className="item-list"><article className="item"><strong>{safe(relationships.tenant_name || "Unidade")}</strong><span>{safe(relationships.coach_name || "Coach não vinculado")} · {safe(profile.status)}</span></article><article className="item"><strong>Privacidade</strong><span>{privacy.tenant_scoped ? "Tenant isolado" : "—"} · IA {privacy.ai_consent ? "autorizada" : "sem consentimento"}</span></article></div><p className="muted-note">Anamnese e avaliações ficam isoladas por tenant. O Athlete 360 mostra apenas resumo descritivo; não gera diagnóstico automático nem envia respostas brutas ao agente externo.</p></section>
     <section className="panel"><h2>Hoje</h2><div className="item-list"><article className="item"><strong>{today.status === "continue_session" ? "Continuar sessão" : today.status === "workout_ready" ? "Treino liberado" : "Aguardando prescrição"}</strong><span>{safe(today.active_execution?.status || today.approved_workout?.objective || "Sem ação pendente")}</span></article><article className="item"><strong>Última atividade</strong><span>{safe(adherence.last_activity_at || "Sem execução registrada")}</span></article></div></section>
     <form className="panel operational-form" onSubmit={onCreateGoal}><FormHeader label="Metas" title="Nova meta operacional" text="Registre metas mensuráveis sem duplicar o objetivo principal do cadastro." /><label>Meta<input name="title" required minLength={3} placeholder="Ex.: treinar 3 vezes por semana" /></label><label>Tipo<select name="goal_code" defaultValue="weekly_frequency"><option value="weekly_frequency">Frequência semanal</option><option value="strength_progress">Progresso de força</option><option value="consistency">Consistência</option><option value="performance">Performance</option></select></label><label>Valor alvo<input name="target_value" type="number" min="0" step="0.1" /></label><label>Unidade<input name="target_unit" placeholder="treinos/semana, kg, %" /></label><label>Data alvo<input name="target_date" type="date" /></label><label>Prioridade<select name="priority" defaultValue="medium"><option value="low">Baixa</option><option value="medium">Média</option><option value="high">Alta</option></select></label><button disabled={state === "loading"}>Adicionar meta</button></form>
     <section className="panel wide"><h2>Metas e progresso</h2><div className="item-list">{goals.length ? goals.map((goal: Json) => <article className="item" key={goal.id}><strong>{safe(goal.title)}</strong><span>{safe(goal.status)} · {safe(goal.progress_value || 0)} / {safe(goal.target_value ?? "—")} {safe(goal.target_unit || "")} · prioridade {safe(goal.priority)}</span>{goal.status === "active" ? <div className="row-actions"><button type="button" onClick={() => onGoalStatus(String(goal.id), "achieved")}>Concluir meta</button><button type="button" className="secondary" onClick={() => onGoalStatus(String(goal.id), "paused")}>Pausar</button></div> : null}</article>) : <article className="item"><strong>Sem metas estruturadas</strong><span>Adicione a primeira meta mensurável do atleta.</span></article>}</div></section>
     <section className="panel"><h2>Treino e aderência</h2><div className="metric-grid"><Metric label="Treinos prescritos" value={training.workouts_total || 0} /><Metric label="Liberados" value={training.approved_workouts || 0} /><Metric label="Concluídos 28d" value={adherence.completed_28d || 0} /><Metric label="Duração média" value={adherence.average_duration ? `${numberText(adherence.average_duration)} min` : "—"} /></div></section>
-    <section className="panel"><h2>Próximos módulos</h2><div className="item-list"><article className="item"><strong>Avaliações físicas</strong><span>{availability.physical_assessments ? "Disponível" : `Programado no #${safe(availability.physical_assessments_issue || 92)}`}</span></article><article className="item"><strong>PR Engine</strong><span>{availability.pr_engine ? "Disponível" : `Programado no #${safe(availability.pr_engine_issue || 95)}`}</span></article></div></section>
+    <section className="panel wide"><h2>Anamnese e avaliações físicas</h2><div className="metric-grid"><Metric label="Registros" value={assessmentSummary.assessment_count || 0} /><Metric label="Anamneses" value={assessmentSummary.anamnesis_count || 0} /><Metric label="Avaliações físicas" value={assessmentSummary.physical_count || 0} /><Metric label="Última avaliação" value={assessmentSummary.last_assessment_at ? String(assessmentSummary.last_assessment_at).slice(0, 10) : "—"} /></div><p className="muted-note">Histórico imutável por versão. Deltas são calculados server-side e são descritivos; não representam diagnóstico clínico.</p></section>
+    <section className="panel"><h2>Consentimento das avaliações</h2><div className="item-list"><article className="item"><strong>Dados de anamnese/avaliação</strong><span>{assessmentConsentGranted ? "Consentimento ativo" : "Consentimento ausente ou revogado"}</span></article><article className="item"><strong>Sinais derivados no AI Coach</strong><span>{aiAssessmentConsentGranted ? "Autorizados" : "Não autorizados"}</span></article></div>{role === "aluno" ? <div className="row-actions"><button type="button" onClick={() => onAssessmentConsent("assessment_data", assessmentConsentGranted ? "revoked" : "granted")}>{assessmentConsentGranted ? "Revogar dados de avaliação" : "Autorizar dados de avaliação"}</button><button type="button" className="secondary" onClick={() => onAssessmentConsent("ai_coach_derived_signals", aiAssessmentConsentGranted ? "revoked" : "granted")}>{aiAssessmentConsentGranted ? "Revogar sinais no Coach" : "Autorizar sinais no Coach"}</button></div> : <p className="muted-note">Somente o próprio aluno concede ou revoga esses escopos.</p>}</section>
+    <section className="panel"><h2>Templates versionados</h2><div className="item-list"><article className="item"><strong>Anamnese</strong><span>{hasAnamnesisTemplate ? "Template publicado" : "Sem template"}</span></article><article className="item"><strong>Avaliação física</strong><span>{hasPhysicalTemplate ? "Template publicado" : "Sem template"}</span></article></div>{role === "gestor" ? <div className="row-actions"><button type="button" onClick={() => onPublishAssessmentTemplate("anamnesis")}>Publicar nova versão de anamnese</button><button type="button" className="secondary" onClick={() => onPublishAssessmentTemplate("physical")}>Publicar nova versão física</button></div> : null}</section>
+    {role === "aluno" ? <form className="panel operational-form" onSubmit={onSubmitAnamnesis}><FormHeader label="Anamnese" title="Registrar nova versão" text="Cada envio cria um registro imutável. Correções futuras geram uma nova versão, sem apagar o histórico." /><label>Histórico de treino<textarea name="training_history" placeholder="Descreva sua experiência anterior." /></label><label>Restrições declaradas<textarea name="declared_restrictions" placeholder="Informe somente o que deseja registrar." /></label><label>Rotina<textarea name="routine" placeholder="Disponibilidade e rotina de treino." /></label><label>Qualidade do sono<select name="sleep_quality" defaultValue="regular"><option value="boa">Boa</option><option value="regular">Regular</option><option value="ruim">Ruim</option></select></label><button disabled={state === "loading" || !assessmentConsentGranted || !hasAnamnesisTemplate}>Registrar anamnese</button>{!assessmentConsentGranted ? <p className="muted-note">Autorize dados de avaliação antes de registrar a anamnese.</p> : null}</form> : null}
+    {canAssess ? <form className="panel operational-form" onSubmit={onSubmitPhysicalAssessment}><FormHeader label="Avaliação física" title="Novo registro periódico" text="Medições são evidências descritivas. O FitCore não produz diagnóstico automático." /><label>Peso corporal (kg)<input name="body_weight" type="number" min="0" step="0.1" /></label><label>Circunferência da cintura (cm)<input name="waist_circumference" type="number" min="0" step="0.1" /></label><label>Notas profissionais<textarea name="notes" placeholder="Observação operacional, sem diagnóstico automático." /></label><button disabled={state === "loading" || !assessmentConsentGranted || !hasPhysicalTemplate}>Registrar avaliação</button>{!assessmentConsentGranted ? <p className="muted-note">O aluno precisa autorizar dados de avaliação antes do registro.</p> : null}</form> : null}
+    <section className="panel"><h2>Evolução das medidas</h2><List empty="Ainda não há duas medições comparáveis." items={measurementTrends.slice(0, 8)} pick={(item) => [item.measurement_code || "medida", `${item.latest_value ?? "—"} ${item.unit || ""}`, item.previous_value == null ? "primeira medição" : `anterior ${item.previous_value} · Δ ${item.delta ?? "—"}`]} /></section>
+    <section className="panel wide"><h2>Histórico imutável de avaliações</h2><List empty="Nenhuma anamnese ou avaliação registrada." items={assessmentRecords.slice(0, 10)} pick={(item) => [item.assessment_kind === "anamnesis" ? "Anamnese" : "Avaliação física", `${item.template_code || "template"} v${item.template_version || 1}`, item.recorded_at || "—"]} /></section>
+    <section className="panel"><h2>Próximos módulos</h2><div className="item-list"><article className="item"><strong>Avaliações físicas</strong><span>{availability.physical_assessments ? "Disponível no #92" : `Programado no #${safe(availability.physical_assessments_issue || 92)}`}</span></article><article className="item"><strong>PR Engine</strong><span>{availability.pr_engine ? "Disponível" : `Programado no #${safe(availability.pr_engine_issue || 95)}`}</span></article></div></section>
     <section className="panel wide"><h2>Timeline operacional</h2><List empty="A timeline aparece conforme metas, treinos e decisões são registrados." items={timeline.slice(0, 12)} pick={(item) => [item.event_type || item.kind, item.kind || "evento", item.occurred_at || "—"]} /></section>
     <section className="panel wide"><h2>Decisões vinculadas</h2><List empty="Nenhuma decisão NBA vinculada a este atleta." items={decisions.slice(0, 8)} pick={(item) => [item.reason_code || item.action_id, item.state || "state", item.outcome_code || item.priority || "sem outcome"]} /></section>
   </div>;

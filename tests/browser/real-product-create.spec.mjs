@@ -157,6 +157,13 @@ test("cadastro → gestor → equipe → aluno vinculado → professor prescreve
     page.getByLabel("Aluno").locator("option:checked"),
   ).toHaveText("Aluno Browser QA");
 
+  await page.goto("/atleta");
+  await expect(page.getByText("Athlete 360 · fonte operacional única")).toBeVisible();
+  await page.getByRole("button", { name: "Publicar nova versão de anamnese" }).click();
+  await expectSuccess(page, "Publicar template");
+  await page.getByRole("button", { name: "Publicar nova versão física" }).click();
+  await expectSuccess(page, "Publicar template");
+
   await logout(page);
   await login(page, profLogin, profSecret);
   await expect(page.getByText(/professor/i).first()).toBeVisible();
