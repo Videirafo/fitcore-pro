@@ -124,7 +124,7 @@ export function createWorkoutBuilderManager(env = process.env) {
       `)) || [];
       return { ok: true, product: "Workout Builder VNext", templates: data };
     } catch (error) {
-      return { guard: { allowed: false, statusCode: 500, response: { erro: clean(error?.message, "workout_builder_templates_failed", 160) } } };
+      return { guard: { allowed: false, statusCode: 500, response: { erro: "workout_builder_templates_failed" } } };
     }
   }
 
@@ -182,7 +182,7 @@ export function createWorkoutBuilderManager(env = process.env) {
       `));
       return { ok: true, product: "Workout Builder VNext", template: row, preview: previewResult.summary };
     } catch (error) {
-      return { guard: { allowed: false, statusCode: 500, response: { erro: clean(error?.message, "workout_builder_publish_failed", 160) } } };
+      return { guard: { allowed: false, statusCode: 500, response: { erro: "workout_builder_publish_failed" } } };
     }
   }
 
@@ -213,7 +213,7 @@ export function createWorkoutBuilderManager(env = process.env) {
         ...workoutBuilderPreview(builder),
       };
     } catch (error) {
-      return { guard: { allowed: false, statusCode: 500, response: { erro: clean(error?.message, "workout_builder_clone_failed", 160) } } };
+      return { guard: { allowed: false, statusCode: 500, response: { erro: "workout_builder_clone_failed" } } };
     }
   }
 
