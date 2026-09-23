@@ -10,13 +10,16 @@ import { createWorkoutBuilderManager } from "../services/api/security/workout-bu
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-const [migration, rollback, publishMigration, publishRollback, managerSource, serverSource] = await Promise.all([
+const [migration, rollback, publishMigration, publishRollback, managerSource, serverSource, uiSource, uiPage, trainingPage] = await Promise.all([
   read("infra/sql/031-workout-builder-vnext.sql"),
   read("infra/sql/rollback-031-workout-builder-vnext.sql"),
   read("infra/sql/032-workout-builder-vnext-publish.sql"),
   read("infra/sql/rollback-032-workout-builder-vnext-publish.sql"),
   read("services/api/security/workout-builder-manager.mjs"),
   read("services/api/server.mjs"),
+  read("apps/site/components/WorkoutBuilderVNextClient.tsx"),
+  read("apps/site/app/treinos/builder/page.tsx"),
+  read("apps/site/app/treinos/page.tsx"),
 ]);
 
 for (const token of [
@@ -158,5 +161,20 @@ assert.match(managerSource, /fitcore_workout_builder_publish/);
 assert.match(managerSource, /workout_builder_student_id_invalid/);
 assert.doesNotMatch(managerSource, /response: \{ erro: clean\(error\?\.message/);
 assert.doesNotMatch(managerSource, /phone|email|raw_payload|provider_payload/i);
+
+for (const token of [
+  "Workout Builder VNext",
+  "RIR alvo",
+  "RPE alvo",
+  "Adicionar exercício",
+  "Enviar para revisão",
+  "/api/vnext/workout-builder/preview",
+  "/api/vnext/workout-builder/prescriptions",
+]) assert.match(uiSource, new RegExp(token));
+
+assert.match(uiPage, /WorkoutBuilderVNextClient/);
+assert.match(uiPage, /periodização/i);
+assert.match(trainingPage, /\/treinos\/builder/);
+assert.match(trainingPage, /Abrir Workout Builder VNext/);
 
 console.log("Workout Builder VNext #93 foundation + API contract: OK");
