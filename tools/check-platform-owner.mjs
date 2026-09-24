@@ -11,6 +11,8 @@ const files = {
   accept: readFileSync("apps/site/components/PlatformDelegateAccept.tsx", "utf8"),
   bootstrap: readFileSync("infra/scripts/bootstrap-platform-owner.sh", "utf8"),
   rootMigration: readFileSync("infra/scripts/migrate-platform-root-email.sh", "utf8"),
+  envExample: readFileSync(".env.example", "utf8"),
+  rootDocs: readFileSync("docs/ROOT_ADMIN.md", "utf8"),
 };
 
 function check(condition, message) {
@@ -31,6 +33,11 @@ for (const label of ["Acesso Total", "Essencial", "Profissional", "Business", "E
 }
 check(files.bootstrap.includes('FITCORE_PLATFORM_ROOT_EMAIL'), "root email operator guard missing");
 check(files.bootstrap.includes('somente o e-mail raiz configurado'), "root-only bootstrap guard missing");
+check(files.envExample.includes('FITCORE_PLATFORM_ROOT_EMAIL=mavrk2026@outlook.com'), "canonical root email missing from env contract");
+check(files.envExample.includes('FITCORE_PLATFORM_OWNER_EMAIL=mavrk2026@outlook.com'), "owner email must match canonical root email");
+check(files.rootDocs.includes('mavrk2026@outlook.com'), "root admin documentation missing");
+check(files.rootDocs.includes('Acesso Total'), "root admin full access documentation missing");
+check(files.rootDocs.includes('convites temporários'), "root admin invitation right documentation missing");
 
 const full = resolveProductEntitlements({
   tenantPlan: "trial", platformInternalRole: "platform_owner", internalVerified: true, internalMode: "full",
@@ -44,9 +51,17 @@ const delegate = resolveProductEntitlements({
 });
 check(delegate.billing_exempt === true && delegate.source === "platform_delegate", "verified delegate must receive internal entitlement");
 
-const joined = Object.values(files).join("\n");
-check(!/mavrk2026@outlook\.com/i.test(joined), "root email must not be hardcoded");
-check(!/marcaia2026@outlook\.com/i.test(joined), "legacy owner email must not be hardcoded");
+const runtimeSources = [
+  files.manager,
+  files.server,
+  files.client,
+  files.console,
+  files.accept,
+  files.bootstrap,
+  files.rootMigration,
+].join("\n");
+check(!/mavrk2026@outlook\.com/i.test(runtimeSources), "root email must stay environment-driven in runtime code");
+check(!/marcaia2026@outlook\.com/i.test(runtimeSources), "legacy owner email must not be hardcoded");
 check(!/FITCORE_PLATFORM_OWNER_SECRET\s*=\s*["'][^"']+["']/i.test(joined), "temporary secret must not be hardcoded");
 
 console.log("platform-owner #62 + internal-product-access #72 contract: OK");
