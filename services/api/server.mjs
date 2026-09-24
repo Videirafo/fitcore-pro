@@ -36,6 +36,7 @@ import { createEvidenceCoachManager } from "./security/evidence-coach.mjs";
 import { createGuidedSetupManager } from "./security/guided-setup.mjs";
 import { createRoleDashboardManager } from "./security/role-dashboard.mjs";
 import { createPlatformOwnerManager } from "./security/platform-owner.mjs";
+import { createHttpSecurity } from "./security/http-security.mjs";
 
 const root = resolve(process.cwd());
 const port = Number.parseInt(process.env.FITCORE_API_PORT || "8091", 10);
@@ -223,6 +224,7 @@ const evidenceCoachManager = createEvidenceCoachManager(process.env, studentEvol
 const guidedSetupManager = createGuidedSetupManager(process.env);
 const roleDashboardManager = createRoleDashboardManager(process.env, { tenantUserManagement, studentManagement, workoutPrescriptionManager, workoutExecutionManager, studentEvolutionManager, agentAssistantManager, guidedSetupManager });
 const platformOwnerManager = createPlatformOwnerManager(process.env, sessionManager);
+const httpSecurity = createHttpSecurity(process.env);
 let currentAccessContext = null;
 
 let catalogCache = null;
@@ -1179,6 +1181,8 @@ function getProfessorContext() {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const securityDecision = httpSecurity.guard(req, res, url);
+    if (securityDecision.handled) return;
     const softAccessContext = createAccessContext(req, process.env);
     const signedAccessContext = sessionManager.resolveAccessContext(req);
     const baseAccessContext = signedAccessContext || softAccessContext;
@@ -2457,9 +2461,20 @@ const server = createServer(async (req, res) => {
 
     return sendNotFound(res);
   } catch (error) {
-    return sendJson(res, error.statusCode || 500, {
+    const statusCode = Number(error?.statusCode || 500);
+    const publicMessage =
+      statusCode >= 500
+        ? "Não foi possível concluir a operação agora."
+        : (error instanceof Error ? error.message : String(error));
+    if (statusCode >= 500) {
+      console.error("[fitcore:api:error]", {
+        name: error instanceof Error ? error.name : "Error",
+        code: error?.code || null,
+      });
+    }
+    return sendJson(res, statusCode, {
       erro: "fitcore_api_error",
-      mensagem: error instanceof Error ? error.message : String(error),
+      mensagem: publicMessage,
     });
   }
 });
