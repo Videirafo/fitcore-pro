@@ -324,7 +324,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     const token = randomBytes(32).toString("base64url");
     const tokenHash = sha256(token);
     const raw = runSql(env, `
-      WITH ${tenantCte(tenantSlug)}, created AS (
+      WITH ${tenantCte(lookupTenantSlug)}, created AS (
         INSERT INTO fitcore_user_recovery_tokens (tenant_id, user_id, token_hash, expires_at)
         SELECT tenant.id, ${sqlText(user.id)}::uuid, ${sqlText(tokenHash)}, now() + interval '1 hour'
         FROM tenant, scope
