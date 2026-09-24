@@ -41,6 +41,8 @@ jobs:
         run: npm --prefix apps/site ci --no-audit --no-fund
       - name: Project structure
         run: npm run check:project
+      - name: Security Baseline v1
+        run: npm run security:check
       - name: Execution kernel contract
         run: npm run execution:check
       - name: Ensure PostgreSQL client
