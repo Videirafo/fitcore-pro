@@ -276,7 +276,7 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     if (!requestedTenantSlug && loginIdentifier.includes("@")) {
       const resolved = resolveTenantByUniqueEmail(loginIdentifier);
       if (resolved.matches.length > 1) {
-        return { guard: { allowed: false, statusCode: 409, response: { erro: "unidade_obrigatoria", mensagem: "Este e-mail pertence a mais de uma unidade. Informe a unidade para continuar." } } };
+        return { guard: { allowed: false, statusCode: 401, response: { erro: "credencial_invalida", mensagem: "Identificador ou senha/código inválido." } } };
       }
       if (resolved.tenant_slug) lookupTenantSlug = resolved.tenant_slug;
     }
