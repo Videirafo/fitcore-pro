@@ -146,6 +146,8 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
   const tenantSlug = clean(env.FITCORE_TENANT_SLUG || "demo", "demo", 80);
   const enabled = clean(env.FITCORE_CREDENTIAL_LOGIN_ENABLED || "false", "false", 12) === "true";
   const publicUrl = clean(env.FITCORE_PUBLIC_URL || "https://fitcore.marcaia.app", "https://fitcore.marcaia.app", 240);
+  const fitcoreEnv = clean(env.FITCORE_ENV || env.NODE_ENV || "development", "development", 40).toLowerCase();
+  const exposeRecoveryToken = fitcoreEnv !== "production" && clean(env.FITCORE_RECOVERY_DEMO_RESPONSE || "false", "false", 12).toLowerCase() === "true";
 
   function recordAudit(context, acao, detalhe, recursoTipo = "auth", status = "ok", recursoId = null) {
     if (!context?.tenant_id || !context?.actor_id || !context?.actor_role) return { ok: false, skipped: "missing_context" };
@@ -332,10 +334,16 @@ export function createCredentialAuthManager(env = process.env, sessionManager) {
     `);
     const recovery = jsonScalar(raw);
     recordSystemAudit(user, "recovery_requested", `identifier=${loginIdentifier}; token=${recovery?.id}`, "pendente");
-    return {
+    const response = {
       ok: true,
       mvp: "MVP-19 Credential Login",
       recovery_requested: true,
+      delivered: false,
+      message: "Se o usuário existir, a recuperação será processada pelo canal configurado.",
+    };
+    if (!exposeRecoveryToken) return response;
+    return {
+      ...response,
       delivered: "demo_response",
       token,
       recovery_link: `${publicUrl}/mvp-19.html?tenant_slug=${encodeURIComponent(lookupTenantSlug)}&recovery=${encodeURIComponent(token)}`,
