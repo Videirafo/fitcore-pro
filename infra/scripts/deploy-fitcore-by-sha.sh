@@ -117,6 +117,7 @@ FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-execution-remediation.sh
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-athlete-360.sh
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-assessments-anamnesis.sh
 FITCORE_DATABASE_URL="$DB_URL" bash infra/scripts/apply-assessments-hardening.sh
+FITCORE_PLATFORM_ROOT_EMAIL="mavrk2026@outlook.com" bash infra/scripts/migrate-platform-root-email.sh
 unset DB_URL
 
 [[ -x infra/scripts/fitcore-api-with-hermes.sh ]] || {
@@ -132,11 +133,15 @@ WorkingDirectory=$RELEASE_DIR
 ExecStart=
 ExecStart=$WRAPPER $RELEASE_DIR/services/api/server.mjs
 Environment=FITCORE_RELEASE_SHA=$EXPECTED_SHA
+Environment=FITCORE_PLATFORM_OWNER_ENABLED=true
+Environment=FITCORE_PLATFORM_ROOT_EMAIL=mavrk2026@outlook.com
+Environment=FITCORE_PLATFORM_OWNER_EMAIL=mavrk2026@outlook.com
 EOF
 cat >"$NEXT_TMP" <<EOF
 [Service]
 WorkingDirectory=$RELEASE_DIR/apps/site
 Environment=FITCORE_RELEASE_SHA=$EXPECTED_SHA
+Environment=FITCORE_PLATFORM_ROOT_EMAIL=mavrk2026@outlook.com
 EOF
 
 install -m 0700 infra/scripts/fitcore-api-with-hermes.sh "$WRAPPER"
