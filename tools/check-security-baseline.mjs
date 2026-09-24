@@ -19,6 +19,8 @@ assert.match(session, /revoked_at IS NULL/);
 assert.match(session, /SET revoked_at = now\(\)/);
 assert.match(credential, /FITCORE_RECOVERY_DEMO_RESPONSE/);
 assert.match(credential, /fitcoreEnv !== "production"/);
+assert.doesNotMatch(credential, /unidade_obrigatoria/);
+assert.match(credential, /tenantCte\(lookupTenantSlug\)/);
 assert.match(next, /Content-Security-Policy/);
 assert.match(next, /Strict-Transport-Security/);
 assert.match(next, /X-Content-Type-Options/);
