@@ -96,8 +96,13 @@ function directJson(res, statusCode, payload, headers = {}) {
 export function createHttpSecurity(env = process.env) {
   const cookieName = String(env.FITCORE_SESSION_COOKIE_NAME || "fitcore_session");
   const configuredOrigins = splitList(env.FITCORE_ALLOWED_ORIGINS);
+  const publicOrigin = normalizeOrigin(env.FITCORE_PUBLIC_URL || "https://fitcore.marcaia.app");
+  const production = String(env.FITCORE_ENV || env.NODE_ENV || "development").toLowerCase() === "production";
+  const defaults = production
+    ? [publicOrigin]
+    : [publicOrigin, "http://localhost:3000", "http://127.0.0.1:3000"];
   const allowedOrigins = new Set(
-    (configuredOrigins.length ? configuredOrigins : ["https://fitcore.marcaia.app"])
+    (configuredOrigins.length ? configuredOrigins : defaults)
       .map(normalizeOrigin)
       .filter(Boolean),
   );
@@ -133,6 +138,7 @@ export function createHttpSecurity(env = process.env) {
     }
 
     const fetchSite = String(firstHeader(req, "sec-fetch-site") || "").toLowerCase();
+    if (!fetchSite) return true;
     return fetchSite === "same-origin" || fetchSite === "same-site";
   }
 
