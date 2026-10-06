@@ -30,8 +30,8 @@ function cleanRef(value,label,{required=true}={}) {
   const text=String(value ?? '').trim();
   if (!text && !required) return null;
   if (!text) throw new Error(label+'_required');
-  if (text.length>240 || !/^[A-Za-z0-9:_./-]+$/.test(text)) throw new Error(label+'_invalid');
   if (/@/.test(text) || /\b\d{8,}\b/.test(text)) throw new Error(label+'_looks_like_pii');
+  if (text.length>240 || !/^[A-Za-z0-9:_./-]+$/.test(text)) throw new Error(label+'_invalid');
   return text;
 }
 
