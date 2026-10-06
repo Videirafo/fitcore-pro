@@ -1,0 +1,26 @@
+name: Videira Trust Gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fitcore-trust-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trust:
+    name: Identity, tenant, authorization and recovery evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run VIDEIRA TRUST GATE
+        run: node scripts/trust-gate.mjs
