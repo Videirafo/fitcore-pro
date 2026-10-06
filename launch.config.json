@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "skill": "videira-launch",
+  "project": "FitCore Pro",
+  "kind": "web-mobile-saas",
+  "productSurface": [
+    "web",
+    "mobile",
+    "manager-console",
+    "athlete",
+    "workouts",
+    "analytics",
+    "decision-intelligence"
+  ],
+  "demo": {
+    "baseUrl": "https://fitcore.marcaia.app",
+    "primaryPath": "/",
+    "preferRealUI": true,
+    "videoRecommended": true
+  },
+  "channels": [
+    "instagram-reels",
+    "youtube-shorts",
+    "linkedin",
+    "github-release"
+  ],
+  "privacy": {
+    "useSyntheticData": true,
+    "forbid": [
+      "secrets",
+      "tokens",
+      "credentials",
+      "health-pii",
+      "real-athlete-data",
+      "private-webhooks"
+    ]
+  },
+  "evidence": {
+    "require": [
+      "repository",
+      "sha",
+      "branch",
+      "feature",
+      "ciState",
+      "deploymentState"
+    ],
+    "includeRecentCommits": 5
+  },
+  "publishing": {
+    "automatic": false,
+    "requiresApproval": true
+  },
+  "outputDirectory": "launch-output-{timestamp}"
+}
