@@ -8,10 +8,17 @@ cleanup(){ docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 docker run -d --rm --name "$NAME" -e POSTGRES_PASSWORD="$PASS" -e POSTGRES_DB="$DB" postgres:17.6-alpine >/dev/null
-for _ in $(seq 1 80); do
-  docker exec "$NAME" pg_isready -U postgres -d "$DB" >/dev/null 2>&1 && break
+ready=0
+for _ in $(seq 1 120); do
+  if docker exec "$NAME" pg_isready -U postgres -d "$DB" >/dev/null 2>&1; then
+    ready=$((ready + 1))
+    [[ "$ready" -ge 2 ]] && break
+  else
+    ready=0
+  fi
   sleep .25
 done
+[[ "$ready" -ge 2 ]] || { echo "privacy gate postgres not stable" >&2; docker logs "$NAME" >&2 || true; exit 3; }
 
 for f in "$ROOT"/infra/sql/[0-9][0-9][0-9]-*.sql; do
   docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 < "$f" >/dev/null
