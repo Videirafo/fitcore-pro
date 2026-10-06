@@ -9,7 +9,7 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$ROOT"
 [[ -r "$KEY" ]] || { echo "missing backup key file: $KEY" >&2; exit 2; }
 TMP="$(mktemp -d)"
-RESTORE="fitcore-restore-$RANDOM-$"
+RESTORE="fitcore-restore-$RANDOM-$BASHPID"
 SUCCESS=0
 ENC=""
 cleanup(){
