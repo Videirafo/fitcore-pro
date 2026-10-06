@@ -266,6 +266,7 @@ $$;
 
 REVOKE ALL ON FUNCTION fitcore_audit_retention_purge(uuid,uuid) FROM PUBLIC;
 
-INSERT INTO fitcore_schema_migrations(version,description)
-VALUES('030-privacy-audit-recovery','Trust Gate v1.1 privacy ledger, retention and immutable audit')
-ON CONFLICT (version) DO NOTHING;
+INSERT INTO fitcore_schema_migrations(version,descricao,status)
+VALUES('030-privacy-audit-recovery','Trust Gate v1.1 privacy ledger, retention and immutable audit','aplicada')
+ON CONFLICT (version) DO UPDATE SET
+  descricao=EXCLUDED.descricao,status=EXCLUDED.status,aplicada_em=now();
