@@ -12,12 +12,12 @@ const CONTRACT={
   'marcaia-platform':{
     controls:['identity','tenant_boundary','rbac_capabilities','record_scope_rls','session_security','secrets','audit'],
     roots:['app','components','lib','ops','scripts','supabase','public'],
-    files:['proxy.ts','middleware.ts','next.config.mjs','next.config.ts'],
+    files:['proxy.ts','next.config.mjs'],
   },
   'pink-collection-perfumes':{
     controls:['identity','authorization','session_security','csrf_origin','secrets','webhook_integrity','regression_tests'],
     roots:['app','components','lib','ops','scripts','supabase','public'],
-    files:['middleware.ts','next.config.mjs','next.config.ts'],
+    files:['proxy.ts','next.config.ts'],
   },
   'videira-remote-mcp':{
     controls:['identity_oauth','privilege_separation','session_revocation','secrets','audit','bounded_execution','recovery_integrity'],
