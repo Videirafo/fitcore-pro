@@ -57,20 +57,27 @@
       "verification_evidence": [
         "tests/privacy-recovery-v1-1.test.mjs"
       ]
+    },
+    "audit_immutability": {
+      "status": "enforced",
+      "evidence": [
+        "infra/sql/030-privacy-audit-recovery.sql",
+        "infra/scripts/gate-privacy-audit-recovery-postgres17.sh",
+        "tools/check-privacy-audit-recovery.mjs"
+      ],
+      "verification_evidence": [
+        "infra/scripts/gate-privacy-audit-recovery-postgres17.sh"
+      ]
     }
   },
   "advisory_controls": {
-    "audit": {
-      "status": "partial",
-      "note": "consolidar trilha imutável de eventos de segurança e acesso"
-    },
     "privacy_lgpd": {
       "status": "partial",
-      "note": "DSAR/retention operational contract is enforced; production data executors and legal closure still require runtime evidence"
+      "note": "DSAR ledger + PostgreSQL tenant-scoped request/event/retention contract are enforced; production export/correction/delete executors and legal closure still require runtime evidence"
     },
     "backup_restore": {
       "status": "partial",
-      "note": "isolated PostgreSQL restore contract is enforced; fresh production restore evidence and encrypted external copy remain required"
+      "note": "isolated PostgreSQL restore contract exists; fresh production restore evidence and encrypted external copy remain required"
     }
   }
 }
