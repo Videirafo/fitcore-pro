@@ -266,12 +266,13 @@ $$;
 
 REVOKE ALL ON FUNCTION fitcore_audit_retention_purge(uuid,uuid) FROM PUBLIC;
 
-DO $
+DO $grant$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_app') THEN
     GRANT EXECUTE ON FUNCTION fitcore_audit_retention_purge(uuid,uuid) TO fitcore_app;
   END IF;
-END $;
+END
+$grant$;
 
 INSERT INTO fitcore_schema_migrations(version,descricao,status)
 VALUES('030-privacy-audit-recovery','Trust Gate v1.1 privacy ledger, retention and immutable audit','aplicada')
