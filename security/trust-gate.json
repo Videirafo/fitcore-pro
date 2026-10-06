@@ -4,6 +4,7 @@
   "scan_roots": [
     "apps",
     "services",
+    "packages",
     "infra",
     "tools"
   ],
@@ -60,5 +61,14 @@
       "status": "partial",
       "note": "formalizar restore periódico e evidência de recuperação"
     }
-  }
+  },
+  "required_controls": [
+    "identity",
+    "signed_session",
+    "auth_hardening",
+    "tenant_boundary",
+    "access_control",
+    "verification"
+  ],
+  "scan_files": []
 }
