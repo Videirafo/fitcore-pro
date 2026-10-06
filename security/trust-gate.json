@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "system": "fitcore-pro",
+  "scan_roots": [
+    "apps",
+    "services",
+    "infra",
+    "tools"
+  ],
+  "blocking_controls": {
+    "identity": {
+      "status": "enforced",
+      "evidence": [
+        "infra/scripts/apply-mvp-19-credential-login.sh"
+      ]
+    },
+    "signed_session": {
+      "status": "enforced",
+      "evidence": [
+        "infra/scripts/apply-mvp-15-signed-session.sh"
+      ]
+    },
+    "auth_hardening": {
+      "status": "enforced",
+      "evidence": [
+        "infra/scripts/apply-mvp-20-auth-hardening.sh"
+      ]
+    },
+    "tenant_boundary": {
+      "status": "enforced",
+      "evidence": [
+        "infra/scripts/apply-mvp-21-tenant-onboarding.sh",
+        "infra/scripts/apply-mvp-22-tenant-user-management.sh"
+      ]
+    },
+    "access_control": {
+      "status": "enforced",
+      "evidence": [
+        "infra/scripts/apply-mvp-14-access-control.sh"
+      ]
+    },
+    "verification": {
+      "status": "enforced",
+      "evidence": [
+        "infra/scripts/verify-mvp-20-auth-hardening.sh",
+        "infra/scripts/verify-mvp-22-tenant-user-management.sh"
+      ]
+    }
+  },
+  "advisory_controls": {
+    "audit": {
+      "status": "partial",
+      "note": "consolidar trilha imutável de eventos de segurança e acesso"
+    },
+    "privacy_lgpd": {
+      "status": "partial",
+      "note": "legal/LGPD existe; completar DSAR/retention com evidência executável"
+    },
+    "backup_restore": {
+      "status": "partial",
+      "note": "formalizar restore periódico e evidência de recuperação"
+    }
+  }
+}
