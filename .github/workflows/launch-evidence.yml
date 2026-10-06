@@ -1,0 +1,53 @@
+name: Launch Intelligence Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: Feature or release being demonstrated
+        required: true
+        type: string
+      pr_number:
+        description: Related pull request number
+        required: false
+        type: string
+      deployment_url:
+        description: Validated deployment URL
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Build launch evidence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate governed release evidence
+        run: node scripts/launch-evidence.mjs
+        env:
+          LAUNCH_FEATURE: ${{ inputs.feature || github.event.release.name || github.ref_name }}
+          LAUNCH_PR_NUMBER: ${{ inputs.pr_number }}
+          LAUNCH_DEPLOYMENT_URL: ${{ inputs.deployment_url }}
+          LAUNCH_CI_STATE: success
+          LAUNCH_DEPLOYMENT_STATE: ${{ inputs.deployment_url && 'validated-url-supplied' || 'unknown' }}
+
+      - name: Upload evidence receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-evidence-${{ github.sha }}
+          path: launch-evidence/
+          if-no-files-found: error
