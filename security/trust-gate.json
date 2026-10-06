@@ -45,6 +45,18 @@
         "infra/scripts/verify-mvp-20-auth-hardening.sh",
         "infra/scripts/verify-mvp-22-tenant-user-management.sh"
       ]
+    },
+    "privacy_recovery_contract": {
+      "status": "enforced",
+      "evidence": [
+        "security/privacy-recovery-v1.1.json",
+        "scripts/privacy-recovery-gate.mjs",
+        "infra/privacy/dsar-ledger.mjs",
+        "infra/backups/postgres-restore-smoke.sh"
+      ],
+      "verification_evidence": [
+        "tests/privacy-recovery-v1-1.test.mjs"
+      ]
     }
   },
   "advisory_controls": {
@@ -54,11 +66,11 @@
     },
     "privacy_lgpd": {
       "status": "partial",
-      "note": "legal/LGPD existe; completar DSAR/retention com evidência executável"
+      "note": "DSAR/retention operational contract is enforced; production data executors and legal closure still require runtime evidence"
     },
     "backup_restore": {
       "status": "partial",
-      "note": "formalizar restore periódico e evidência de recuperação"
+      "note": "isolated PostgreSQL restore contract is enforced; fresh production restore evidence and encrypted external copy remain required"
     }
   }
 }
