@@ -4,6 +4,7 @@
   "scan_roots": [
     "apps",
     "services",
+    "packages",
     "infra",
     "tools"
   ],
@@ -12,18 +13,27 @@
       "status": "enforced",
       "evidence": [
         "infra/scripts/apply-mvp-19-credential-login.sh"
+      ],
+      "verification_evidence": [
+        "infra/scripts/verify-mvp-19-credential-login.sh"
       ]
     },
     "signed_session": {
       "status": "enforced",
       "evidence": [
         "infra/scripts/apply-mvp-15-signed-session.sh"
+      ],
+      "verification_evidence": [
+        "infra/scripts/verify-mvp-15-signed-session.sh"
       ]
     },
     "auth_hardening": {
       "status": "enforced",
       "evidence": [
         "infra/scripts/apply-mvp-20-auth-hardening.sh"
+      ],
+      "verification_evidence": [
+        "infra/scripts/verify-mvp-20-auth-hardening.sh"
       ]
     },
     "tenant_boundary": {
@@ -31,17 +41,28 @@
       "evidence": [
         "infra/scripts/apply-mvp-21-tenant-onboarding.sh",
         "infra/scripts/apply-mvp-22-tenant-user-management.sh"
+      ],
+      "verification_evidence": [
+        "infra/scripts/verify-mvp-21-tenant-onboarding.sh",
+        "infra/scripts/verify-mvp-22-tenant-user-management.sh"
       ]
     },
     "access_control": {
       "status": "enforced",
       "evidence": [
         "infra/scripts/apply-mvp-14-access-control.sh"
+      ],
+      "verification_evidence": [
+        "infra/scripts/verify-mvp-14-access-control.sh"
       ]
     },
     "verification": {
       "status": "enforced",
       "evidence": [
+        "infra/scripts/verify-mvp-20-auth-hardening.sh",
+        "infra/scripts/verify-mvp-22-tenant-user-management.sh"
+      ],
+      "verification_evidence": [
         "infra/scripts/verify-mvp-20-auth-hardening.sh",
         "infra/scripts/verify-mvp-22-tenant-user-management.sh"
       ]
@@ -60,5 +81,14 @@
       "status": "partial",
       "note": "formalizar restore periódico e evidência de recuperação"
     }
-  }
+  },
+  "required_controls": [
+    "identity",
+    "signed_session",
+    "auth_hardening",
+    "tenant_boundary",
+    "access_control",
+    "verification"
+  ],
+  "scan_files": []
 }
