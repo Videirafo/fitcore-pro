@@ -37,14 +37,15 @@ try {
   fail('não foi possível obter git ls-files');
 }
 
+const isTemplate=(file)=>/\.(?:example|sample|template)(?:\.[^/]+)?$/i.test(file);
 const sensitiveFilePatterns=[
-  /(^|\/)\.env($|\.(?!example$|sample$|template$))/i,
+  /(^|\/)\.env(?:$|\.)/i,
   /(^|\/)(id_rsa|id_ed25519)$/i,
   /\.(pem|p12|pfx|key)$/i,
-  /(^|\/)(credentials|service-account)(\.[^/]+)?\.json$/i,
+  /(^|\/)(credentials|service-account)(?:\.[^/]+)?\.json$/i,
 ];
 for (const file of tracked) {
-  if (sensitiveFilePatterns.some(re=>re.test(file))) fail('arquivo sensível versionado: '+file);
+  if (!isTemplate(file) && sensitiveFilePatterns.some(re=>re.test(file))) fail('arquivo sensível versionado: '+file);
 }
 
 const roots=(manifest.scan_roots || []).map(v=>String(v).replace(/\/+$/,'')+'/');
