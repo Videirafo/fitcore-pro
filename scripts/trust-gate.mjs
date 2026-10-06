@@ -65,14 +65,14 @@ for (const file of tracked) {
 
 const roots=(manifest.scan_roots || []).map(v=>String(v).replace(/\/+$/,'')+'/');
 const explicitFiles=new Set((manifest.scan_files || []).map(String));
-const sourceExt=new Set(['.js','.mjs','.cjs','.ts','.tsx','.jsx','.sh','.sql','.py','.dart','.yml','.yaml']);
+const sourceExt=new Set(['.js','.mjs','.cjs','.ts','.tsx','.jsx','.sh','.ps1','.sql','.py','.dart','.yml','.yaml','.conf','.ini','.toml','.html']);
 const candidates=tracked.filter(file=>
   sourceExt.has(extname(file)) &&
   (roots.some(prefix=>file.startsWith(prefix)) || explicitFiles.has(file))
 );
 
 const checks=[
-  {name:'private_key',re:/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/},
+  {name:'private_key',re:/-----BEGIN [^-\n]*PRIVATE KEY-----/},
   {name:'known_secret_token',re:/(?:sk_live_|ghp_|github_pat_|sb_secret_)[A-Za-z0-9_-]{24,}/},
   {name:'wildcard_cors',re:/access-control-allow-origin[^\n]{0,80}['"`]\*['"`]/i},
 ];
