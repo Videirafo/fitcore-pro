@@ -27,14 +27,8 @@ apply_sql(){ docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1
 apply_sql infra/sql/001-mvp-07-core.sql
 apply_sql infra/sql/002-mvp-10-postgres-store.sql
 
-docker exec -i "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fitcore_app') THEN
-    CREATE ROLE fitcore_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
-  END IF;
-END $$;
-SQL
+docker exec "$NAME" psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 \
+  -c "CREATE ROLE fitcore_app NOLOGIN NOSUPERUSER NOBYPASSRLS;" >/dev/null
 
 apply_sql infra/sql/030-privacy-audit-recovery.sql
 apply_sql infra/sql/030-privacy-audit-recovery.sql
