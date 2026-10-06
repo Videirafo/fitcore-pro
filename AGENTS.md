@@ -167,3 +167,21 @@ Canonical source assets live under `apps/site/public/brand/` and the primary mar
 Do not replace or approximate the official brand with `FC` monograms, generic fitness symbols, hand-built SVG/CSS geometry, arbitrary generated logos or a new palette unless the owner explicitly approves a rebrand. Product UI colors may evolve independently; brand assets may not silently drift with the UI palette.
 
 Any intentional brand change requires its own Issue, owner approval, regression-gate update, PR/CI and deploy traceability.
+
+
+## 12. DESGNER — mandatory visual governance
+
+For every user-facing visual change:
+
+1. Read root `DESIGN.md`.
+2. Read `skills/desgner/SKILL.md`.
+3. Preserve `docs/brand/FITCORE_OFFICIAL_BRAND.md` without reinterpretation.
+4. Use `docs/design/UI_UX_PRO_MAX_ADOPTION.md` as design intelligence, never as a replacement brand.
+5. Classify the surface as **marketing**, **manager/coach console**, or **workout mobile**.
+6. Write a Reference Lock before material visual changes.
+7. Reuse FitCore tokens/primitives before introducing new visual values.
+8. Run `npm run design:check` and the applicable visual/mobile gates before declaring UI complete.
+
+DESGNER is fail-closed for new visual decisions: if `DESIGN.md` does not define a material rule, document/update the rule before implementing it.
+
+Do not make FitCore look like MarcaIA or another product merely because the same reusable skill governs them. The skill standardizes design discipline; `DESIGN.md` defines product identity.
