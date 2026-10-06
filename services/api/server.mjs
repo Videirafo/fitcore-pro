@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createServerPersistenceAdapter, createServerPersistenceHealth } from "./persistence/server-adapter-glue.mjs";
-import { createAccessContext, createAccessHealth } from "./security/access-context.mjs";
+import { createAccessContext } from "./security/access-context.mjs";
 import { createSignedSessionManager } from "./security/signed-session.mjs";
 import { createRoleNavigation, recordNavigationAudit } from "./security/navigation-rbac.mjs";
 import { createInviteUserManager } from "./security/invite-users.mjs";
@@ -1194,122 +1194,23 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/health") {
       const persistence = createServerPersistenceHealth(persistenceAdapter);
-      const access = createAccessHealth(accessContext);
-      const catalogExists = existsSync(catalogPath);
-      const checkins = readCheckins();
-      const reviews = readProfessorReviews();
-      return sendJson(res, 200, {
-        ok: true,
-        servico: "fitcore-api",
-        api: "api-propria",
-        persistence,
-        access,
-        mvp_09: {
-          persistence_adapter: true,
-          active_store: persistence.active_store,
-          fallback_seguro: persistence.fallback_seguro,
+      const databaseReady = persistence.active_store === "PostgresStore"
+        && Boolean(persistence.postgres?.ready);
+      const authReady = Boolean(
+        sessionManager.signedMode
+        && credentialAuthManager.enabled
+        && authHardeningManager.enabled
+        && !authHardeningManager.demoLoginEnabled
+      );
+      const ready = databaseReady && authReady;
+      return sendJson(res, ready ? 200 : 503, {
+        ok: ready,
+        service: "fitcore-api",
+        release_sha: process.env.FITCORE_RELEASE_SHA || null,
+        checks: {
+          database: databaseReady ? "ok" : "error",
+          auth: authReady ? "ok" : "error",
         },
-        mvp_10: {
-          postgres_store_controlado: true,
-          active_store: persistence.active_store,
-          database_configured: persistence.database_configured,
-          postgres_ready: Boolean(persistence.postgres?.ready),
-          activation_requested: Boolean(persistence.postgres?.activation_requested),
-          fallback_seguro: persistence.fallback_seguro,
-        },
-        mvp_14: {
-          auth_rbac_foundation: true,
-          tenant_slug: access.tenant_slug,
-          actor_role: access.actor_role,
-          enforcement: access.enforcement,
-          login_real: false,
-        },
-        mvp_15: {
-          signed_session: sessionManager.signedMode,
-          tenant_slug: accessContext.tenant_slug,
-          actor_role: accessContext.actor_role,
-          session_signed: Boolean(accessContext.session_signed),
-          role_from_db: Boolean(accessContext.role_from_db),
-          headers_trusted: Boolean(accessContext.headers_trusted),
-          rollback_soft: "bash infra/scripts/rollback-mvp-15-soft-auth.sh",
-        },
-        mvp_17: {
-          role_navigation: true,
-          actor_role: accessContext.actor_role,
-          role_from_db: Boolean(accessContext.role_from_db),
-          headers_trusted: Boolean(accessContext.headers_trusted),
-          audit: "navigation/menu_resolvido",
-        },
-        mvp_19: {
-          credential_login: credentialAuthManager.enabled,
-          invite_not_only_entry: true,
-          demo_replacement_ready: true,
-          recovery_and_revocation: true,
-          audit: "auth/credential_events",
-        },
-        mvp_20: {
-          auth_hardening: authHardeningManager.enabled,
-          demo_login_enabled: authHardeningManager.demoLoginEnabled,
-          rate_limit: "ip_hash+user_agent_hash+acao",
-          logs: "fitcore_security_events",
-        },
-        mvp_22: {
-          tenant_user_management: tenantUserManagement.enabled,
-          tenant_slug: accessContext.tenant_slug,
-          actor_role: accessContext.actor_role,
-          cross_tenant_block: true,
-          next_ready_frontend: true,
-        },
-        mvp_23: {
-          student_management: studentManagement.enabled,
-          tenant_scoped: true,
-          student_entity_complete: true,
-          cross_tenant_block: true,
-        },
-        mvp_26: { student_evolution: studentEvolutionManager.enabled, history: true, average_effort: true, weekly_frequency: true, professor_dashboard: true },
-        mvp_32: { agent_assistant: agentAssistantManager.enabled, exercise_media_cards: true, premium_workspace: true, tenant_scoped: true },
-        mvp_33: { evidence_first_coach: evidenceCoachManager.enabled, evidence_only: true, human_review: true, medical_autonomy: false, next_route: "/coach" },
-        mvp_37: { role_dashboard: roleDashboardManager.enabled, consolidated_endpoint: true, next_route: "/dashboard" },
-        mvp_31: { guided_setup: guidedSetupManager.enabled, progress_saved_by_tenant: true, next_route: "/setup" },
-        mvp_24: {
-          workout_prescription: workoutPrescriptionManager.enabled,
-          student_bound: true,
-          professor_review_required: true,
-          aluno_own_workouts_only: true,
-          tenant_scoped: true,
-        },
-        mvp_21: {
-          tenant_onboarding: tenantOnboardingManager.enabled,
-          demo_is_no_longer_only_flow: true,
-          current_tenant_slug: accessContext.tenant_slug,
-          actor_role: accessContext.actor_role,
-        },
-        mvp_18: {
-          user_invites: true,
-          actor_role: accessContext.actor_role,
-          session_signed: Boolean(accessContext.session_signed),
-          role_from_db: Boolean(accessContext.role_from_db),
-          demo_login_required_for_invited_users: false,
-        },
-        catalogo_existe: catalogExists,
-        catalogo_carregado: Boolean(catalogCache),
-        catalogo_carregado_em: catalogLoadedAt,
-        mvp_01: {
-          aluno_treino: true,
-          registros: readMvpRecords().length,
-        },
-        mvp_02: {
-          checkin_treino: true,
-          registros: checkins.length,
-          resumo: checkinSummary(checkins),
-        },
-        mvp_03: {
-          painel_professor: true,
-          registros: reviews.length,
-          resumo: reviewSummary(reviews),
-        },
-        motor_fitness_interno: wgerInternalUrl,
-        politica_midia: "uso_textual_autorizado",
       });
     }
 
