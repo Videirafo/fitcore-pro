@@ -128,7 +128,7 @@
     "assessments:check": "node tools/check-assessments-anamnesis.mjs && bash infra/scripts/gate-assessments-anamnesis-postgres17.sh",
     "trust:gate": "node scripts/trust-gate.mjs",
     "security:health:check": "node tools/check-public-health-minimal.mjs",
-    "privacy:check": "node scripts/privacy-recovery-gate.mjs && node --test tests/privacy-recovery-v1-1.test.mjs"
+    "privacy:check": "node tools/check-privacy-audit-recovery.mjs && node scripts/privacy-recovery-gate.mjs && node --test tests/privacy-recovery-v1-1.test.mjs && bash infra/scripts/gate-privacy-audit-recovery-postgres17.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
