@@ -39,7 +39,11 @@
     "infra/privacy/dsar-ledger.mjs",
     "infra/backups/postgres-restore-smoke.sh",
     "scripts/privacy-recovery-gate.mjs",
-    "security/privacy-recovery-v1.1.json"
+    "security/privacy-recovery-v1.1.json",
+    "infra/sql/030-privacy-audit-recovery.sql",
+    "infra/scripts/apply-privacy-audit-recovery.sh",
+    "infra/scripts/gate-privacy-audit-recovery-postgres17.sh",
+    "tools/check-privacy-audit-recovery.mjs"
   ],
   "verification_evidence": [
     "tests/privacy-recovery-v1-1.test.mjs"
