@@ -32,17 +32,25 @@ for (const item of datasets || []) {
 
 const maxAge=policy.recovery?.max_evidence_age_hours;
 if (!Number.isInteger(maxAge) || maxAge<1 || maxAge>744) fail('max_evidence_age_hours inválido');
+const maxFutureSkewMs=5*60_000;
 
 if (process.env.TRUST_REQUIRE_RUNTIME_RECOVERY==='1') {
   const path=process.env.TRUST_RECOVERY_EVIDENCE;
   if (!path || !existsSync(path)) fail('runtime recovery evidence ausente');
   else {
     const evidenceJson=JSON.parse(readFileSync(path,'utf8'));
+    if (evidenceJson.system!==policy.system) fail('runtime recovery evidence pertence a outro sistema');
+    if (evidenceJson.postgres_version!==policy.recovery?.postgres_version) fail('postgres_version da evidência diverge da policy');
     if (evidenceJson.restore_status!=='pass') fail('restore_status não é pass');
+    if (!Number.isInteger(evidenceJson.public_table_count) || evidenceJson.public_table_count<1) fail('public_table_count inválido ou vazio');
     if (!/^[a-f0-9]{64}$/.test(String(evidenceJson.dump_sha256 || ''))) fail('dump_sha256 inválido');
     const at=Date.parse(String(evidenceJson.completed_at || ''));
     if (!Number.isFinite(at)) fail('completed_at inválido');
-    else if ((Date.now()-at)>(maxAge*3600_000)) fail('restore evidence expirou');
+    else {
+      const ageMs=Date.now()-at;
+      if (ageMs < -maxFutureSkewMs) fail('completed_at está no futuro além da tolerância');
+      else if (ageMs>(maxAge*3600_000)) fail('restore evidence expirou');
+    }
     if (policy.recovery.external_copy_required && evidenceJson.external_copy_status!=='pass') fail('cópia externa criptografada ausente');
   }
 }
