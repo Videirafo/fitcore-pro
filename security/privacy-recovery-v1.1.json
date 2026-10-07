@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "system": "fitcore-pro",
+  "dsar": {
+    "kinds": [
+      "access",
+      "correction",
+      "deletion",
+      "portability"
+    ],
+    "max_open_days": 30,
+    "ledger_subject_reference": "opaque_or_sha256_only"
+  },
+  "retention": {
+    "datasets": [
+      {
+        "name": "optional_telemetry",
+        "days": 90,
+        "action": "delete"
+      },
+      {
+        "name": "security_audit",
+        "days": 365,
+        "action": "anonymize"
+      },
+      {
+        "name": "dsar_evidence",
+        "days": 730,
+        "action": "retain_evidence"
+      }
+    ]
+  },
+  "recovery": {
+    "postgres_version": "17.6",
+    "max_evidence_age_hours": 168,
+    "external_copy_required": false
+  },
+  "implementation_evidence": [
+    "infra/privacy/dsar-ledger.mjs",
+    "infra/backups/postgres-restore-smoke.sh",
+    "scripts/privacy-recovery-gate.mjs",
+    "security/privacy-recovery-v1.1.json",
+    "infra/sql/030-privacy-audit-recovery.sql",
+    "infra/scripts/apply-privacy-audit-recovery.sh",
+    "infra/scripts/gate-privacy-audit-recovery-postgres17.sh",
+    "tools/check-privacy-audit-recovery.mjs"
+  ],
+  "verification_evidence": [
+    "tests/privacy-recovery-v1-1.test.mjs"
+  ]
+}

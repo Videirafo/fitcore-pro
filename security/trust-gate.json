@@ -45,20 +45,39 @@
         "infra/scripts/verify-mvp-20-auth-hardening.sh",
         "infra/scripts/verify-mvp-22-tenant-user-management.sh"
       ]
+    },
+    "privacy_recovery_contract": {
+      "status": "enforced",
+      "evidence": [
+        "security/privacy-recovery-v1.1.json",
+        "scripts/privacy-recovery-gate.mjs",
+        "infra/privacy/dsar-ledger.mjs",
+        "infra/backups/postgres-restore-smoke.sh"
+      ],
+      "verification_evidence": [
+        "tests/privacy-recovery-v1-1.test.mjs"
+      ]
+    },
+    "audit_immutability": {
+      "status": "enforced",
+      "evidence": [
+        "infra/sql/030-privacy-audit-recovery.sql",
+        "infra/scripts/gate-privacy-audit-recovery-postgres17.sh",
+        "tools/check-privacy-audit-recovery.mjs"
+      ],
+      "verification_evidence": [
+        "infra/scripts/gate-privacy-audit-recovery-postgres17.sh"
+      ]
     }
   },
   "advisory_controls": {
-    "audit": {
-      "status": "partial",
-      "note": "consolidar trilha imutável de eventos de segurança e acesso"
-    },
     "privacy_lgpd": {
       "status": "partial",
-      "note": "legal/LGPD existe; completar DSAR/retention com evidência executável"
+      "note": "DSAR ledger + PostgreSQL tenant-scoped request/event/retention contract are enforced; production export/correction/delete executors and legal closure still require runtime evidence"
     },
     "backup_restore": {
       "status": "partial",
-      "note": "formalizar restore periódico e evidência de recuperação"
+      "note": "isolated PostgreSQL restore contract exists; fresh production restore evidence and encrypted external copy remain required"
     }
   }
 }

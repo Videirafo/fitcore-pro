@@ -4,7 +4,7 @@
   "private": false,
   "description": "FitCore Pro - professional fitness SaaS foundation based on wger.",
   "scripts": {
-    "check:project": "bash infra/scripts/check-project.sh && node tools/check-postgres17-promotion.mjs && npm run trust:gate && npm run security:health:check",
+    "check:project": "bash infra/scripts/check-project.sh && node tools/check-postgres17-promotion.mjs && npm run trust:gate && npm run privacy:check && npm run security:health:check",
     "api:dev": "cd services/api && npm run dev",
     "doctor": "cd services/orchestrator && npm run doctor",
     "exercises:sync": "bash infra/scripts/exercises-dataset-sync.sh",
@@ -127,7 +127,8 @@
     "athlete:check": "node tools/check-athlete-360.mjs && bash infra/scripts/gate-athlete-360-postgres17.sh",
     "assessments:check": "node tools/check-assessments-anamnesis.mjs && bash infra/scripts/gate-assessments-anamnesis-postgres17.sh",
     "trust:gate": "node scripts/trust-gate.mjs",
-    "security:health:check": "node tools/check-public-health-minimal.mjs"
+    "security:health:check": "node tools/check-public-health-minimal.mjs",
+    "privacy:check": "node tools/check-privacy-audit-recovery.mjs && node scripts/privacy-recovery-gate.mjs && node --test tests/privacy-recovery-v1-1.test.mjs && bash infra/scripts/gate-privacy-audit-recovery-postgres17.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
