@@ -21,7 +21,9 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.pull_request.user.login == github.repository_owner
       )
-    runs-on: [self-hosted, Linux, X64, fitcore-vps]
+    # Temporary CI continuity while #135 repairs the persistent fitcore-vps runner.
+    # Avoids security-review deadlock caused by a missing ephemeral self-hosted runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
