@@ -76,7 +76,7 @@ if [[ -n "${TRUST_BACKUP_TARGET_DIR:-}" ]]; then
   [[ -n "${TRUST_BACKUP_AGE_RECIPIENT:-}" ]] || fail "TRUST_BACKUP_AGE_RECIPIENT obrigatório"
   mkdir -p "$TRUST_BACKUP_TARGET_DIR"
   chmod 700 "$TRUST_BACKUP_TARGET_DIR" || true
-  TARGET="$TRUST_BACKUP_TARGET_DIR/$(date -u +%Y%m%dT%H%M%SZ)-${TRUST_SYSTEM:-system}.dump.age"
+  TARGET="$TRUST_BACKUP_TARGET_DIR/$(date -u +%Y%m%dT%H%M%SZ)-${TRUST_SYSTEM:-fitcore-pro}.dump.age"
   age -r "$TRUST_BACKUP_AGE_RECIPIENT" -o "$TARGET" "$DUMP"
   chmod 600 "$TARGET"
   [[ -s "$TARGET" ]] || fail "cópia externa criptografada vazia"
@@ -89,7 +89,7 @@ COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 cat > "$EVIDENCE" <<JSON
 {
   "version": 1,
-  "system": "${TRUST_SYSTEM:-unknown}",
+  "system": "${TRUST_SYSTEM:-fitcore-pro}",
   "started_at": "$STARTED_AT",
   "completed_at": "$COMPLETED_AT",
   "restore_status": "pass",
@@ -100,4 +100,4 @@ cat > "$EVIDENCE" <<JSON
 }
 JSON
 chmod 600 "$EVIDENCE"
-printf '[restore-smoke] PASS system=%s tables=%s evidence=%s external=%s\n' "${TRUST_SYSTEM:-unknown}" "$TABLE_COUNT" "$EVIDENCE" "$EXTERNAL_STATUS"
+printf '[restore-smoke] PASS system=%s tables=%s evidence=%s external=%s\n' ${TRUST_SYSTEM:-fitcore-pro}" "$TABLE_COUNT" "$EVIDENCE" "$EXTERNAL_STATUS"
