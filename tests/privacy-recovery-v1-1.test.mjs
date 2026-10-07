@@ -68,8 +68,8 @@ test('recovery gate vincula evidência ao FitCore, PostgreSQL 17.6, restore real
     dump_sha256:'a'.repeat(64),
     external_copy_status:'not_configured',
   };
-  const run=(payload)=>{
-    writeFile(evidencePath,JSON.stringify(payload),'utf8');
+  const run=async(payload)=>{
+    await writeFile(evidencePath,JSON.stringify(payload),'utf8');
   };
 
   await run({...base,system:'some-other-product',postgres_version:'17.6'});
