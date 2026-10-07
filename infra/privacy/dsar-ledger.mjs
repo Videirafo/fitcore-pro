@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { chmod, mkdir, open, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -35,6 +37,15 @@ function cleanRef(value,label,{required=true}={}) {
   return text;
 }
 
+function cleanSubjectRef(value) {
+  const text=String(value ?? '').trim();
+  if (!text) throw new Error('subject_ref_required');
+  const sha256=/^sha256:[0-9a-f]{64}$/;
+  const opaque=/^opaque:(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|[A-Za-z0-9_-]{22,128})$/;
+  if (!sha256.test(text) && !opaque.test(text)) throw new Error('subject_ref_must_be_opaque_or_sha256');
+  return text;
+}
+
 function validateStatus(value) {
   const status=String(value || '');
   if (!DSAR_STATUSES.includes(status)) throw new Error('invalid_status');
@@ -65,13 +76,14 @@ export async function readLedger(path) {
     catch { throw new Error('ledger_json_invalid_line_'+(index+1)); }
 
     const suppliedHash=String(event.hash || '');
-    const { hash, ...body }=event;
+    const body={...event};
+    delete body.hash;
     if (body.prevHash!==previousHash) throw new Error('ledger_chain_invalid_line_'+(index+1));
     if (digest(body)!==suppliedHash) throw new Error('ledger_hash_invalid_line_'+(index+1));
 
     body.requestId=cleanRef(body.requestId,'request_id');
     body.tenantRef=cleanRef(body.tenantRef,'tenant_ref');
-    body.subjectRef=cleanRef(body.subjectRef,'subject_ref');
+    body.subjectRef=cleanSubjectRef(body.subjectRef);
     body.actorRef=cleanRef(body.actorRef,'actor_ref');
     body.evidenceRef=cleanRef(body.evidenceRef,'evidence_ref',{required:false});
     body.kind=validateKind(body.kind);
@@ -96,12 +108,71 @@ export async function readLedger(path) {
   return events;
 }
 
-async function append(path,body) {
+async function acquireKernelLock(lockPath) {
+  const handle=await open(lockPath,'a',0o600);
+  await handle.close();
+  await chmod(lockPath,0o600);
+
+  return new Promise((resolve,reject)=>{
+    const child=spawn(
+      'flock',
+      ['-x','-w','10',lockPath,'-c','printf "LOCKED\\n"; cat >/dev/null'],
+      {stdio:['pipe','pipe','pipe']}
+    );
+    let stdout='';
+    let stderr='';
+    let settled=false;
+
+    const fail=(error)=>{
+      if (settled) return;
+      settled=true;
+      reject(error);
+    };
+
+    child.once('error',(error)=>{
+      fail(new Error(error?.code==='ENOENT' ? 'ledger_lock_unavailable' : 'ledger_lock_failed'));
+    });
+    child.stderr.on('data',(chunk)=>{ stderr+=chunk.toString(); });
+    child.stdout.on('data',(chunk)=>{
+      stdout+=chunk.toString();
+      if (!settled && stdout.includes('LOCKED\n')) {
+        settled=true;
+        resolve(child);
+      }
+    });
+    child.once('exit',(code,signal)=>{
+      if (settled) return;
+      if (code===1) fail(new Error('ledger_lock_timeout'));
+      else fail(new Error('ledger_lock_failed_'+String(code ?? signal ?? (stderr.trim() || 'unknown'))));
+    });
+  });
+}
+
+async function releaseKernelLock(child) {
+  if (!child || child.exitCode!==null) return;
+  child.stdin.end();
+  const timer=setTimeout(()=>child.kill('SIGKILL'),2000);
+  timer.unref?.();
+  try { await once(child,'exit'); }
+  finally { clearTimeout(timer); }
+}
+
+async function withLedgerLock(path,operation) {
+  await mkdir(dirname(path),{recursive:true,mode:0o700});
+  const lockPath=path+'.lock';
+  const child=await acquireKernelLock(lockPath);
+  try {
+    return await operation();
+  } finally {
+    await releaseKernelLock(child);
+  }
+}
+
+async function appendUnlocked(path,body) {
   const events=await readLedger(path);
   const prevHash=events.at(-1)?.hash || 'GENESIS';
   const event={...body,prevHash};
   const record={...event,hash:digest(event)};
-  await mkdir(dirname(path),{recursive:true,mode:0o700});
   const handle=await open(path,'a',0o600);
   try { await handle.writeFile(JSON.stringify(record)+'\n','utf8'); }
   finally { await handle.close(); }
@@ -111,40 +182,44 @@ async function append(path,body) {
 }
 
 export async function createRequest(path,input) {
-  const kind=validateKind(input.kind);
-  const now=input.at ? new Date(input.at) : new Date();
-  if (Number.isNaN(now.valueOf())) throw new Error('invalid_timestamp');
-  return append(path,{
-    event:'created',
-    at:now.toISOString(),
-    requestId:'dsar_'+randomUUID().replaceAll('-',''),
-    tenantRef:cleanRef(input.tenantRef,'tenant_ref'),
-    subjectRef:cleanRef(input.subjectRef,'subject_ref'),
-    actorRef:cleanRef(input.actorRef,'actor_ref'),
-    kind,
-    status:'received',
-    evidenceRef:null,
+  return withLedgerLock(path,async()=>{
+    const kind=validateKind(input.kind);
+    const now=input.at ? new Date(input.at) : new Date();
+    if (Number.isNaN(now.valueOf())) throw new Error('invalid_timestamp');
+    return appendUnlocked(path,{
+      event:'created',
+      at:now.toISOString(),
+      requestId:'dsar_'+randomUUID().replaceAll('-',''),
+      tenantRef:cleanRef(input.tenantRef,'tenant_ref'),
+      subjectRef:cleanSubjectRef(input.subjectRef),
+      actorRef:cleanRef(input.actorRef,'actor_ref'),
+      kind,
+      status:'received',
+      evidenceRef:null,
+    });
   });
 }
 
 export async function advanceRequest(path,input) {
-  const events=await readLedger(path);
-  const requestId=cleanRef(input.requestId,'request_id');
-  const prior=[...events].reverse().find((event)=>event.requestId===requestId);
-  if (!prior) throw new Error('request_not_found');
-  const status=validateStatus(input.status);
-  if (!transitions[prior.status]?.has(status)) throw new Error('invalid_transition');
-  const evidenceRef=cleanRef(input.evidenceRef,'evidence_ref',{required:status!=='verified' && status!=='processing' ? status==='completed' : false});
-  return append(path,{
-    event:'transition',
-    at:new Date(input.at || Date.now()).toISOString(),
-    requestId,
-    tenantRef:prior.tenantRef,
-    subjectRef:prior.subjectRef,
-    actorRef:cleanRef(input.actorRef,'actor_ref'),
-    kind:prior.kind,
-    status,
-    evidenceRef,
+  return withLedgerLock(path,async()=>{
+    const events=await readLedger(path);
+    const requestId=cleanRef(input.requestId,'request_id');
+    const prior=[...events].reverse().find((event)=>event.requestId===requestId);
+    if (!prior) throw new Error('request_not_found');
+    const status=validateStatus(input.status);
+    if (!transitions[prior.status]?.has(status)) throw new Error('invalid_transition');
+    const evidenceRef=cleanRef(input.evidenceRef,'evidence_ref',{required:status!=='verified' && status!=='processing' ? status==='completed' : false});
+    return appendUnlocked(path,{
+      event:'transition',
+      at:new Date(input.at || Date.now()).toISOString(),
+      requestId,
+      tenantRef:prior.tenantRef,
+      subjectRef:prior.subjectRef,
+      actorRef:cleanRef(input.actorRef,'actor_ref'),
+      kind:prior.kind,
+      status,
+      evidenceRef,
+    });
   });
 }
 
