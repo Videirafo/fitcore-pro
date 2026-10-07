@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FitCoreThemeToggle } from "./FitCoreThemeToggle";
 import { FitCoreBrandLockup, FitCoreBrandSymbol } from "./FitCoreBrandSymbol";
+import { ProductShot } from "./FitCoreProductShots";
 
 type IconName = "home" | "grid" | "users" | "user" | "dumbbell" | "clipboard" | "play" | "chart" | "shield" | "gear" | "bell" | "bot" | "calendar" | "wallet" | "search" | "logout" | "building" | "spark";
 
@@ -59,6 +60,41 @@ export function FitCoreExactLanding() {
         <div className="fcx-checks"><span>Aluno e Coach no mesmo ecossistema</span><span>Execution Kernel + Hermes</span><span>LGPD e acesso por perfil</span></div>
       </div>
       <FitCoreExactPreview />
+    </section>
+    <section className="fcx-proof" id="produto-em-uso" aria-labelledby="produto-em-uso-title">
+      <header className="fcx-proof-head">
+        <div>
+          <span>PRODUTO EM USO</span>
+          <h2 id="produto-em-uso-title">Do aluno à gestão, o fluxo aparece antes da promessa.</h2>
+        </div>
+        <p>Quatro jornadas que já existem no FitCore. Os dados abaixo são demonstrativos; os fluxos, rotas e componentes são do produto real.</p>
+      </header>
+      <div className="fcx-proof-grid">
+        <article className="fcx-proof-card">
+          <div className="fcx-proof-copy"><span>01 · ALUNO 360</span><h3>Perfil e acompanhamento</h3><p>Objetivo, frequência, anamnese e evolução concentrados em uma visão operacional.</p></div>
+          <ProductShot kind="students" title="Perfil e acompanhamento real do aluno no FitCore" />
+          <Link href="/alunos">Abrir alunos <b>→</b></Link>
+        </article>
+        <article className="fcx-proof-card">
+          <div className="fcx-proof-copy"><span>02 · PRESCRIÇÃO</span><h3>Workout Builder</h3><p>Exercícios, séries, carga e descanso organizados para o coach revisar e liberar.</p></div>
+          <ProductShot kind="workouts" title="Builder de treino real do FitCore" />
+          <Link href="/treinos">Abrir treinos <b>→</b></Link>
+        </article>
+        <article className="fcx-proof-card">
+          <div className="fcx-proof-copy"><span>03 · EXECUÇÃO</span><h3>Treino guiado</h3><p>O aluno acompanha o exercício, registra a execução e alimenta o histórico operacional.</p></div>
+          <ProductShot kind="execution" title="Execução guiada real do FitCore" />
+          <Link href="/execucao">Abrir execução <b>→</b></Link>
+        </article>
+        <article className="fcx-proof-card">
+          <div className="fcx-proof-copy"><span>04 · EVOLUÇÃO</span><h3>Métricas acionáveis</h3><p>Frequência, esforço e execução viram contexto para revisão profissional e próxima ação.</p></div>
+          <ProductShot kind="evolution" title="Evolução e métricas reais do FitCore" />
+          <Link href="/evolucao">Abrir evolução <b>→</b></Link>
+        </article>
+      </div>
+      <div className="fcx-proof-footer">
+        <span><i /> Fluxos conectados ao mesmo ecossistema</span>
+        <Link href="/dashboard">Ver demonstração completa <b>→</b></Link>
+      </div>
     </section>
     <section className="fcx-feature-row" id="funcionalidades">{features.map(([title, text, icon, href]) => <Link href={href} className="fcx-mini-card" key={title}><i><Icon name={icon} /></i><strong>{title}</strong><p>{text}</p><span>→</span></Link>)}</section>
     <section className="fcx-lower-grid" id="planos"><article className="fcx-ai-banner"><span>FITCORE AI</span><h2>Assistente IA para prescrição, evolução e retenção</h2><p>Hermes usa contexto do aluno, coach e execução para apoiar prescrição, progressão, revisão e Next Best Action sem substituir a decisão profissional.</p><div className="fcx-agent-input"><div><b>✦</b><p>Olá, sou o assistente FitCore. Posso apoiar treino, nutrição esportiva, avaliação física, retenção e acompanhamento profissional.</p></div><form action="/agents"><input name="q" placeholder="Digite sua solicitação..."/><button>➤</button></form></div></article><article className="fcx-security-panel" id="seguranca"><i><Icon name="shield" /></i><h2>Seus dados, sempre protegidos</h2><p>Privacidade, controle de acesso por papel, registro de auditoria e operação preparada para LGPD em cada unidade.</p><ul><li><strong>LGPD</strong><span>Conformidade operacional</span></li><li><strong>Criptografia</strong><span>TLS 1.3</span></li><li><strong>Ambiente seguro</strong><span>Sessão, logs e backups</span></li></ul></article></section>
