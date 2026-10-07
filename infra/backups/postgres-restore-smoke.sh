@@ -100,4 +100,4 @@ cat > "$EVIDENCE" <<JSON
 }
 JSON
 chmod 600 "$EVIDENCE"
-printf '[restore-smoke] PASS system=%s tables=%s evidence=%s external=%s\n' ${TRUST_SYSTEM:-fitcore-pro}" "$TABLE_COUNT" "$EVIDENCE" "$EXTERNAL_STATUS"
+printf '[restore-smoke] PASS system=%s tables=%s evidence=%s external=%s\n' "${TRUST_SYSTEM:-fitcore-pro}" "$TABLE_COUNT" "$EVIDENCE" "$EXTERNAL_STATUS"
