@@ -1,3 +1,5 @@
+import { stableDecisionRank } from "./decision-pipeline.mjs";
+
 // FITCORE PRO — #89 Decision Intelligence.
 // Transparent evidence ordering only; no opaque score is used as execution authority.
 
@@ -13,27 +15,29 @@ function count(value) {
 }
 
 export function rankDecisionEvidence(rows = []) {
-  return [...(Array.isArray(rows) ? rows : [])]
-    .map((row) => ({
-      reason_code: String(row?.reason_code || ""),
-      action_id: row?.action_id ? String(row.action_id) : null,
-      accepted_count: count(row?.accepted_count ?? row?.accepted),
-      settled_count: count(row?.settled_count ?? row?.settled),
-      outcome_count: count(row?.outcome_count ?? row?.outcomes),
-      positive_outcome_count: count(row?.positive_outcome_count ?? row?.positive_outcomes),
-    }))
-    .sort((a, b) =>
+  const normalized = [...(Array.isArray(rows) ? rows : [])].map((row) => ({
+    reason_code: String(row?.reason_code || ""),
+    action_id: row?.action_id ? String(row.action_id) : null,
+    accepted_count: count(row?.accepted_count ?? row?.accepted),
+    settled_count: count(row?.settled_count ?? row?.settled),
+    outcome_count: count(row?.outcome_count ?? row?.outcomes),
+    positive_outcome_count: count(row?.positive_outcome_count ?? row?.positive_outcomes),
+  }));
+
+  return stableDecisionRank(
+    normalized,
+    (a, b) =>
       b.outcome_count - a.outcome_count ||
       b.settled_count - a.settled_count ||
       b.accepted_count - a.accepted_count ||
       a.reason_code.localeCompare(b.reason_code) ||
       String(a.action_id || "").localeCompare(String(b.action_id || "")),
-    )
-    .map((row, index) => ({
-      ...row,
-      rank: index + 1,
-      tier: row.outcome_count >= 5 ? "strong" : row.outcome_count >= 3 ? "moderate" : row.outcome_count >= 1 ? "limited" : "none",
-    }));
+    (row) => `${row.reason_code}:${row.action_id || ""}`,
+  ).map((row, index) => ({
+    ...row,
+    rank: index + 1,
+    tier: row.outcome_count >= 5 ? "strong" : row.outcome_count >= 3 ? "moderate" : row.outcome_count >= 1 ? "limited" : "none",
+  }));
 }
 
 export function attachDecisionEvidence(proposal, intelligence = {}) {

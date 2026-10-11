@@ -6,6 +6,7 @@ import {
   rankDecisionEvidence,
   terminalDecisionState,
 } from "../services/api/security/decision-intelligence.mjs";
+import { runDecisionPipeline } from "../services/api/security/decision-pipeline.mjs";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -81,4 +82,37 @@ assert.equal(terminalDecisionState("rejected"), true);
 assert.equal(terminalDecisionState("outcome_recorded"), true);
 assert.equal(terminalDecisionState("accepted"), false);
 
-console.log("Decision Intelligence #89 contract: OK");
+const pipeline = runDecisionPipeline({
+  candidates: [
+    { candidateKey: "b", source: "athlete360", actionId: "fitcore.workout.execution.start", score: 50, payload: { allowed: true, value: 2 } },
+    { candidateKey: "a", source: "athlete360", actionId: "fitcore.workout.execution.start", score: 50, payload: { allowed: true, value: 2 } },
+    { candidateKey: "blocked", source: "athlete360", actionId: "fitcore.workout.execution.start", score: 99, payload: { allowed: false, value: 9 } },
+  ],
+  context: { tenant_id: "tenant-a" },
+  eligibility: [
+    { id: "allowed", allow: (candidate) => candidate.payload.allowed === true },
+  ],
+  scorers: [
+    { id: "value", score: (candidate) => candidate.payload.value },
+  ],
+  policies: [
+    { id: "tenant-bound", allow: (_candidate, context) => context.tenant_id === "tenant-a" },
+  ],
+});
+assert.deepEqual(pipeline.selected.map((item) => item.candidateKey), ["a", "b"]);
+assert.deepEqual(pipeline.selected.map((item) => item.rank), [1, 2]);
+assert.equal(pipeline.selected[0].score, 52);
+assert.deepEqual(pipeline.rejected[0].blockedBy, ["eligibility:allowed"]);
+
+const failedClosed = runDecisionPipeline({
+  candidates: [
+    { candidateKey: "unsafe", source: "athlete360", actionId: "fitcore.workout.execution.start", score: 10, payload: {} },
+  ],
+  policies: [
+    { id: "policy-unavailable", allow: () => { throw new Error("unavailable"); } },
+  ],
+});
+assert.equal(failedClosed.selected.length, 0);
+assert.deepEqual(failedClosed.rejected[0].blockedBy, ["policy:policy-unavailable"]);
+
+console.log("Decision Intelligence #89 + decision pipeline contract: OK");
