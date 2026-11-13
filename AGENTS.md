@@ -167,3 +167,6 @@ Canonical source assets live under `apps/site/public/brand/` and the primary mar
 Do not replace or approximate the official brand with `FC` monograms, generic fitness symbols, hand-built SVG/CSS geometry, arbitrary generated logos or a new palette unless the owner explicitly approves a rebrand. Product UI colors may evolve independently; brand assets may not silently drift with the UI palette.
 
 Any intentional brand change requires its own Issue, owner approval, regression-gate update, PR/CI and deploy traceability.
+
+## Agentes em paralelo — contrato obrigatório
+Quando uma tarefa for realmente paralelizável, seguir [docs/PARALLEL_AGENTS.md](docs/PARALLEL_AGENTS.md) antes de iniciar agentes. Cada agente deve usar sua própria **Git worktree + branch**, escopo fechado de arquivos, prompt independente, commits separados e handoff verificável. O coordenador reserva arquivos compartilhados, revisa os diffs e integra um PR por vez após os gates do **SHA exato**. Para criar três worktrees locais em um clone limpo, usar `bash scripts/setup-parallel-worktrees.sh issue-N`. O script é apenas preparação; não inicia IA, não faz push, merge ou deploy. Não criar worktrees na VPS de produção. Não modificar a branch principal ou liberar sem autorização explícita; as proteções anteriores deste documento continuam obrigatórias.
